@@ -1476,10 +1476,12 @@ weekly use.
   page the overview already fetches (`history=None`, so every sigma is the
   fallback), so a gap inside `z_deadband` reads `neutral`, rendered "would
   hold". The history-fed dial still appears when the league is opened.
-- **The chip step reason needs a `chip_plan` on the solve state** (v16):
-  `advise.py` writes it from the chip table's `play_now` rows, so a ladder
-  rebuilt off a state written before v16 gives no chip reason and falls
-  through to the next one.
+- ~~The chip step reason needs a `chip_plan` on the solve state~~ (v16) —
+  closed by holiday F-71: a state with no `chip_plan` key (written before
+  v16) takes the same `{gw, chip}` rows from the `play_now` rows of its
+  gameweek's saved advice `chip_table` (`ladder._chip_plan_from_advice`). An
+  empty list on the state is still an answer and is kept; no advice, or one
+  that will not read, plans no chip as before.
 - **Sentence-initial names escape the truth check when no bootstrap
   snapshot is on disk** (v16; narrowed by holiday F-23 and F-27): English
   capitalises sentence starts, so `check_brief` skips a sentence's first
