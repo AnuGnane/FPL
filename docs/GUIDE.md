@@ -1275,8 +1275,8 @@ The holiday's readings are listed in §12.5 "The readings" and collected by
 (`tests/test_v12_w1_degradation.py`), `Config` 62
 (`tests/test_v13_degradation.py`).
 
-As of 2026-09-16, after v19h. Nothing is in flight: the v12 program and the
-v17, v18 and v19 programmes are all closed, and the model cycle (v20) is
+On 2026-09-16, after v19h, nothing was in flight: the v12 program and the
+v17, v18 and v19 programmes were all closed, and the model cycle (v20) was
 next. What remains falls into six groups, in the order you
 would act on them.
 
