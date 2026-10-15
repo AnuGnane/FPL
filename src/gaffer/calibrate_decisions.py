@@ -136,11 +136,11 @@ def walk_season(season: str, start_gw: int = 5,
                 transfers.append({
                     "gw": gw,
                     "surplus": best_single_transfer(pool, one_ft, **cfg)})
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001 — a transfer solve that falls over costs this one sample, not the week's chip samples
                 print(f"calibration: no transfer sample for GW{gw} ({exc})")
             try:
                 table = evaluate_chips(pool, state, list(CHIPS), **cfg)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001 — a chip evaluation that falls over costs this week's chip samples, not the calibration
                 print(f"calibration: no chip samples for GW{gw} ({exc})")
             else:
                 for r in table.itertuples():
@@ -176,7 +176,7 @@ def run_calibration(seasons: list[str], start_gw: int = 5) -> dict:
     for season in seasons:
         try:
             weeks, chips = walk_season(season, start_gw=start_gw)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001 — a season the archive cannot replay is skipped; a multi-season calibration must not die on one
             print(f"calibration: cannot replay {season} ({exc})")
             continue
         used.append(season)
