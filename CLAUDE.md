@@ -162,13 +162,13 @@ seeds run concurrently were OOM-killed, so run them one at a time and treat
 ## Frontend rules
 
 Tailwind v4 with tokens in `styles/theme.css`. `kit/tokens.test.ts` scans
-`hubs/` and `kit/` for the ledger style: no `rounded-full`, no card radius, no
-shadow, no gradient, no six-digit hex outside `theme.css` and the bundled
-plain shirt, mono face only in the job log and plan trace, no retired `num`
-class, colour or token, `Chip` not `Badge`, fixture difficulty as a tone. The
-same rules apply by hand to `App.tsx`, `api/` and anything the scan misses,
-and to short hex forms. Use tabular figures for numbers. Charts use the one
-grey palette. Pages render in dark and light; screenshots for a gate come from
+`hubs/`, `kit/`, `App.tsx` and `api/` for the ledger style: no `rounded-full`,
+no card radius, no shadow, no gradient, no hex (six, four or three digits)
+outside `theme.css` and the bundled plain shirt, mono face only in the job log
+and plan trace, no retired `num` class, colour or token, `Chip` not `Badge`,
+fixture difficulty as a tone. The same rules apply by hand to anything the
+scan misses. Use tabular figures for numbers. Charts use the one grey
+palette. Pages render in dark and light; screenshots for a gate come from
 `frontend/scripts/shots.sh <stage>`.
 
 ## Writing style in code and docs
