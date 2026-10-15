@@ -228,6 +228,15 @@ def test_every_shipped_plist_parses_into_a_row_with_a_schedule():
     assert all(row.log.startswith("logs/") for row in rows)
 
 
+def test_every_shipped_plist_parses_without_the_comment_retry():
+    """Holiday F-55: the reader's retry stays for installed copies that
+    predate the fix, but the repo's own plists never need it again."""
+    plists = sorted(Path("scripts").glob("com.gaffer.*.plist"))
+    assert plists
+    for path in plists:
+        plistlib.loads(path.read_bytes())
+
+
 def test_the_health_route_carries_the_jobs(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(meta, "PLIST_DIR", tmp_path / "scripts")
