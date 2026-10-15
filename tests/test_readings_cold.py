@@ -10,7 +10,9 @@ interpreter on the script's absolute path, from an empty working directory
 paths, so the tree is cold on any machine, the Mac included), with the
 proxies pointed at a closed port so a fetch fails fast instead of passing.
 The scripts and their prefixes come from the GUIDE's readings table, which
-``tests/test_guide_readings.py`` already parses.
+``tests/test_guide_readings.py`` already parses; the four v20 arms' scripts,
+which that table does not list, run the same way from a list of their own
+(holiday F-63).
 """
 
 from __future__ import annotations
