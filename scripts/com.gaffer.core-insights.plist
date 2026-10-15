@@ -17,8 +17,10 @@
        every fixture is finished is fetched once and never again; the gameweek
        being played, and every future one the publisher has already listed, is
        re-fetched on every run — which is the point of running twice a day.
-       `gaffer core-insights --refresh N` forces the last N gameweeks even if
-       they have gone final. -->
+       The command's refresh flag, given N, forces the last N gameweeks even
+       if they have gone final; run `gaffer core-insights` with its help flag
+       for the spelling (holiday F-55: XML forbids a double dash in a
+       comment). -->
   <key>StartCalendarInterval</key><array>
     <dict><key>Hour</key><integer>6</integer>
           <key>Minute</key><integer>30</integer></dict>
