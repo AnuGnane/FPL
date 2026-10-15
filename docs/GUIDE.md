@@ -1586,6 +1586,7 @@ call).
 | `scripts/pcs_window.py` (holiday F-26) | `PCS_WINDOW`, `PCS_WINDOWS` | 12.4's v18c `p_cs` line | card: a per-window `p_cs` row |
 | `scripts/presser_serve.py` (holiday F-38) | `PRESSER_GW`, `PRESSER_SERVE` | 12.4's presser serving line, 12.2's serving decision | arm: serving the classifier |
 | `scripts/evaluate_lines.py` (holiday F-46) | `NEWS_SHADOW_GW`, `NEWS_SHADOW`, `FLAG_LATENCY` | 12.2's accruing verdicts and flag-latency row | card: reports the Quality card's own verdicts, decides none |
+| `scripts/league_blend.py` (holiday F-72) | `LEAGUE_BLEND` | ROADMAP candidate 9, the blended league stance | arm: the blend's replay |
 | `scripts/backfill_overall_rank.py` (holiday F-33; `--write` banks) | `BACKFILL_RANK` | 12.4's fill-forward `overall_rank` line, 12.2's overall-rank row | card: fills the Field panel's overall-rank row, decides none |
 | `scripts/v20_appendix.py` (holiday F-34, F-40) | collects the lines above and the v20 arms' lines; prints none of its own | v20 spec §3 | — |
 
