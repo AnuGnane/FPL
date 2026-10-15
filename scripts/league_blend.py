@@ -23,6 +23,7 @@ the manager chose; ``merged = Σ w·λ / Σ w`` over every league read, the focu
 included. A league *disagrees* when its λ and the focus's are of opposite
 sign (one chases, the other defends); a neutral league, or a neutral focus,
 disagrees with nothing, since a zero λ pulls the blend nowhere by itself.
+``disagree_share`` is over the leagues other than the focus.
 
 The pass rule, written here before the script has run on real data: the
 blend earns a replay (verdict ``replay``, an arm and the Mac's) iff two or
@@ -177,8 +178,9 @@ def blend_reading(client, cfg) -> dict:
 def main() -> int:
     try:
         cfg = load_config()
-    except (GafferError, OSError, ValueError) as exc:
-        # A missing file is GafferError; a malformed TOML a ValueError.
+    except (GafferError, OSError, ValueError, KeyError, TypeError) as exc:
+        # A missing file is GafferError; a malformed TOML a ValueError; a
+        # missing table KeyError and a mistyped key TypeError (config.py).
         payload = _empty(f"no readable config.toml ({type(exc).__name__})")
     else:
         if not cfg.entry_id or not cfg.league_id:
