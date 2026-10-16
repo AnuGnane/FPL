@@ -58,7 +58,7 @@ from gaffer.models.components import (
 )
 from gaffer.models.dixon_coles import DixonColesModel, walk_forward_cs
 from gaffer.models.minutes import ThreeModeModel, apply_pplay_step, fit_pplay_step
-from gaffer.models.persistence import save_model, save_params
+from gaffer.models.persistence import drop_model, save_model, save_params
 from gaffer.models.team import (
     BLEND_PARAMS_NAME,
     TEAM_FEATURES,
@@ -240,13 +240,13 @@ DEFAULT_E_GC = 1.4
 # with no more than CALIBRATION_MIN_SLOTS slots in total cannot spare the
 # holdout and gets an identity calibration instead.
 CALIBRATION_HOLDOUT_GWS = 10
+CALIBRATION_MIN_SLOTS = 14
 PPLAY_TOP_BIN_STEP = False
 """Holiday F-81 (ROADMAP candidate 4, GUIDE §12.5 item 4): when on,
 ``train_all`` fits ``minutes.fit_pplay_step`` and both predict paths map the
 minutes head's ``p_play`` through it. Off, nothing is fitted, saved or
 applied. Shipped off; turning it on waits on its K >= 5 replay (v20 spec §4
 puts it after v20's four arms)."""
-CALIBRATION_MIN_SLOTS = 14
 # The delta is a *conditional* bias, E[actual - ep | 60+ minutes], because
 # apply() scales it by p60. Same threshold the scoring uses for the 60-minute
 # appearance point, and the same one evaluate_predictions calls a starter.
@@ -692,6 +692,10 @@ def train_all(df: pd.DataFrame, tg: pd.DataFrame, save: bool = True,
                                         "rows": len(match_odds)})
         for name, m in models.items():
             save_model(m, name, meta={"rows": len(df)})
+        if "pplay_step" not in models:
+            # F-81: a step left from an earlier fit must not ride on this
+            # minutes head the day the flag is turned on.
+            drop_model("pplay_step")
     return models
 
 
