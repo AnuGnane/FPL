@@ -23,8 +23,8 @@ are the replay's lever log lines (F-14, F-64) and the head-half scripts for v20c
 Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
-F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5 "The readings" and collected by
-`scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-90
+F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-90
 except F-81, which is open as `needs-mac` PR #107; F-77, the other
 `needs-mac` package, has merged, and F-91 and F-92 wait on F-81.
 `HOLIDAY.md` is the record. Pins: routes
@@ -34,7 +34,7 @@ except F-81, which is open as `needs-mac` PR #107; F-77, the other
 rails: every noqa mark's reason (`tests/test_noqa_reasons.py`, F-69), which
 since F-78 reads every code but `E402` and an import line's `F401`; and test
 names as sentences (`tests/test_test_names.py`, F-73), whose allowlist is
-empty since F-76. Beside them, F-87's `tests/test_guide_scripts.py` fails
+empty since F-76. Two more rails came after: F-87's `tests/test_guide_scripts.py` fails
 when a script outside `scripts/archive/` goes unnamed in the GUIDE, and
 F-89's `tests/test_pulp_filters.py` fails the suite when PuLP 4 arrives,
 naming the migration the four filters defer.

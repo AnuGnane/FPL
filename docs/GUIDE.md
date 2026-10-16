@@ -1281,7 +1281,7 @@ holiday added two allowlist rails beside the pins: every noqa mark's reason
 (`tests/test_noqa_reasons.py`, F-69), which since F-78 reads every code but
 `E402` and an import line's `F401`; and test names as sentences
 (`tests/test_test_names.py`, F-73), whose allowlist is empty since F-76.
-Beside them, F-87's `tests/test_guide_scripts.py` fails when a script
+Two more rails came after: F-87's `tests/test_guide_scripts.py` fails when a script
 outside `scripts/archive/` goes unnamed in this guide, and F-89's
 `tests/test_pulp_filters.py` fails the suite when PuLP 4 arrives, naming
 the migration the four filters defer. The holiday queue has merged F-1 to
