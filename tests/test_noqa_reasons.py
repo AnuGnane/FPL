@@ -106,11 +106,10 @@ CODE_TREES = ("src", "scripts", "tests")
 MARK = re.compile(r"#\s*noqa:\s*([A-Z]+\d+(?:\s*,\s*[A-Z]+\d+)*)(.*)")
 REASON = re.compile(r"^\s*— \S")
 
-# F-78's two bare marks it may not fix: ``served.py`` is on the golden path
-# (F-77 takes its lambda) and ``test_v12_w3_degradation.py`` is
-# orchestrator-only. Value: the reasonless marks each file holds.
+# F-78's bare mark it may not fix: ``test_v12_w3_degradation.py`` is
+# orchestrator-only (``served.py``'s lambda went with F-77). Value: the
+# reasonless marks each file holds.
 CODE_ALLOWED = {
-    "src/gaffer/served.py": 1,  # E731, the untraced lambda
     "tests/test_v12_w3_degradation.py": 1,  # E731, the stale lambda
 }
 
