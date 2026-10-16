@@ -208,3 +208,14 @@ describe('the ledger rules (spec §3–§5)', () => {
       .toBe(true)
   })
 })
+
+// Holiday F-88: the rail's patterns above name the retired classes, and
+// Tailwind 4.1 scans every file under frontend/, so the tests would put those
+// classes back in the bundle unless theme.css leaves them out of the scan.
+describe("Tailwind's scan", () => {
+  it('leaves the test files out, so their class literals stay out of the bundle', () => {
+    const theme = readFileSync(join(SRC, 'styles/theme.css'), 'utf8')
+    expect(theme).toContain('@source not "../**/*.test.ts";')
+    expect(theme).toContain('@source not "../**/*.test.tsx";')
+  })
+})
