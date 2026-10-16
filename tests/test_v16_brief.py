@@ -92,7 +92,7 @@ def test_a_possessive_and_a_trailing_unit_are_stripped():
     assert check_brief("Guéhi's 55% is solid; 3.1 pts is the gain.", FACTS) == []
 
 
-def test_first_sentence():
+def test_first_sentence_stops_at_the_first_terminator_and_trims():
     assert first_sentence("One. Two? Three!") == "One."
     assert first_sentence("  Only one  ") == "Only one"
 

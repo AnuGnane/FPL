@@ -11,7 +11,7 @@ def test_save_and_load_roundtrip(tmp_path, monkeypatch):
     assert out["a"].tolist() == [1, 2]
 
 
-def test_exists(tmp_path, monkeypatch):
+def test_exists_is_true_only_once_a_file_is_saved(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "DATA_DIR", tmp_path)
     assert not store.exists("live/nope.parquet")
     store.save(pd.DataFrame({"a": [1]}), "live/yes.parquet")
