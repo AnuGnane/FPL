@@ -13,7 +13,8 @@ Two logs are read: the news shadow log (``news_shadow.load_shadow()``,
 (``snapshot.load_snapshot_log()``, as ``scripts/b1_status_age.py`` reads it).
 For each, per season present: the row count, the gameweek span, and the share
 of the gameweeks ``START_GW`` (``run_backtest``'s default, 5) to ``LAST_GW``
-(38) that carry at least one row, with the missing ones named.
+(38) that carry at least one row, with the missing ones named; rows with no
+gameweek or no season label are counted apart (``unlabelled``).
 
 The rule, written here before the script has run on real data: the replay
 half is runnable iff one season the replay can take as ``run_backtest``'s
@@ -22,7 +23,8 @@ half is runnable iff one season the replay can take as ``run_backtest``'s
 ``START_GW`` to ``LAST_GW``. Otherwise it reads "the replay half waits on a
 season of the shadow log", naming the first season that could qualify: the
 earliest shadow season with no gap so far from ``START_GW`` (one that is
-complete but not yet replayable, or one still in progress), else the season
+complete but not yet replayable, or the current season in progress; a past
+season whose log stopped short of ``LAST_GW`` is passed over), else the season
 after the newest in the log, else, with no shadow log at all, the configured
 ``current_season``. The shadow log is this season's, v5 on, so the current
 season is the first that can qualify, and only once the replay can read its
@@ -62,6 +64,8 @@ def season_cover(log: pd.DataFrame | None) -> dict:
     if log is None or log.empty or not {"season", "gw"} <= set(log.columns):
         return {}
     frame = log[["season", "gw"]].dropna(subset=["gw"])
+    labels = frame["season"].fillna("").astype(str).str.strip()
+    frame = frame[~labels.isin(["", "nan", "None"])]
     window = _window()
     out = {}
     for season, part in frame.groupby(frame["season"].astype(str), sort=True):
@@ -95,10 +99,28 @@ def _no_gap_so_far(cell: dict) -> bool:
     return not reached and cell["gw_max"] >= START_GW
 
 
+def unlabelled(log: pd.DataFrame | None) -> int:
+    """Rows ``season_cover`` cannot place: no gameweek, or no season label.
+
+    Shadow rows banked before the ``season`` column existed read back with
+    ``""`` (``news_shadow``'s reindex), so they are counted here rather than
+    read as a season of their own.
+    """
+    if log is None or log.empty or not {"season", "gw"} <= set(log.columns):
+        return 0
+    labels = log["season"].fillna("").astype(str).str.strip()
+    return int((log["gw"].isna() | labels.isin(["", "nan", "None"])).sum())
+
+
 def first_candidate(shadow: dict, current_season: str) -> str:
-    """The first season that could qualify, by the docstring's rule."""
+    """The first season that could qualify, by the docstring's rule.
+
+    A season other than the current one whose log stopped short of
+    ``LAST_GW`` can never be completed, so it is passed over.
+    """
     for season, cell in shadow.items():
-        if _no_gap_so_far(cell):
+        stalled = season != current_season and cell["gw_max"] < LAST_GW
+        if _no_gap_so_far(cell) and not stalled:
             return season
     if shadow:
         return _next_season(max(shadow))
@@ -114,7 +136,9 @@ def cover_reading(shadow_log: pd.DataFrame | None,
     base = {"start_gw": START_GW, "last_gw": LAST_GW,
             "current_season": current_season,
             "replayable": sorted(replayable),
-            "shadow": shadow, "snapshot": snapshot}
+            "shadow": shadow, "snapshot": snapshot,
+            "unlabelled": {"shadow": unlabelled(shadow_log),
+                           "snapshot": unlabelled(snapshot_log)}}
     qualifying = sorted(season for season, cell in shadow.items()
                         if not cell["missing"] and season in replayable)
     candidate = first_candidate(shadow, current_season)

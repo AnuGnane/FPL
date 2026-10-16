@@ -63,6 +63,19 @@ def test_a_season_in_progress_with_no_gap_is_the_candidate():
     assert out["snapshot"]["2026-27"]["covered"] == 4
 
 
+def test_a_past_season_whose_log_stopped_is_passed_over():
+    out = c1_replay_cover.cover_reading(_log("2025-26", range(5, 21)), None,
+                                        ["2025-26"], "2026-27")
+    assert out["first_candidate"] == "2026-27"
+
+
+def test_rows_with_no_season_label_are_counted_apart():
+    log = pd.concat([_log("", range(1, 5)), RUNNING], ignore_index=True)
+    out = c1_replay_cover.cover_reading(log, None, [], "2026-27")
+    assert list(out["shadow"]) == ["2026-27"]
+    assert out["unlabelled"] == {"shadow": 4, "snapshot": 0}
+
+
 def test_no_log_at_all_names_the_current_season_and_a_reason():
     out = c1_replay_cover.cover_reading(None, None, [], "2026-27")
     assert out["shadow"] == {} and out["snapshot"] == {}
@@ -74,6 +87,7 @@ def test_no_log_at_all_names_the_current_season_and_a_reason():
 def test_main_on_an_empty_store_prints_one_line_and_exits_clean(
         tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(c1_replay_cover, "_config", lambda: ([], "2026-27"))
     assert c1_replay_cover.main() == 0
     lines = capsys.readouterr().out.strip().splitlines()
     assert len(lines) == 1 and lines[0].startswith("C1_COVER ")
@@ -83,6 +97,7 @@ def test_main_on_an_empty_store_prints_one_line_and_exits_clean(
 
 def test_main_reads_a_banked_shadow_log(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(c1_replay_cover, "_config", lambda: ([], "2026-27"))
     store.save(RUNNING, SHADOW_PATH)
     assert c1_replay_cover.main() == 0
     payload = json.loads(capsys.readouterr().out.strip()
