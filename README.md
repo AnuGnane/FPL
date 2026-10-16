@@ -338,6 +338,12 @@ For season-scale claims, `scripts/v7b_replay.py --arm <arm> --tag <tag>
 with the spread quoted. `docs/superpowers/CONVENTIONS.md` is the house rule
 book for what a measurement has to do before it counts.
 
+The readings are one read-only script per open question the holiday could
+measure without a model cycle (`uv run python scripts/c2_pplay_bins.py`, for
+one). Each prints one-line readings for the v20 spec's §6; `docs/GUIDE.md`
+§12.5 "The readings" lists them all with what each answers, and
+`uv run python scripts/v20_appendix.py` collects their lines from `logs/`.
+
 ## Retraining and season rollover
 
 `uv run gaffer train` trains the six component models — minutes, team,
@@ -403,6 +409,14 @@ honesty rules and the counts a later change must not move silently — API route
 to edit, and the staging rules that keep `config.toml` out of git. A rail
 failing after an edit is telling you which rule the edit crossed, and its
 message names the file that owns it. Do not edit a rail to make it pass.
+
+CI (`.github/workflows/ci.yml`, holiday F-1) runs on every pull request and on
+`main`: `uvx ruff check src tests`, `zsh -n scripts/install_automation.sh`,
+the inner loop as `uv run --locked pytest -q -rs -m "not slow and not golden"`
+(deselecting `tests/test_odds.py::test_config_toml_loads`, which reads the
+untracked `config.toml`), and `npm run check` in `frontend/`. The golden gate,
+the slow fits and every replay need `models/` and `data/`, which are untracked,
+so they run on the Mac.
 
 ## Docs
 
