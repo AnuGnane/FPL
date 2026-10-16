@@ -1252,9 +1252,13 @@ so a future change cannot quietly break one.
 The model cycle, v20, opened on 2026-10-07. Its record is
 `docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md` (§6 holds what
 has run), and the holiday's packages are recorded in `HOLIDAY.md`. The
-holiday added two allowlist rails beside the pins: every broad except's reason
-(`tests/test_noqa_reasons.py`, F-69) and test names as sentences
-(`tests/test_test_names.py`, F-73).
+holiday added two allowlist rails beside the pins: every noqa mark's reason
+(`tests/test_noqa_reasons.py`, F-69), which since F-78 reads every code but
+`E402` and an import line's `F401`; and test names as sentences
+(`tests/test_test_names.py`, F-73), whose allowlist is empty since F-76.
+The holiday queue has merged F-1 to F-82 except F-81, which is open as
+`needs-mac` PR #107; F-77, the other `needs-mac` package, has merged.
+`HOLIDAY.md` is the record.
 
 ## 12. What is pending and what was left open
 
@@ -1272,8 +1276,9 @@ are the replay's lever log lines (F-14, F-64) and the head-half scripts for v20c
 Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings are listed in §12.5 "The readings" and collected by
-`scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-61, and no
-`needs-mac` PR is open; `HOLIDAY.md` is the record. Pins: routes 52
+`scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-82
+except F-81, which is open as `needs-mac` PR #107; F-77, the other
+`needs-mac` package, has merged. `HOLIDAY.md` is the record. Pins: routes 52
 (`tests/test_v11_degradation.py`), job kinds 12
 (`tests/test_v12_w1_degradation.py`), `Config` 62
 (`tests/test_v13_degradation.py`).
@@ -1540,7 +1545,8 @@ brainstorm would start from, in the order the 2026-09-01 research ranked it
    called this the most important experiment in the document, and the GW2
    news-shadow reading points the same way. It could retire the v5/v6 news
    subsystem or justify it; either answer is worth having. Gate on the
-   blanks and zeros buckets *and* a K ≥ 5 replay.
+   blanks and zeros buckets *and* a K ≥ 5 replay. (The replay half's coverage
+   is read by `scripts/c1_replay_cover.py`, holiday F-79.)
 2. ~~**The K ≥ 5 role replay** (12.3)~~ — ran 2026-10-13 (v20a): `role`
    stays, the minutes model ships as it is.
 3. ~~A top-10k score-threshold scrape~~ — banked daily since holiday F-4,
@@ -1559,7 +1565,8 @@ brainstorm would start from, in the order the 2026-09-01 research ranked it
    `docs/superpowers/specs/2026-10-14-whatif-chip-arm-design.md` by F-50),
    ~~the web button banking prices~~ (holiday F-3), and ~~the four private
    reaches v18d recorded~~ (holiday F-8 and F-28).
-8. **FotMob as an xG fallback (B8)** — only if Understat goes down.
+8. **FotMob as an xG fallback (B8)** — only if Understat goes down (its
+   reading is `scripts/b8_understat_cover.py`, holiday F-80).
 
 Still rejected, and the research confirmed it: referee and weather, price
 chasing, per-player finishing multipliers, a longer horizon, transformer news

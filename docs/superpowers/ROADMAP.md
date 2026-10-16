@@ -22,14 +22,18 @@ are the replay's lever log lines (F-14, F-64) and the head-half scripts for v20c
 (F-13) and v20b (F-15). v20d has no switch, only its scripts (F-12, F-16).
 Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
-The holiday's readings are listed in `docs/GUIDE.md` §12.5 "The readings" and
-collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to
-F-74, and no `needs-mac` PR is open; `HOLIDAY.md` is the record. Pins: routes
+The holiday's readings, F-79's `C1_COVER` and F-80's `B8_UNDERSTAT` among
+them, are listed in `docs/GUIDE.md` §12.5 "The readings" and collected by
+`scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-82
+except F-81, which is open as `needs-mac` PR #107; F-77, the other
+`needs-mac` package, has merged. `HOLIDAY.md` is the record. Pins: routes
 52 (`tests/test_v11_degradation.py`), job kinds 12
 (`tests/test_v12_w1_degradation.py`), `Config` 62
 (`tests/test_v13_degradation.py`); beside them, the holiday's two allowlist
-rails, every broad except's reason (`tests/test_noqa_reasons.py`, F-69) and
-test names as sentences (`tests/test_test_names.py`, F-73).
+rails: every noqa mark's reason (`tests/test_noqa_reasons.py`, F-69), which
+since F-78 reads every code but `E402` and an import line's `F401`; and test
+names as sentences (`tests/test_test_names.py`, F-73), whose allowlist is
+empty since F-76.
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
