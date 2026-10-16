@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Holiday F-88 (ROADMAP v18f "Left open"): Tailwind 4.1 scans every file
+   under frontend/, so a class literal in a test, the rail's own patterns in
+   kit/tokens.test.ts included, lands in the bundle. The tests are not
+   pages; leave them out of the scan. */
+@source not "../**/*.test.ts";
+@source not "../**/*.test.tsx";
+
 /* v14 — the dark ledger (spec §3). The @theme block is the dark palette and
    the source of every token name; light is an override of the same names,
    so no component knows which one is on.
