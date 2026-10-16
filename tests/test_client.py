@@ -57,7 +57,7 @@ def test_no_retry_on_404(tmp_path):
     assert calls["n"] == 1
 
 
-def test_retries_on_429(tmp_path):
+def test_a_429_is_retried_until_the_attempts_run_out(tmp_path):
     calls = {"n": 0}
 
     def handler(request):

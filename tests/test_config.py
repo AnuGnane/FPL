@@ -3,7 +3,7 @@ from pathlib import Path
 from gaffer.config import load_config
 
 
-def test_load_config(tmp_path: Path):
+def test_load_config_reads_the_entry_horizon_and_seasons(tmp_path: Path):
     cfg_file = tmp_path / "config.toml"
     cfg_file.write_text(
         '[fpl]\nentry_id = 123\nleague_id = 456\n'

@@ -10,6 +10,10 @@ prose already.
 Nothing is renamed: the files that hold shorter names today are an allowlist
 pinned at each file's count, in F-69's shape, so a new short name anywhere
 fails, and a file that loses its last one fails until it is struck here.
+
+Holiday F-76 renamed the seven names F-73 held and struck every file, so
+``ALLOWED`` is empty: it stays a dict so the rail keeps its shape, and a
+short name in any file now fails.
 """
 from __future__ import annotations
 
@@ -21,15 +25,8 @@ ROOT = Path(__file__).resolve().parent.parent
 TESTS = ROOT / "tests"
 
 # The short names held at F-73, by file. Value: how many that file holds.
-ALLOWED = {
-    "tests/test_bootstrap.py": 1,  # test_next_gw
-    "tests/test_client.py": 1,  # test_retries_on_429
-    "tests/test_components.py": 1,  # test_card_penalty
-    "tests/test_config.py": 1,  # test_load_config
-    "tests/test_parse.py": 1,  # test_to_int
-    "tests/test_store.py": 1,  # test_exists
-    "tests/test_v16_brief.py": 1,  # test_first_sentence
-}
+# Empty since F-76, which renamed all seven and struck their files.
+ALLOWED: dict[str, int] = {}
 
 STUB = re.compile(r"[a-z]*_?\d+")
 
@@ -62,7 +59,10 @@ def _census() -> dict[str, list[str]]:
 
 def test_no_short_test_name_lives_outside_the_allowlist():
     stray = {f: names for f, names in _census().items() if f not in ALLOWED}
-    assert stray == {}
+    assert stray == {}, (
+        f"{sorted(stray)} hold short test names; every file was struck from "
+        "ALLOWED at F-76, so name each test as a sentence"
+    )
 
 
 def test_each_allowlisted_file_holds_exactly_the_count_it_held_at_f73():

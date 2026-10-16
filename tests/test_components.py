@@ -81,7 +81,7 @@ def test_defcon_falls_back_to_the_prior_when_no_row_has_the_stats():
     assert (pred["p_defcon"] == DEFCON_PRIOR).all()
 
 
-def test_card_penalty():
+def test_a_yellow_card_rate_is_its_card_penalty():
     row = pd.Series({"yc_r38": 0.2, "rc_r38": 0.0})
     assert card_penalty(row) == -0.2
 

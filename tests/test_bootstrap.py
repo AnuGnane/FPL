@@ -84,7 +84,7 @@ def test_scoring_table_has_position_values():
         assert set(per_pos) == {"GKP", "DEF", "MID", "FWD"}, key
 
 
-def test_next_gw():
+def test_next_gw_is_one_of_the_seasons_events():
     assert next_gw(RAW) in {ev["id"] for ev in RAW["events"]}
 
 
