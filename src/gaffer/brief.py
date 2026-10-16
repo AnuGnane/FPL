@@ -89,7 +89,7 @@ def load_brief(gw: int) -> dict | None:
 def load_note() -> dict | None:
     try:
         return json.loads(note_path().read_text()) if note_path().exists() else None
-    except Exception:  # noqa: BLE001
+    except (OSError, ValueError):
         return None
 
 
@@ -434,7 +434,7 @@ def _bank_note(gw: int | None, note: str) -> None:
     try:
         artifacts.REPORTS.mkdir(parents=True, exist_ok=True)
         atomic_write(note_path(), json.dumps({"gw": gw, "note": note, "at": _now()}))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — the note explains a skip
         print(f"brief note not written: {exc}")
 
 
@@ -448,7 +448,7 @@ def run_brief(gw: int | None = None, *, cfg=None,
     """
     try:
         gw = latest_gw() if gw is None else int(gw)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — no advice is a note, not a raise
         gw = None
     if gw is None:
         note = "no advice on disk — run `gaffer advise` first"
@@ -465,7 +465,7 @@ def run_brief(gw: int | None = None, *, cfg=None,
     try:
         facts = build_facts(gw)
         stamp = run_stamp(gw)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — banked as the note
         note = f"brief not written: the facts could not be built ({exc})"
         print(note)
         _bank_note(gw, note)
@@ -523,7 +523,7 @@ def latest_brief() -> dict | None:
     try:
         paths = sorted(artifacts.REPORTS.glob("brief_gw*.json"),
                        key=lambda p: int(re.sub(r"\D", "", p.stem) or 0))
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — unlistable is no brief
         return None
     for path in reversed(paths):
         payload = load_brief(int(re.sub(r"\D", "", path.stem) or 0))
@@ -611,7 +611,7 @@ def answer_question(question: str, gw: int | None = None, *, cfg) -> dict:
     text = check_question(question)
     try:
         gw = latest_gw() if gw is None else int(gw)
-    except Exception:  # noqa: BLE001
+    except Exception:  # noqa: BLE001 — the job must finish
         gw = None
     cmd = str(getattr(cfg, "news_llm_command", "") or "").strip()
     if not cmd:
