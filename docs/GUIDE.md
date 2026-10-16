@@ -1426,7 +1426,8 @@ weekly use.
   (holiday F-38: `PRESSER_GW`/`PRESSER_SERVE`), the Mac's to run; serving
   itself is a model-cycle arm.
 - **The trace does not attribute the squad-side terms**, so its lines do not
-  sum to the week's xPts; the caption says that too.
+  sum to the week's xPts; the caption says that too (its share is read by
+  `scripts/trace_gap.py`, holiday F-86).
 - **Plans B and C are not re-scored under Plan A's own coefficients**, so a
   small gap of either sign can be two coefficient sets rather than two plans.
 - **The free hit re-solve excludes horizon effects** (pricing them needs a
@@ -1597,6 +1598,7 @@ call).
 | `scripts/density_head.py` (holiday F-32) | `DENSITY_HEAD` | 12.4's `density_pub_7d` line | arm: its replay half |
 | `scripts/top10k_projection.py` (holiday F-35) | `TOP10K_PROJ` | ROADMAP candidate 3's remainder, the Data-gated `P(top-10k)` row | ruling: which projection rule the row uses |
 | `scripts/walk_hits.py` (holiday F-25) | `WALK_HITS_GW`, `WALK_HITS` | 12.4's v16 walk-hits line | arm: restraint bounded by the objective |
+| `scripts/trace_gap.py` (holiday F-86) | `TRACE_GAP`, `TRACE_GAPS` | 12.4's trace line, ROADMAP "Residuals carried out of v12" | ruling: whether the caption carries the squad-side share |
 | `scripts/pcs_window.py` (holiday F-26) | `PCS_WINDOW`, `PCS_WINDOWS` | 12.4's v18c `p_cs` line | card: a per-window `p_cs` row |
 | `scripts/presser_serve.py` (holiday F-38) | `PRESSER_GW`, `PRESSER_SERVE` | 12.4's presser serving line, 12.2's serving decision | arm: serving the classifier |
 | `scripts/evaluate_lines.py` (holiday F-46) | `NEWS_SHADOW_GW`, `NEWS_SHADOW`, `FLAG_LATENCY` | 12.2's accruing verdicts and flag-latency row | card: reports the Quality card's own verdicts, decides none |
