@@ -57,10 +57,10 @@ function colourValue(value: string): boolean {
 function colourProps(path: string): Array<{ at: string, value: string }> {
   const text = readFileSync(path, 'utf8')
   const found: Array<{ at: string, value: string }> = []
-  for (const match of text.matchAll(/\b(?:stroke|fill)=(["{])/g)) {
+  for (const match of text.matchAll(/\b(?:stroke|fill)=(["'{])/g)) {
     const start = match.index + match[0].length - 1
     let end = start + 1
-    if (match[1] === '"') end = text.indexOf('"', end) + 1
+    if (match[1] !== '{') end = text.indexOf(match[1], end) + 1
     else {
       for (let depth = 1; depth > 0 && end < text.length; end += 1) {
         if (text[end] === '{') depth += 1
@@ -196,6 +196,7 @@ describe('the ledger rules (spec §3–§5)', () => {
 
   it('fails a colour prop that names neither a token nor the palette', () => {
     expect(colourValue('"#888"')).toBe(false)
+    expect(colourValue("'#888'")).toBe(false)
     expect(colourValue("{'red'}")).toBe(false)
     expect(colourValue("{up ? 'var(--color-up)' : '#c33'}")).toBe(false)
     expect(colourValue("{a ? 'var(--color-up)' : b ? 'none' : 'none'}"))
