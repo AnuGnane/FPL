@@ -108,7 +108,17 @@ function ArmLine({ arm }: { arm: ArmSwitch }) {
 const JOB_COLUMNS: Column<JobHealth>[] = [
   { key: 'label', header: 'Job', primary: true, value: (job) => job.label },
   { key: 'schedule', header: 'Schedule', primary: true,
-    value: (job) => job.schedule },
+    value: (job) => job.schedule,
+    // Holiday F-84: the row reads the installed copy launchd runs; when there
+    // is none it fell back to the repo's, whose schedule nothing is keeping.
+    render: (job) => (
+      <>
+        <span>{job.schedule}</span>
+        {job.source === 'repo' && (
+          <span className="text-text-muted"> repo copy</span>
+        )}
+      </>
+    ) },
   { key: 'last_run', header: 'Last run', primary: true,
     value: (job) => ageText(job.age_hours),
     render: (job) => (

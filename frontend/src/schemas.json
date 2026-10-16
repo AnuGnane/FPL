@@ -2749,6 +2749,14 @@
     "schedule": {
      "description": "When it is meant to run, as a sentence \u2014 \"Thu 18:00\", \"daily 23:15\".",
      "type": "string"
+    },
+    "source": {
+     "description": "Which copy the row was read from: the one under\n``~/Library/LaunchAgents`` that launchd runs, or the repo's own when none\nis installed (holiday F-84).",
+     "enum": [
+      "installed",
+      "repo"
+     ],
+     "type": "string"
     }
    },
    "required": [
@@ -2758,7 +2766,8 @@
     "log",
     "modified_at",
     "overdue",
-    "schedule"
+    "schedule",
+    "source"
    ],
    "title": "JobHealth",
    "type": "object"

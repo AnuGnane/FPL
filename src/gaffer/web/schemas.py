@@ -1593,6 +1593,10 @@ class JobHealth(BaseModel):
     overdue: bool
     """Has it missed a run? Half an interval of grace, because a job that
     takes a minute to start should not alarm the page that watches it."""
+    source: Literal["installed", "repo"]
+    """Which copy the row was read from: the one under
+    ``~/Library/LaunchAgents`` that launchd runs, or the repo's own when none
+    is installed (holiday F-84)."""
 
 
 class ArtifactItem(BaseModel):

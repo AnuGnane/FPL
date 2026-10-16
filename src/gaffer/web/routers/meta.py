@@ -78,6 +78,10 @@ router = APIRouter(prefix="/api", tags=["meta"])
 ADVISE_LOG = Path("logs/advise.log")
 MODELS_DIR = Path("models")
 PLIST_DIR = Path("scripts")
+# Holiday F-84: where `scripts/install_automation.sh` copies the plists, and
+# so the files launchd actually runs. A repo edit not yet reinstalled, or a
+# hand edit to the installed copy, would otherwise show the wrong schedule.
+INSTALLED_PLIST_DIR = Path.home() / "Library" / "LaunchAgents"
 # `gaffer.snapshot.SNAPSHOT_PATH`, restated rather than imported (v19a §2.2):
 # that module imports `gaffer.models.predict`, and pulling the LightGBM stack
 # into a route module to read one string doubles this router's import cost.
@@ -315,7 +319,8 @@ def _load_plist(path: Path) -> dict:
         return plistlib.loads(_XML_COMMENT.sub(b"", raw))
 
 
-def job_health(plist_dir: Path = PLIST_DIR, *, log_root: Path = Path("."),
+def job_health(plist_dir: Path = PLIST_DIR, *,
+               installed_dir: Path | None = None, log_root: Path = Path("."),
                now=None) -> list[JobHealth]:
     """Every installed plist, its schedule and whether it has run lately.
 
@@ -328,8 +333,16 @@ def job_health(plist_dir: Path = PLIST_DIR, *, log_root: Path = Path("."),
     Never raises. This is on ``/api/health``, which a tab polls, so a plist
     somebody is halfway through editing is one row reading "unreadable" and
     not a 500 on the page they opened to find out what is wrong.
+
+    Holiday F-84: the repo's plists name the jobs, but each row reads the
+    installed copy under ``installed_dir`` when one exists, because that copy
+    is what launchd runs; ``source`` says which file the row came from.
+    ``installed_dir`` defaults to :data:`INSTALLED_PLIST_DIR`, read at call
+    time so a test can repoint it.
     """
     now = now or datetime.now(timezone.utc)
+    installed_dir = Path(INSTALLED_PLIST_DIR if installed_dir is None
+                         else installed_dir)
     rows: list[JobHealth] = []
     try:
         found = sorted(Path(plist_dir).glob("com.gaffer.*.plist"))
@@ -337,6 +350,13 @@ def job_health(plist_dir: Path = PLIST_DIR, *, log_root: Path = Path("."),
         return []
     for path in found:
         label = path.name.removeprefix("com.gaffer.").removesuffix(".plist")
+        installed = installed_dir / path.name
+        try:
+            source = "installed" if installed.exists() else "repo"
+        except OSError:
+            source = "repo"
+        if source == "installed":
+            path = installed
         try:
             payload = _load_plist(path)
             label = str(payload.get("Label", label)).removeprefix(
@@ -344,7 +364,8 @@ def job_health(plist_dir: Path = PLIST_DIR, *, log_root: Path = Path("."),
         except Exception:  # noqa: BLE001 — an unreadable plist is a row
             rows.append(JobHealth(label=label, schedule="unreadable", log="",
                                   modified_at=None, age_hours=None,
-                                  interval_hours=0.0, overdue=True))
+                                  interval_hours=0.0, overdue=True,
+                                  source=source))
             continue
         entries = _calendar_entries(payload)
         interval = _interval_hours(entries)
@@ -361,7 +382,8 @@ def job_health(plist_dir: Path = PLIST_DIR, *, log_root: Path = Path("."),
             label=label, schedule=_schedule_sentence(entries), log=log,
             modified_at=modified_at, age_hours=age_hours,
             interval_hours=interval,
-            overdue=age_hours is None or age_hours > OVERDUE_FACTOR * interval))
+            overdue=age_hours is None or age_hours > OVERDUE_FACTOR * interval,
+            source=source))
     rows.sort(key=lambda row: row.label)
     return rows
 
