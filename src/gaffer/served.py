@@ -400,7 +400,7 @@ def price_falls(state, *,
         return True, {int(k): float(v)
                       for k, v in (owned_price_falls(
                           owned, price_timing=price_timing) or {}).items()}
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — a decoration, never a gate: no falls reads as none
         print(f"plan trace: price falls unreadable ({exc})")
         return True, {}
 
@@ -604,7 +604,9 @@ def traced(plan: ServedPlan, *, state, theta_by_gw: dict[int, float], ft_lambda,
         return plan.model_copy(update=update)
     except Exception as exc:  # noqa: BLE001 — a decoration, never a gate
         print(f"plan trace unavailable for GW{plan.gw}: {exc}")
-        untraced = lambda weeks: [w.model_copy(update={"trace": None}) for w in weeks]  # noqa: E731
+        def untraced(weeks):
+            return [w.model_copy(update={"trace": None}) for w in weeks]
+
         update = {"plan_by_gw": untraced(plan.plan_by_gw)}
         if plan.objective is not None and plan.objective.week is not None:
             update["objective"] = plan.objective.model_copy(

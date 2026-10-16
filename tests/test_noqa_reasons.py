@@ -18,16 +18,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TREES = ("src", "scripts")
 
-# F-68's out-of-scope files: orchestrator-only (advise, web/jobs) or the golden
-# gate's modules (artifacts, brief, pipeline, served), each a needs-mac package
-# of its own when Anu is back. Value: the reasonless broad excepts held today.
+# F-68's out-of-scope files that remain: orchestrator-only (advise, web/jobs).
+# F-77 gave the golden gate's modules (artifacts, brief, pipeline, served)
+# their reasons and struck them. Value: the reasonless broad excepts held today.
 ALLOWED = {
     "src/gaffer/advise.py": 1,
     "src/gaffer/web/jobs.py": 1,
-    "src/gaffer/artifacts.py": 1,
-    "src/gaffer/brief.py": 6,
-    "src/gaffer/pipeline.py": 1,
-    "src/gaffer/served.py": 1,
 }
 
 BROAD = {"Exception", "BaseException"}
