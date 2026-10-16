@@ -410,7 +410,7 @@ to edit, and the staging rules that keep `config.toml` out of git. A rail
 failing after an edit is telling you which rule the edit crossed, and its
 message names the file that owns it. Do not edit a rail to make it pass.
 
-CI (`.github/workflows/ci.yml`, holiday F-1) runs on every pull request and on
+CI (`.github/workflows/ci.yml`, holiday F-1 and F-57) runs on every pull request and on
 `main`: `uvx ruff check src tests`, `zsh -n scripts/install_automation.sh`,
 the inner loop as `uv run --locked pytest -q -rs -m "not slow and not golden"`
 (deselecting `tests/test_odds.py::test_config_toml_loads`, which reads the
