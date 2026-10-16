@@ -167,8 +167,9 @@ Tailwind v4 with tokens in `styles/theme.css`. `kit/tokens.test.ts` scans
 no card radius, no shadow, no gradient, no hex (six, four or three digits)
 outside `theme.css` and the bundled plain shirt, mono face only in the job log
 and plan trace, no retired `num` class, colour or token, `Chip` not `Badge`,
-fixture difficulty as a tone. The same rules apply by hand to anything the
-scan misses. Use tabular figures for numbers. Charts use the one grey
+fixture difficulty as a tone, and every chart's `stroke=` and `fill=` a token
+or `SERIES_COLOURS` (holiday F-82). The same rules apply by hand to anything
+the scan misses. Use tabular figures for numbers. Charts use the one grey
 palette. Pages render in dark and light; screenshots for a gate come from
 `frontend/scripts/shots.sh <stage>`.
 
