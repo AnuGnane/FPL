@@ -20,15 +20,19 @@ them. A ``price_charge`` of ``None`` counts as 0: either the term is off
 (the objective carried no such charge) or its inputs were unrecorded.
 ``ft_shadow`` and ``bank_value`` are valuations, not this week's charges,
 so they stay out, as the ``PlanWeekTrace`` docstring keeps them. The
-unattributed share is ``(expected_pts - attributed) / expected_pts``. It is
-what the XI, captain, vice and bench terms carry, the squad-side terms the
-docstring names.
+unattributed share is ``(expected_pts - attributed) / expected_pts``: what
+the trace's lines leave of the week's xPts, which the squad-side terms the
+docstring names (XI, captain, vice, bench) hold. It is not those terms
+measured. ``expected_pts`` is the week's undecayed XI total, while
+``ep_gain`` is a decayed swap delta over the rest of the horizon, so the
+share sits near 1 by construction. The reading is how steady that leftover
+is, which is all a caption number would need.
 
 A week whose ``ep_gain`` is ``None`` (some move could not be priced) is not
 read: unknown is not zero. Neither is a week with no positive
 ``expected_pts``, where a share is undefined. A payload banked twice (the
 current file and its history copy share ``gw`` and ``generated_at``) is
-read once.
+read once. A non-finite number reads as no share.
 
 It prints one ``TRACE_GAP {…}`` per file and then ``TRACE_GAPS {…}``. The
 file line gives the gameweek, the weeks traced, the share over those weeks
@@ -42,7 +46,9 @@ could then carry the number ("the squad-side terms, about n%"), which is
 Anu's call; the default is that the sentence stays as it is. Otherwise the
 verdict is ``hold``: the sentence stays, and the line is the evidence that
 attribution needs the solve. The spread is per week, because the caption
-sits under each week's lines (ruling, holiday F-86). The script writes
+sits under each week's lines. The package says "over every banked file";
+reading that per week rather than per file is the implementer's choice
+(holiday F-86 ruling 1, default per week). The script writes
 nothing and changes no default.
 
 A missing ``reports/``, an unreadable file or an advice the served reader
@@ -55,6 +61,7 @@ night shift transcribes the lines.
 from __future__ import annotations
 
 import json
+import math
 import re
 from pathlib import Path
 
@@ -77,12 +84,13 @@ def week_share(week) -> float | None:
     if trace is None or trace.ep_gain is None:
         return None
     xpts = float(week.expected_pts)
-    if not xpts > 0:
+    if not (math.isfinite(xpts) and xpts > 0):
         return None
     attributed = (float(trace.ep_gain) - float(trace.hit_cost)
                   - float(trace.ft_use_penalty)
                   - float(trace.price_charge or 0.0))
-    return (xpts - attributed) / xpts
+    share = (xpts - attributed) / xpts
+    return share if math.isfinite(share) else None
 
 
 def read_file(path: Path, payload: dict) -> dict:
@@ -110,11 +118,18 @@ def read_file(path: Path, payload: dict) -> dict:
 
 
 def _paths(reports: Path) -> list[Path]:
-    found = [p for p in reports.iterdir() if CURRENT.match(p.name)]
+    """The banked advice files; a directory that will not list is none."""
+    found: list[Path] = []
+    try:
+        found += [p for p in reports.iterdir() if CURRENT.match(p.name)]
+    except OSError:
+        pass
     history = reports / "advice_history"
-    if history.is_dir():
+    try:
         found += [p for p in history.iterdir()
                   if p.is_file() and HISTORY.match(p.name)]
+    except OSError:
+        pass
     return sorted(found)
 
 
@@ -134,8 +149,10 @@ def read_all(reports: Path = REPORTS) -> tuple[list[dict], dict]:
         if not isinstance(payload, dict):
             rows.append({"file": str(path), "reason": "unreadable: not an object"})
             continue
-        key = (payload.get("gw"), payload.get("generated_at"))
-        if key[1] is not None and key in seen:
+        # Keyed by the strings, so a payload whose ``gw`` is a list or a dict
+        # cannot raise here; the served reader below names it unreadable.
+        key = (str(payload.get("gw")), payload.get("generated_at"))
+        if isinstance(key[1], str) and key in seen:
             continue
         seen.add(key)
         rows.append(read_file(path, payload))

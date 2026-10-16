@@ -94,19 +94,21 @@ def test_every_reason_prints_a_line_and_not_a_traceback(tmp_path, capsys):
         tmp_path,
         current={"gw7-advice.json": _advice(7, [_week(7, 50.0, ep_gain=None)]),
                  "gw8-advice.json": _advice(8, [_week(8, 50.0, traced=False)]),
-                 "gw9-advice.json": {"gw": "nine"}},
+                 "gw9-advice.json": {"gw": "nine"},
+                 "gw10-advice.json": {"gw": [1], "generated_at": "x"}},
         raw={"gw4-advice.json": "{not json"})
     trace_gap.main(reports)
     lines = capsys.readouterr().out.splitlines()
     gaps = [json.loads(ln.removeprefix("TRACE_GAP ")) for ln in lines
             if ln.startswith("TRACE_GAP ")]
     assert [g["reason"] for g in gaps] == [
+        "unreadable advice",
         "unreadable: JSONDecodeError",
         "no traced week with a priced gain",
         "no traced week with a priced gain",
         "unreadable advice"]
     summary = json.loads(lines[-1].removeprefix("TRACE_GAPS "))
-    assert summary["files"] == 0 and summary["skipped"] == 4
+    assert summary["files"] == 0 and summary["skipped"] == 5
     assert summary["verdict"] == "hold"
     assert "reason" in summary
 
