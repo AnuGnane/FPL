@@ -8,6 +8,8 @@ the raw and inside its bounds).
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -71,12 +73,23 @@ def test_a_frame_of_one_season_has_no_step():
     assert fit_pplay_step(_frame(seasons=1), COLS) is None
 
 
-def test_applying_the_step_caps_p60_at_the_stepped_p_play(fitted):
+def test_applying_the_step_carries_p60_and_e_min_on_its_ratio(fitted):
     df, models, step = fitted
     mp = models["minutes"].predict(df.head(30))
     out = apply_pplay_step(step, mp)
+    ratio = out["p_play"].to_numpy() / mp["p_play"].to_numpy()
+    np.testing.assert_allclose(out["p60"], mp["p60"].to_numpy() * ratio)
+    np.testing.assert_allclose(out["e_min"],
+                               np.clip(mp["e_min"].to_numpy() * ratio, 0, 90))
     assert (out["p60"] <= out["p_play"] + 1e-12).all()
-    assert out["e_min"].equals(mp["e_min"])
+
+
+def test_a_raw_zero_leaves_p60_and_e_min_where_they_were(fitted):
+    _, _, step = fitted
+    mp = pd.DataFrame({"p_play": [0.0], "p60": [0.0], "e_min": [0.0]})
+    out = apply_pplay_step(step, mp)
+    assert out["p_play"].iloc[0] >= STEP_BOUND
+    assert out["p60"].iloc[0] == 0.0 and out["e_min"].iloc[0] == 0.0
 
 
 def test_off_the_simple_path_is_todays_even_with_a_step_in_the_dict(
@@ -109,6 +122,11 @@ def test_the_flag_ships_off():
     assert train.PPLAY_TOP_BIN_STEP is False
 
 
+class _Fits:
+    def fit(self, *_):
+        return self
+
+
 def test_train_all_fits_a_step_only_when_on(monkeypatch):
     calls = []
     monkeypatch.setattr(train, "fit_pplay_step",
@@ -129,16 +147,21 @@ def test_train_all_fits_a_step_only_when_on(monkeypatch):
     assert on["pplay_step"] == "step" and calls == [train.MINUTES_FEATURES]
 
 
-class _Fits:
-    def fit(self, *_):
-        return self
-
-
-def test_the_reading_script_shares_the_models_definitions():
-    import sys
-
-    sys.path.insert(0, "scripts")
+def test_the_reading_script_shares_the_models_definitions(monkeypatch):
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parent.parent
+                                    / "scripts"))
     import c2_pplay_bins
 
     assert c2_pplay_bins.STEP_BOUND is minutes_mod.STEP_BOUND
     assert c2_pplay_bins.out_of_fold is minutes_mod.out_of_fold
+
+
+def test_dropping_a_step_removes_its_pickle_and_meta(tmp_path, monkeypatch):
+    from gaffer.models import persistence
+
+    monkeypatch.setattr(persistence, "MODELS_DIR", tmp_path)
+    persistence.save_model({"step": 1}, "pplay_step")
+    assert persistence.model_exists("pplay_step")
+    persistence.drop_model("pplay_step")
+    persistence.drop_model("pplay_step")
+    assert not list(tmp_path.iterdir())

@@ -33,6 +33,12 @@ def load_model(name: str):
     return joblib.load(MODELS_DIR / f"{name}.joblib")
 
 
+def drop_model(name: str) -> None:
+    """Remove ``name``'s pickle and metadata if present (holiday F-81)."""
+    (MODELS_DIR / f"{name}.joblib").unlink(missing_ok=True)
+    (MODELS_DIR / f"{name}.meta.json").unlink(missing_ok=True)
+
+
 def model_exists(name: str) -> bool:
     """True when ``name`` has been saved — lets callers skip a refit."""
     return (MODELS_DIR / f"{name}.joblib").exists()

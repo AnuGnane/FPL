@@ -312,14 +312,22 @@ def fit_pplay_step(train: pd.DataFrame, cols: list[str]):
 def apply_pplay_step(step, mp: pd.DataFrame) -> pd.DataFrame:
     """``mp`` with its ``p_play`` mapped through ``step``.
 
-    ``p60`` is capped at the stepped ``p_play`` (F-81 ruling 2): playing 60
-    minutes implies playing, and a step that lowers ``p_play`` must not leave
-    the narrower event the likelier one.
+    ``p60`` and ``e_min`` ride on the stepped/raw ratio (F-81 ruling 2), as
+    ``availability`` carries them when it moves ``p_play``: a stepped
+    ``p_play`` beside an untouched ``p60`` is the incoherence the three-mode
+    model was built to remove. Where the raw ``p_play`` is zero there is no
+    ratio, and the two ride unchanged. ``p60 <= p_play`` holds after, since
+    it held before and both took one ratio.
     """
     out = mp.copy()
-    stepped = step.predict(out["p_play"].to_numpy(dtype="float64"))
+    raw = out["p_play"].to_numpy(dtype="float64")
+    stepped = step.predict(raw)
+    safe = np.where(raw > 0, raw, 1.0)
+    ratio = np.where(raw > 0, stepped / safe, 1.0)
     out["p_play"] = stepped
-    out["p60"] = np.minimum(out["p60"].to_numpy(dtype="float64"), stepped)
+    out["p60"] = out["p60"].to_numpy(dtype="float64") * ratio
+    out["e_min"] = np.clip(out["e_min"].to_numpy(dtype="float64") * ratio,
+                           0, 90)
     return out
 
 
