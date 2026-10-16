@@ -25,9 +25,10 @@ from gaffer.config import Config
 from gaffer.data.news.lineups import fetch_lineups
 from gaffer.data.news.normalize import availability_frame
 from gaffer.data.news.premierinjuries import fetch_injuries
+from gaffer.models import train
 from gaffer.models.components import bonus_sees_attack, card_penalty, with_attack
-from gaffer.models.minutes import apply_availability
-from gaffer.models.persistence import load_model
+from gaffer.models.minutes import apply_availability, apply_pplay_step
+from gaffer.models.persistence import load_model, model_exists
 from gaffer.models.team import ODDS_AGAINST_COL, blend_team_odds, odds_blend_weight
 from gaffer.models.train import DEFAULT_E_GC, DEFAULT_P_CS
 from gaffer.set_pieces import add_pen_ep, attack_multipliers, pen_notices
@@ -110,6 +111,11 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
 
     minutes = load_model("minutes")
     mp = minutes.predict(pf)
+    # Holiday F-81: the top-bin step acts before both availability passes, so
+    # the news layer's multipliers act on the stepped number. Read off the
+    # module at call time so a test or a replay arm can switch it.
+    if train.PPLAY_TOP_BIN_STEP and model_exists("pplay_step"):
+        mp = apply_pplay_step(load_model("pplay_step"), mp)
     # Two availability passes over one model run. The news pass is what the
     # advice is built on; the flags-only pass is gate N2's control, and
     # running the model twice to get it would be both slower and wrong — the
