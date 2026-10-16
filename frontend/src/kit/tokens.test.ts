@@ -31,6 +31,48 @@ function offenders(pattern: RegExp, allow: string[] = []): string[] {
       .filter((hit): hit is string => hit !== null))
 }
 
+// Holiday F-82: CLAUDE.md's "Charts use the one grey palette", which the
+// scan above never read. A colour prop names a token, the series palette,
+// `currentColor` or `none`; a ternary passes only when both arms do, so a
+// nested or computed colour fails closed. The braced value is read to its
+// balanced close, so a prop split over two lines (League's `isYou(`) is seen.
+const COLOUR = /^(var\(--color-[a-z0-9-]+\)|currentColor|none)$/
+const PALETTE = /^SERIES_COLOURS\[[^\]]+\]$/
+
+function colourArm(arm: string): boolean {
+  const text = arm.trim()
+  const quoted = /^(['"])(.*)\1$/.exec(text)
+  return quoted ? COLOUR.test(quoted[2]) : PALETTE.test(text)
+}
+
+function colourValue(value: string): boolean {
+  if (!value.startsWith('{')) return COLOUR.test(value.slice(1, -1))
+  const expr = value.slice(1, -1).trim()
+  const ask = expr.indexOf('?')
+  if (ask < 0) return colourArm(expr)
+  const arms = expr.slice(ask + 1).split(':')
+  return arms.length === 2 && arms.every(colourArm)
+}
+
+function colourProps(path: string): Array<{ at: string, value: string }> {
+  const text = readFileSync(path, 'utf8')
+  const found: Array<{ at: string, value: string }> = []
+  for (const match of text.matchAll(/\b(?:stroke|fill)=(["{])/g)) {
+    const start = match.index + match[0].length - 1
+    let end = start + 1
+    if (match[1] === '"') end = text.indexOf('"', end) + 1
+    else {
+      for (let depth = 1; depth > 0 && end < text.length; end += 1) {
+        if (text[end] === '{') depth += 1
+        else if (text[end] === '}') depth -= 1
+      }
+    }
+    const line = text.slice(0, match.index).split('\n').length
+    found.push({ at: `${rel(path)}:${line}`, value: text.slice(start, end) })
+  }
+  return found
+}
+
 describe('the ledger rules (spec §3–§5)', () => {
   it('has no rounded-full, no card radius, no shadow, no gradient', () => {
     expect(offenders(/rounded-full|rounded-card|shadow-|gradient/)).toEqual([])
@@ -135,5 +177,33 @@ describe('the ledger rules (spec §3–§5)', () => {
     // the header governs. `<Th>` emits it; the hand-written ones say it.
     // `<thead` is not a header cell, so the lookahead lets it past.
     expect(offenders(/<th(?![A-Za-z])(?!.*scope=)/)).toEqual([])
+  })
+
+  it('colours every chart from a token or the series palette', () => {
+    // The shirt's two greys are part of the drawing (the hex rule's
+    // allowance), so the shirt keeps its fill and stroke here too.
+    const props = FILES.filter((path) => /\/(hubs|kit)\//.test(path))
+      .filter((path) => !rel(path).endsWith('kit/PlayerCard.tsx'))
+      .flatMap(colourProps)
+    // The scan has to see the charts to vouch for them: recharts' series
+    // props and the two ternaries the package named.
+    expect(props.length).toBeGreaterThan(20)
+    expect(props.some((p) => p.at.startsWith('hubs/League.tsx'))).toBe(true)
+    expect(props.some((p) => p.at.startsWith('kit/Sparkline.tsx'))).toBe(true)
+    expect(props.filter((p) => !colourValue(p.value)).map((p) => p.at))
+      .toEqual([])
+  })
+
+  it('fails a colour prop that names neither a token nor the palette', () => {
+    expect(colourValue('"#888"')).toBe(false)
+    expect(colourValue("{'red'}")).toBe(false)
+    expect(colourValue("{up ? 'var(--color-up)' : '#c33'}")).toBe(false)
+    expect(colourValue("{a ? 'var(--color-up)' : b ? 'none' : 'none'}"))
+      .toBe(false)
+    expect(colourValue("{tone}")).toBe(false)
+    expect(colourValue('"var(--color-text)"')).toBe(true)
+    expect(colourValue('{SERIES_COLOURS[i % 4]}')).toBe(true)
+    expect(colourValue("{rising ? 'var(--color-up)' : 'var(--color-down)'}"))
+      .toBe(true)
   })
 })
