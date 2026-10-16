@@ -261,6 +261,68 @@ class ThreeModeModel:
         return out
 
 
+STEP_BOUND = 1e-3
+"""The top-bin step's floor and ceiling (holiday F-17's pre-registration,
+moved here from ``scripts/c2_pplay_bins.py`` by F-81 so the reading and the
+model share one definition): an isotonic map ends in flat runs, and a step
+that says exactly 0 or 1 would make the log loss infinite on one surprise."""
+
+
+def _played(rows: pd.DataFrame) -> np.ndarray:
+    """1.0 where the row played at all, the event ``p_play`` predicts."""
+    mins = pd.to_numeric(rows["minutes"], errors="coerce").fillna(0.0)
+    return (mins > 0).to_numpy(dtype="float64")
+
+
+def out_of_fold(train: pd.DataFrame, cols: list[str], model=None
+                ) -> tuple[np.ndarray, np.ndarray, int]:
+    """Each training season's ``p_play`` from a minutes fit on every other
+    training season. A season with nothing else to fit on is left out of the
+    step's fit rather than predicted in-sample. ``model`` is the head's class,
+    ``ThreeModeModel`` unless a caller hands its own (the reading script
+    passes the name it imported, so its tests can record the folds)."""
+    model = model or ThreeModeModel
+    preds, ys, folds = [], [], 0
+    for season in sorted(train["season_idx"].unique()):
+        rest = train[train["season_idx"] != season]
+        if rest.empty:
+            continue
+        rows = train[train["season_idx"] == season]
+        p = model(cols).fit(rest).predict(rows)["p_play"]
+        preds.append(p.to_numpy(dtype="float64"))
+        ys.append(_played(rows))
+        folds += 1
+    if not folds:
+        return np.empty(0), np.empty(0), 0
+    return np.concatenate(preds), np.concatenate(ys), folds
+
+
+def fit_pplay_step(train: pd.DataFrame, cols: list[str]):
+    """The isotonic step on the head's out-of-fold ``p_play`` (holiday F-81,
+    ROADMAP candidate 4), or ``None`` when no season has another to fit on."""
+    from sklearn.isotonic import IsotonicRegression
+
+    oof_p, oof_y, folds = out_of_fold(train, cols)
+    if not folds:
+        return None
+    return IsotonicRegression(y_min=STEP_BOUND, y_max=1 - STEP_BOUND,
+                              out_of_bounds="clip").fit(oof_p, oof_y)
+
+
+def apply_pplay_step(step, mp: pd.DataFrame) -> pd.DataFrame:
+    """``mp`` with its ``p_play`` mapped through ``step``.
+
+    ``p60`` is capped at the stepped ``p_play`` (F-81 ruling 2): playing 60
+    minutes implies playing, and a step that lowers ``p_play`` must not leave
+    the narrower event the likelier one.
+    """
+    out = mp.copy()
+    stepped = step.predict(out["p_play"].to_numpy(dtype="float64"))
+    out["p_play"] = stepped
+    out["p60"] = np.minimum(out["p60"].to_numpy(dtype="float64"), stepped)
+    return out
+
+
 # Availability moved to models/availability.py in v5: it grew a line-up gate,
 # an injury-curve horizon decay and an asset dependency, none of which belong
 # in the module that fits the model. Re-exported because it is a published
