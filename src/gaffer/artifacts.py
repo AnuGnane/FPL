@@ -732,7 +732,7 @@ def load_availability(gw: int) -> pd.DataFrame | None:
         return None
     try:
         return pd.read_parquet(path)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — an unreadable parquet hides the panel
         print(f"availability snapshot unreadable: {exc}")
         return None
 

@@ -107,7 +107,7 @@ def weekly_run(cfg: "Config", *, client: "FPLClient | None" = None,
         from gaffer.brief import run_brief
 
         brief = run_brief(advice.gw, cfg=cfg)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 — never fails the run, v17d §2.2
         brief = {"gw": advice.gw, "written": False,
                  "note": f"brief not written: {exc}", "path": None}
         log(brief["note"])
