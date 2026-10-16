@@ -1586,6 +1586,7 @@ call).
 | `scripts/c2_pplay_bins.py` (holiday F-17) | `C2_PPLAY` | 12.5 item 4, ROADMAP candidate 4 | arm: the top-bin step |
 | `scripts/c3_home_away.py` (holiday F-20) | `C3_HOME_AWAY` | 12.5 item 5, ROADMAP candidate 5 | arm: the home/away splits |
 | `scripts/b1_status_age.py` (holiday F-21) | `B1_STATUS_AGE` | 12.5 item 6, ROADMAP candidate 6 | arm: the status-age feature |
+| `scripts/b8_understat_cover.py` (holiday F-80) | `B8_UNDERSTAT` | 12.5 item 8, ROADMAP candidate 8 | ruling: whether the FotMob fallback earns a spec |
 | `scripts/density_head.py` (holiday F-32) | `DENSITY_HEAD` | 12.4's `density_pub_7d` line | arm: its replay half |
 | `scripts/top10k_projection.py` (holiday F-35) | `TOP10K_PROJ` | ROADMAP candidate 3's remainder, the Data-gated `P(top-10k)` row | ruling: which projection rule the row uses |
 | `scripts/walk_hits.py` (holiday F-25) | `WALK_HITS_GW`, `WALK_HITS` | 12.4's v16 walk-hits line | arm: restraint bounded by the objective |

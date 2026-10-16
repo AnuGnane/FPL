@@ -38,7 +38,8 @@ arms and before ``unclaimed``: ``C1_BUCKETS``, ``C2_PPLAY``,
 ``WALK_HITS``/``WALK_HITS_GW``, ``PCS_WINDOW``/``PCS_WINDOWS``,
 ``PRESSER_GW``/``PRESSER_SERVE``, ``NEWS_SHADOW_GW``/``NEWS_SHADOW``/
 ``FLAG_LATENCY`` (holiday F-46), ``BACKFILL_RANK`` (holiday F-51),
-``LEAGUE_BLEND`` (holiday F-72) and ``C1_COVER`` (holiday F-79),
+``LEAGUE_BLEND`` (holiday F-72), ``C1_COVER`` (holiday F-79) and
+``B8_UNDERSTAT`` (holiday F-80),
 matched as a whole word at the start of a line. A reading is not a run, so
 it never anchors a lever line: the v20 grouping above is the same with or
 without them.
@@ -79,6 +80,7 @@ READINGS: list[tuple[str, tuple[str, ...]]] = [
     ("scripts/c2_pplay_bins.py", ("C2_PPLAY",)),
     ("scripts/c3_home_away.py", ("C3_HOME_AWAY",)),
     ("scripts/b1_status_age.py", ("B1_STATUS_AGE",)),
+    ("scripts/b8_understat_cover.py", ("B8_UNDERSTAT",)),
     ("scripts/density_head.py", ("DENSITY_HEAD",)),
     ("scripts/top10k_projection.py", ("TOP10K_PROJ",)),
     ("scripts/walk_hits.py", ("WALK_HITS", "WALK_HITS_GW")),
