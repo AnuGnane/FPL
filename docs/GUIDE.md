@@ -540,6 +540,10 @@ last three gameweeks of each season, cache ignored.
 Check with `launchctl list | grep com.gaffer`. Everything else — sensitivity
 sweeps, news-shadow evaluation, snapshots on demand — runs from UI buttons.
 
+launchd says whether a job is loaded but not when it next fires, so
+`scripts/automation_status.py` (holiday F-5) reads each plist's calendar and
+prints its next fire time for `./scripts/install_automation.sh --status`.
+
 ## 8. Everything the CLI can do
 
 The weekly core:
@@ -689,6 +693,26 @@ and it is worth knowing because you can read the evidence yourself:
   `run_advise` replay still needs the recorded models. `python -m
   tests.golden_client --write` re-records the board after a retrain, and
   `--inputs` re-records the seam without restamping it.
+
+**The drivers in `scripts/`.** `scripts/v7b_replay.py` and
+`scripts/replay_pair.sh` run the replays; `scripts/seed_stats.py` reads
+banked replay reports back into one multi-seed line, so single seeds run
+weeks apart still aggregate; `scripts/s2_replay.py` is v7's gate S2
+gated replay (heuristic against estimation σ), kept because the v7 and v12
+rails still read it. `scripts/eval_milestone.py` scores the model against
+the naive baselines a human would use, the v2 design's gate A. The rest are
+each one cycle's gate driver, kept because a test still reads it, and each
+docstring holds its pre-registered rule: `scripts/z1_arms.py` (v7's zeros stratum, gate Z1),
+`scripts/v7b_composite.py`, `scripts/v7b_legacy_minutes.py` and
+`scripts/v7b_probe.py` (v7b's composite σ and the Q2 minutes ablation),
+`scripts/v8a_arms.py` (v8a's feature arms, gate G1),
+`scripts/chip_baserates.py` (v8e's chip valuations against community base
+rates, context rather than a gate), `scripts/v10_dnp.py` and
+`scripts/v10_shrunk_arm.py` (v10's DNP denominator and the withdrawn
+shrunk-modes arm), `scripts/v12_w3_support.py` (v12 W3's captain-support
+gate) and `scripts/v12_w4_arms.py` with `scripts/v12_w4_autosub_cf.py`
+(v12 W4's role and density arms, prediction and decision halves). Drivers
+nothing runs any more live in `scripts/archive/` (v18g).
 
 Where the numbers live: `docs/superpowers/ROADMAP.md` (per-cycle results),
 each cycle's spec in `docs/superpowers/specs/` (§Gates/§Outcome sections),
@@ -1605,6 +1629,14 @@ call).
 | `scripts/league_blend.py` (holiday F-72) | `LEAGUE_BLEND` | ROADMAP candidate 9, the blended league stance | arm: the blend's replay |
 | `scripts/backfill_overall_rank.py` (holiday F-33; `--write` banks) | `BACKFILL_RANK` | 12.4's fill-forward `overall_rank` line, 12.2's overall-rank row | card: fills the Field panel's overall-rank row, decides none |
 | `scripts/v20_appendix.py` (holiday F-34, F-40) | collects the lines above and the v20 arms' lines; prints none of its own | v20 spec §3 | — |
+
+The v20 arms' head halves have a script each, outside the table because
+their verdicts are the arms' own (v20 spec §2): `scripts/v20b_head.py`
+prints `V20B_HEAD` (does the bonus head gain from seeing goals),
+`scripts/v20c_head.py` prints `V20C_HEAD` (does the Dixon-Coles clip cost
+calibration) and `scripts/v20d_brier.py` prints `V20D_BRIER` (is the price
+term's probability worth its charge); `scripts/v20_appendix.py` collects all
+three.
 
 ## 13. Troubleshooting
 
