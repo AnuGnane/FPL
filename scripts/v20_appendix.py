@@ -37,8 +37,8 @@ arms and before ``unclaimed``: ``C1_BUCKETS``, ``C2_PPLAY``,
 ``C3_HOME_AWAY``, ``B1_STATUS_AGE``, ``DENSITY_HEAD``, ``TOP10K_PROJ``,
 ``WALK_HITS``/``WALK_HITS_GW``, ``PCS_WINDOW``/``PCS_WINDOWS``,
 ``PRESSER_GW``/``PRESSER_SERVE``, ``NEWS_SHADOW_GW``/``NEWS_SHADOW``/
-``FLAG_LATENCY`` (holiday F-46), ``BACKFILL_RANK`` (holiday F-51) and
-``LEAGUE_BLEND`` (holiday F-72),
+``FLAG_LATENCY`` (holiday F-46), ``BACKFILL_RANK`` (holiday F-51),
+``LEAGUE_BLEND`` (holiday F-72) and ``C1_COVER`` (holiday F-79),
 matched as a whole word at the start of a line. A reading is not a run, so
 it never anchors a lever line: the v20 grouping above is the same with or
 without them.
@@ -75,6 +75,7 @@ which §6.2 transcribes apart from the clip's own pair."""
 
 READINGS: list[tuple[str, tuple[str, ...]]] = [
     ("scripts/c1_news_buckets.py", ("C1_BUCKETS",)),
+    ("scripts/c1_replay_cover.py", ("C1_COVER",)),
     ("scripts/c2_pplay_bins.py", ("C2_PPLAY",)),
     ("scripts/c3_home_away.py", ("C3_HOME_AWAY",)),
     ("scripts/b1_status_age.py", ("B1_STATUS_AGE",)),
