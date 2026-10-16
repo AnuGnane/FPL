@@ -1281,13 +1281,17 @@ holiday added two allowlist rails beside the pins: every noqa mark's reason
 (`tests/test_noqa_reasons.py`, F-69), which since F-78 reads every code but
 `E402` and an import line's `F401`; and test names as sentences
 (`tests/test_test_names.py`, F-73), whose allowlist is empty since F-76.
-The holiday queue has merged F-1 to F-82 except F-81, which is open as
-`needs-mac` PR #107; F-77, the other `needs-mac` package, has merged.
+Beside them, F-87's `tests/test_guide_scripts.py` fails when a script
+outside `scripts/archive/` goes unnamed in this guide, and F-89's
+`tests/test_pulp_filters.py` fails the suite when PuLP 4 arrives, naming
+the migration the four filters defer. The holiday queue has merged F-1 to
+F-90 except F-81, which is open as `needs-mac` PR #107; F-77, the other
+`needs-mac` package, has merged, and F-91 and F-92 wait on F-81.
 `HOLIDAY.md` is the record.
 
 ## 12. What is pending and what was left open
 
-**As of 2026-10-15, the model cycle, v20, is open.** v20a closed on
+**As of 2026-10-16, the model cycle, v20, is open.** v20a closed on
 2026-10-13: `role` stays, because Δ = mean(off − on) = +9.2 is inside
 2·SE = 41.1 at K = 5. No served number moved and no pin moved
 (`docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md` §6.1). The
@@ -1300,10 +1304,11 @@ are the replay's lever log lines (F-14, F-64) and the head-half scripts for v20c
 (F-13) and v20b (F-15). v20d has no switch, only its scripts (F-12, F-16).
 Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
-The holiday's readings are listed in §12.5 "The readings" and collected by
-`scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-82
-except F-81, which is open as `needs-mac` PR #107; F-77, the other
-`needs-mac` package, has merged. `HOLIDAY.md` is the record. Pins: routes 52
+The holiday's readings, F-86's `TRACE_GAP` the latest, are listed in §12.5
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday
+queue has merged F-1 to F-90 except F-81, which is open as `needs-mac` PR
+#107; F-77, the other `needs-mac` package, has merged, and F-91 and F-92
+wait on F-81. `HOLIDAY.md` is the record. Pins: routes 52
 (`tests/test_v11_degradation.py`), job kinds 12
 (`tests/test_v12_w1_degradation.py`), `Config` 62
 (`tests/test_v13_degradation.py`).

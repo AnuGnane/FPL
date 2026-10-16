@@ -8,7 +8,7 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-10-15)
+## Where things stand (2026-10-16)
 
 **The model cycle, v20, is open.** v20a closed on 2026-10-13: `role`
 stays, because Δ = mean(off − on) = +9.2 is inside 2·SE = 41.1 at K = 5. No
@@ -22,18 +22,22 @@ are the replay's lever log lines (F-14, F-64) and the head-half scripts for v20c
 (F-13) and v20b (F-15). v20d has no switch, only its scripts (F-12, F-16).
 Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
-The holiday's readings, F-79's `C1_COVER` and F-80's `B8_UNDERSTAT` among
-them, are listed in `docs/GUIDE.md` §12.5 "The readings" and collected by
-`scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-82
+The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
+F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5 "The readings" and collected by
+`scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-90
 except F-81, which is open as `needs-mac` PR #107; F-77, the other
-`needs-mac` package, has merged. `HOLIDAY.md` is the record. Pins: routes
+`needs-mac` package, has merged, and F-91 and F-92 wait on F-81.
+`HOLIDAY.md` is the record. Pins: routes
 52 (`tests/test_v11_degradation.py`), job kinds 12
 (`tests/test_v12_w1_degradation.py`), `Config` 62
 (`tests/test_v13_degradation.py`); beside them, the holiday's two allowlist
 rails: every noqa mark's reason (`tests/test_noqa_reasons.py`, F-69), which
 since F-78 reads every code but `E402` and an import line's `F401`; and test
 names as sentences (`tests/test_test_names.py`, F-73), whose allowlist is
-empty since F-76.
+empty since F-76. Beside them, F-87's `tests/test_guide_scripts.py` fails
+when a script outside `scripts/archive/` goes unnamed in the GUIDE, and
+F-89's `tests/test_pulp_filters.py` fails the suite when PuLP 4 arrives,
+naming the migration the four filters defer.
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
@@ -406,8 +410,10 @@ gameweek whose deadline had passed; the 12:30 slot fired before GW4's
 since v18h. Gate: inner loop 4383, ruff clean, golden 58/0 in 18:16,
 `npm run check` 1114 with the eight recorded warnings, sixteen screenshot
 pairs measured with Pillow (unnamed pages differ only in the strip's
-twelve rows). Pins 51 / 12 / 62. Left open: `PLIST_DIR` reads the repo's
-plists rather than the installed copies (v19h); ~~the core-insights plist's
+twelve rows). Pins 51 / 12 / 62. Left open: ~~`PLIST_DIR` reads the repo's
+plists rather than the installed copies (v19h)~~ (closed: the jobs table,
+holiday F-84, PR #111, and `--status`'s next fire, F-85, PR #112, read the
+installed copy and say which file they read); ~~the core-insights plist's
 `--refresh` inside an XML comment is tolerated by the reader rather than
 fixed~~ (fixed at source by holiday F-55, PR #75; the readers keep their
 tolerance for installed copies); ~~`shots.sh`'s default shell path names build 1234 while 1243 is
@@ -433,7 +439,9 @@ so `test_report` and `test_chip_sanity` run on a clone; the prose fixture at
 three-player XIs (178 → 118 KB); six closed-cycle drivers under
 `scripts/archive/`; twelve CLI smoke tests. Gate: all six lines held; golden
 58 passed, 0 skipped. Python 4496 → **4509**; frontend 1098 untouched; pins
-51 / 12 / 62. Left open: the PuLP 4 migration the filters defer; the four
+51 / 12 / 62. Left open: the PuLP 4 migration the filters defer (now
+named: `tests/test_pulp_filters.py` fails the suite when PuLP 4 arrives,
+holiday F-89, PR #116); the four
 singleton warnings; `test_advise.py` at 3.4 s is the next slow file.
 
 ### v18f — the surface, correct to the hand (done, merged `bf84d7c` 2026-09-14)
@@ -455,8 +463,10 @@ effects trip it and each fix is a behaviour change under the pixel gate.
 Gate: twelve pairs byte-identical against a same-time control; four new
 token rules each mutation-tested live; check exit 0 with zero errors; 1058
 → 1098 frontend tests; recharts 0 in both entry chunks. Python 4496
-untouched; pins 51 / 12 / 62. Left open: the eight warnings; Tailwind's
-scanner regenerating the two retired classes from the rail's own patterns.
+untouched; pins 51 / 12 / 62. Left open: the eight warnings; ~~Tailwind's
+scanner regenerating the two retired classes from the rail's own patterns~~
+(closed: `theme.css` leaves the test files out of the scan, holiday F-88,
+PR #115).
 
 ### v18e — the loader, finished (done, merged `b1867b9` 2026-09-14)
 Every artifact read in `hubs/` and `kit/` goes through `usePageData`; the
