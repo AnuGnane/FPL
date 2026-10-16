@@ -1582,6 +1582,7 @@ call).
 | Command (`uv run python …`) | Prints | Answers | Verdict |
 |---|---|---|---|
 | `scripts/c1_news_buckets.py` (holiday F-19) | `C1_BUCKETS` | 12.5 item 1, ROADMAP candidate 1 | arm: the news-layer ablation |
+| `scripts/c1_replay_cover.py` (holiday F-79) | `C1_COVER` | 12.5 item 1's replay half, ROADMAP candidate 1 | arm: whether the replay half is runnable |
 | `scripts/c2_pplay_bins.py` (holiday F-17) | `C2_PPLAY` | 12.5 item 4, ROADMAP candidate 4 | arm: the top-bin step |
 | `scripts/c3_home_away.py` (holiday F-20) | `C3_HOME_AWAY` | 12.5 item 5, ROADMAP candidate 5 | arm: the home/away splits |
 | `scripts/b1_status_age.py` (holiday F-21) | `B1_STATUS_AGE` | 12.5 item 6, ROADMAP candidate 6 | arm: the status-age feature |
