@@ -177,7 +177,8 @@ def test_the_tails_are_read_off_the_same_distribution_as_the_band():
     band = band_for(ep, xmins, table=TABLE)
     sigma = _total_sigma(ep, xmins, TABLE)
     mu = sc.recentred_mean(ep, sigma)
-    cdf = lambda z: 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))  # noqa: E731
+    def cdf(z):
+        return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
     assert band.p_haul == pytest.approx(
         round(1.0 - cdf((HAUL_POINTS - mu) / sigma), 4))
     assert band.p_blank == pytest.approx(

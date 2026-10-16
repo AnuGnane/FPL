@@ -8,7 +8,8 @@ from gaffer.ladder import StepContext, explain_step, serve_rung, walk
 
 def _row(key, hits=0, transfers=0, same_as=None, buys=(), sells=(), xi=(),
          captain=None, vice=None, gw=4):
-    ref = lambda c: {"code": c, "name": f"P{c}", "position": "MID", "ep": 5.0}  # noqa: E731
+    def ref(c):
+        return {"code": c, "name": f"P{c}", "position": "MID", "ep": 5.0}
     first = {"gw": gw, "hits": hits, "buys": [ref(c) for c in buys],
              "sells": [ref(c) for c in sells], "xi": [ref(c) for c in xi],
              "bench": [], "captain": ref(captain or (xi[0] if xi else 1)),
@@ -153,7 +154,8 @@ def test_a_price_flag_below_half_does_not_count():
 # --- the served rung --------------------------------------------------------
 
 def _objective():
-    ref = lambda c: {"code": c, "name": f"P{c}", "position": "MID", "ep": 5.0}  # noqa: E731
+    def ref(c):
+        return {"code": c, "name": f"P{c}", "position": "MID", "ep": 5.0}
     return {"gw": 4, "buys": [ref(20), ref(19)], "sells": [ref(16), ref(17)], "hits": 1,
             "xi": [ref(c) for c in range(1, 12)], "bench": [ref(12)],
             "captain": ref(3), "vice": ref(4), "expected_pts": 61.5,
