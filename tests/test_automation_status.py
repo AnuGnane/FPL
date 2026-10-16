@@ -112,7 +112,11 @@ def test_the_status_flag_only_lists_and_reports_each_job(tmp_path):
     stub.chmod(0o755)
     home = tmp_path / "home"
     (home / "Library" / "LaunchAgents").mkdir(parents=True)
-    (home / "Library" / "LaunchAgents" / "com.gaffer.prices.plist").write_text("")
+    # Holiday F-85: next fire now reads the installed copy, so the installed
+    # file is a real plist whose hour differs from the repo's 23:15.
+    (home / "Library" / "LaunchAgents" / "com.gaffer.prices.plist").write_text(
+        Path("scripts/com.gaffer.prices.plist").read_text().replace(
+            "<integer>23</integer>", "<integer>4</integer>"))
     env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "HOME": str(home)}
     out = subprocess.run(["zsh", str(INSTALLER), "--status"], env=env,
                          capture_output=True, text=True, check=True).stdout
@@ -123,5 +127,10 @@ def test_the_status_flag_only_lists_and_reports_each_job(tmp_path):
     assert rows["com.gaffer.prices"] == "unloaded"
     assert rows["com.gaffer.backup"] == "missing"
     assert "?" not in out
+    lines = {ln.split()[0]: ln for ln in out.splitlines()[1:]}
+    assert out.splitlines()[0].split()[-2:] == ["read", "from"]
+    assert lines["com.gaffer.prices"].endswith(" installed")
+    assert " 04:15 " in lines["com.gaffer.prices"]
+    assert lines["com.gaffer.backup"].endswith(" repo copy")
     assert all(c.startswith("list ") for c in calls.read_text().splitlines())
     assert not (home / "Library" / "LaunchAgents" / "com.gaffer.advise.plist").exists()

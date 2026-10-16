@@ -295,7 +295,9 @@ rules. Pages render in dark and light, and at phone width (v19c).
 plists in `scripts/`, copies them to `~/Library/LaunchAgents/` and loads them.
 Re-run it after moving the project — the plists embed the path.
 `./scripts/install_automation.sh --status` only reads: it prints each job's
-launchd state and next fire time and changes nothing.
+launchd state, its next fire time and which file that was read from
+(`installed`, the copy launchd runs, or `repo copy` when none is installed),
+and changes nothing.
 
 | When | Job | What it does |
 |---|---|---|

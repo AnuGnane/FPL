@@ -8,18 +8,28 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 if [[ "${1:-}" == "--status" ]]; then
   PY="$PROJECT_DIR/.venv/bin/python"
   [[ -x "$PY" ]] || PY="python3"
-  printf '%-28s %-11s %s\n' "job" "state" "next fire (local)"
+  # Holiday F-84/F-85: next fire is read from the installed copy when there
+  # is one, because that is the file launchd runs; the last column says which.
+  printf '%-28s %-11s %-25s %s\n' "job" "state" "next fire (local)" "read from"
   for plist in "$PROJECT_DIR"/scripts/com.gaffer.*.plist; do
     label="${${plist:t}:r}"
+    installed=~/Library/LaunchAgents/$label.plist
+    if [[ -f "$installed" ]]; then
+      read_from="$installed"
+      copy="installed"
+    else
+      read_from="$plist"
+      copy="repo copy"
+    fi
     if launchctl list "$label" >/dev/null 2>&1; then
       state="loaded"
-    elif [[ -f ~/Library/LaunchAgents/$label.plist ]]; then
+    elif [[ -f "$installed" ]]; then
       state="unloaded"
     else
       state="missing"
     fi
-    next="$("$PY" "$PROJECT_DIR/scripts/automation_status.py" "$plist" 2>/dev/null || print -r -- "?")"
-    printf '%-28s %-11s %s\n' "$label" "$state" "$next"
+    next="$("$PY" "$PROJECT_DIR/scripts/automation_status.py" "$read_from" 2>/dev/null || print -r -- "?")"
+    printf '%-28s %-11s %-25s %s\n' "$label" "$state" "$next" "$copy"
   done
   exit 0
 fi
