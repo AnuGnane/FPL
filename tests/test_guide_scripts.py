@@ -35,5 +35,11 @@ def test_there_are_live_scripts_to_check():
 
 def test_every_script_outside_the_archive_is_named_in_the_guide():
     text = GUIDE.read_text()
-    unnamed = [str(p) for p in _live_scripts() if p.name not in text]
+    # By its path, not its bare name: a new `scripts/probe.py` must not pass on
+    # `scripts/v7b_probe.py`'s mention (F-87 review).
+    unnamed = [
+        str(p)
+        for p in _live_scripts()
+        if f"scripts/{p.relative_to(SCRIPTS).as_posix()}" not in text
+    ]
     assert unnamed == [], unnamed

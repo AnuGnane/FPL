@@ -700,14 +700,15 @@ banked replay reports back into one multi-seed line, so single seeds run
 weeks apart still aggregate; `scripts/s2_replay.py` is v7's gate S2
 gated replay (heuristic against estimation σ), kept because the v7 and v12
 rails still read it. `scripts/eval_milestone.py` scores the model against
-the naive baselines a human would use, the v2 design's gate A. The rest are
-each one cycle's gate driver, kept because a test still reads it, and each
-docstring holds its pre-registered rule: `scripts/z1_arms.py` (v7's zeros stratum, gate Z1),
+the naive baselines a human would use, the v2 design's gate A. The rest
+are one cycle's driver or measurement each, kept because a test still reads
+it; a gate driver's docstring holds its pre-registered rule:
+`scripts/z1_arms.py` (v7's zeros stratum, gate Z1),
 `scripts/v7b_composite.py`, `scripts/v7b_legacy_minutes.py` and
-`scripts/v7b_probe.py` (v7b's composite σ and the Q2 minutes ablation),
-`scripts/v8a_arms.py` (v8a's feature arms, gate G1),
-`scripts/chip_baserates.py` (v8e's chip valuations against community base
-rates, context rather than a gate), `scripts/v10_dnp.py` and
+`scripts/v7b_probe.py` (v7b's composite-σ assets, the vendored pre-v5
+minutes head and the Q2 probe), `scripts/v8a_arms.py` (v8a's feature arms,
+gate G1), `scripts/chip_baserates.py` (v8e's chip valuations against
+community base rates, context rather than a gate), `scripts/v10_dnp.py` and
 `scripts/v10_shrunk_arm.py` (v10's DNP denominator and the withdrawn
 shrunk-modes arm), `scripts/v12_w3_support.py` (v12 W3's captain-support
 gate) and `scripts/v12_w4_arms.py` with `scripts/v12_w4_autosub_cf.py`
