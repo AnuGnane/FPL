@@ -2277,6 +2277,12 @@ export interface JobHealth {
    * When it is meant to run, as a sentence — "Thu 18:00", "daily 23:15".
    */
   schedule: string
+  /**
+   * Which copy the row was read from: the one under
+   * ``~/Library/LaunchAgents`` that launchd runs, or the repo's own when none
+   * is installed (holiday F-84).
+   */
+  source: 'installed' | 'repo'
 }
 /**
  * This interface was referenced by `GafferApi`'s JSON-Schema

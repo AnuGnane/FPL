@@ -33,6 +33,8 @@ from gaffer.web.routers import meta
 from gaffer.web.routers.meta import job_health
 
 NOW = datetime(2026, 9, 15, 12, 0, tzinfo=timezone.utc)
+# Read before the autouse fixture below repoints it for every test.
+INSTALLED_DEFAULT = meta.INSTALLED_PLIST_DIR
 
 
 def _plist(directory: Path, name: str, calendar, *,
@@ -64,6 +66,15 @@ def _age(root: Path, log: str, hours: float) -> None:
 @pytest.fixture()
 def scripts(tmp_path):
     return tmp_path / "scripts"
+
+
+@pytest.fixture(autouse=True)
+def _no_installed_copies(tmp_path, monkeypatch):
+    """Holiday F-84: the reader prefers ``~/Library/LaunchAgents``, so on the
+    Mac every fixture above would read the real installed copies instead of
+    the one it wrote. Point it at a directory that does not exist."""
+    monkeypatch.setattr(meta, "INSTALLED_PLIST_DIR",
+                        tmp_path / "no-launch-agents")
 
 
 # --- the schedule sentence and the interval ---------------------------
@@ -193,6 +204,52 @@ def test_the_rows_are_sorted_by_label(scripts):
     labels = [r.label for r in job_health(scripts, log_root=scripts.parent,
                                           now=NOW)]
     assert labels == ["advise", "prices", "review"]
+
+
+# --- the installed copy, holiday F-84 ---------------------------------
+
+def test_an_installed_copy_with_another_schedule_wins_and_says_so(
+        scripts, tmp_path):
+    """``install_automation.sh`` copies the plists into LaunchAgents, and the
+    copy is what launchd runs: a repo edit not yet reinstalled, or a hand
+    edit to the installed file, means the repo's schedule is not the one
+    keeping time (ROADMAP v19a "Left open")."""
+    installed = tmp_path / "LaunchAgents"
+    _plist(scripts, "advise", {"Weekday": 4, "Hour": 18, "Minute": 0})
+    _plist(installed, "advise", {"Weekday": 5, "Hour": 7, "Minute": 30})
+    row = job_health(scripts, installed_dir=installed, log_root=scripts.parent,
+                     now=NOW)[0]
+    assert row.schedule == "Fri 07:30"
+    assert row.source == "installed"
+
+
+def test_no_installed_directory_reads_the_repo_copy_and_says_so(
+        scripts, tmp_path):
+    _plist(scripts, "advise", {"Weekday": 4, "Hour": 18, "Minute": 0})
+    row = job_health(scripts, installed_dir=tmp_path / "nowhere",
+                     log_root=scripts.parent, now=NOW)[0]
+    assert row.schedule == "Thu 18:00"
+    assert row.source == "repo"
+
+
+def test_an_unreadable_installed_copy_is_the_unreadable_row(
+        scripts, tmp_path):
+    """A broken installed copy is what launchd is failing to load, so the
+    row says so rather than falling back to the repo's healthy file."""
+    installed = tmp_path / "LaunchAgents"
+    _plist(scripts, "advise", {"Weekday": 4, "Hour": 18, "Minute": 0})
+    installed.mkdir()
+    (installed / "com.gaffer.advise.plist").write_bytes(b"<plist><dict>")
+    row = job_health(scripts, installed_dir=installed, log_root=scripts.parent,
+                     now=NOW)[0]
+    assert row.schedule == "unreadable"
+    assert row.overdue is True
+    assert row.source == "installed"
+
+
+def test_the_default_installed_directory_is_launch_agents():
+    assert INSTALLED_DEFAULT == (
+        Path.home() / "Library" / "LaunchAgents")
 
 
 # --- the shipped plists, and the route --------------------------------

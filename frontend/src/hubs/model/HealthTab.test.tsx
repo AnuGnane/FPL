@@ -32,10 +32,11 @@ beforeEach(() => {
                  last_line: 'Report: reports/gw3-report.html' },
       jobs: [{ label: 'advise', schedule: 'Thu 18:00', log: 'logs/advise.log',
                modified_at: '2026-09-10T09:05:00+00:00', age_hours: 4.0,
-               interval_hours: 168, overdue: false },
+               interval_hours: 168, overdue: false, source: 'installed' },
              { label: 'field', schedule: 'Sat, Sun 18:30',
                log: 'logs/field.log', modified_at: '2026-09-01T12:30:00+00:00',
-               age_hours: 220.0, interval_hours: 84, overdue: true }],
+               age_hours: 220.0, interval_hours: 84, overdue: true,
+               source: 'repo' }],
       odds_key_present: false,
       model_health: { gw: 2, mae_starters: 1.4, captain_actual: 12 },
       artifacts: [{ name: 'reports/gw3-advice.json', bytes: 2048 }],
@@ -70,6 +71,16 @@ describe('Runs & Health', () => {
        // The word, not only the colour.
        expect(screen.getByText('overdue')).toHaveClass('text-down')
        expect(screen.getByText('ok')).toBeInTheDocument()
+     })
+
+  it('marks a job read from the repo copy and not one that is installed',
+     async () => {
+       // Holiday F-84: only the field job has no installed copy here.
+       render(<MemoryRouter><HealthTab /></MemoryRouter>)
+       expect(await screen.findByText('advise')).toBeInTheDocument()
+       const notes = screen.getAllByText('repo copy')
+       expect(notes).toHaveLength(1)
+       expect(notes[0]).toHaveClass('text-text-muted')
      })
 
   it('says no job is installed rather than drawing an empty table',
