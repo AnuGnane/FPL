@@ -135,7 +135,8 @@ def artifacts_on_disk(tmp_path, monkeypatch):
     """A GW4 advice, ladder and solve state of the real shape, no trace."""
     monkeypatch.chdir(tmp_path)
     artifacts.REPORTS.mkdir()
-    ref = lambda c, n: {"code": c, "name": n, "position": "MID", "ep": 5.0}  # noqa: E731
+    def ref(c, n):
+        return {"code": c, "name": n, "position": "MID", "ep": 5.0}
     (artifacts.REPORTS / "gw4-advice.json").write_text(json.dumps({
         "gw": 4, "deadline": "2026-09-11T17:30:00Z", "hits": 0, "expected_pts": 61.2,
         "buys": [ref(1, "Gibbs-White")], "sells": [ref(2, "B.Fernandes")],

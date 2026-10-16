@@ -447,8 +447,9 @@ def _archive(tmp_path, monkeypatch, *, season="2025-26", season_idx=3,
     one reads NaN.
     """
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
-    kick = lambda gw: (pd.Timestamp("2025-08-09", tz="UTC")   # noqa: E731
-                       + pd.Timedelta(days=7 * (gw - 1)))
+    def kick(gw):
+        return (pd.Timestamp("2025-08-09", tz="UTC")
+                + pd.Timedelta(days=7 * (gw - 1)))
     players = pd.DataFrame([
         {"season": season, "season_idx": season_idx, "gw": gw, "code": code,
          "player_id": 1, "match_id": f"lg{gw}", "minutes_played": 90.0,

@@ -9,7 +9,7 @@ from gaffer.web.routers import plan as plan_router
 from tests.test_v12_w5_plan_trace import P, S, _week, wired  # noqa: F401
 
 
-def _with_objective(wired, monkeypatch, agrees):  # noqa: F811
+def _with_objective(wired, monkeypatch, agrees):  # noqa: F811 — the fixture, named as its parameter (v18g §2.1)
     import gaffer.artifacts as artifacts
 
     state = wired([_week(5, buys=[P], sells=[S])])
@@ -25,7 +25,7 @@ def _with_objective(wired, monkeypatch, agrees):  # noqa: F811
     return state
 
 
-def test_a_disagreeing_objective_is_served_with_its_own_trace(wired, monkeypatch):  # noqa: F811
+def test_a_disagreeing_objective_is_served_with_its_own_trace(wired, monkeypatch):  # noqa: F811 — the fixture, named as its parameter (v18g §2.1)
     _with_objective(wired, monkeypatch, agrees=False)
     out = plan_router.plan(5)
     assert out.objective is not None
@@ -36,11 +36,11 @@ def test_a_disagreeing_objective_is_served_with_its_own_trace(wired, monkeypatch
     assert out.objective.captain is None            # never the armband
 
 
-def test_an_agreeing_objective_is_not_repeated(wired, monkeypatch):  # noqa: F811
+def test_an_agreeing_objective_is_not_repeated(wired, monkeypatch):  # noqa: F811 — the fixture, named as its parameter (v18g §2.1)
     _with_objective(wired, monkeypatch, agrees=True)
     assert plan_router.plan(5).objective is None
 
 
-def test_a_payload_without_the_block_serves_none(wired):  # noqa: F811
+def test_a_payload_without_the_block_serves_none(wired):  # noqa: F811 — the fixture, named as its parameter (v18g §2.1)
     wired([_week(5, buys=[P], sells=[S])])
     assert plan_router.plan(5).objective is None
