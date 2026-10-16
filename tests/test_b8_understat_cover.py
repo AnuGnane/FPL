@@ -61,7 +61,15 @@ def test_a_gap_younger_than_seven_days_still_reads_up():
 def test_no_parquet_names_the_reason():
     out = _read(None, None, "2026-09-11")
     assert out["reason"] == "no Understat parquet banked"
+    assert out["verdict"] is None
     assert [g["gw"] for g in out["gaps"]] == [1, 2, 3]
+
+
+def test_a_match_on_deadline_day_is_that_gameweeks():
+    player = pd.DataFrame({"match_id": [1, 2],
+                           "date": ["2026-08-14", "2026-08-21 19:00:00"]})
+    out = _read(None, player, "2026-10-01")
+    assert out["player"]["gws"] == [1, 2] and out["player"]["rows"] == 2
 
 
 def test_no_season_or_no_deadlines_reads_as_no_reading():

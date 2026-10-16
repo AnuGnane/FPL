@@ -62,14 +62,19 @@ def _load(rel: str) -> pd.DataFrame | None:
 
 
 def _dates(frame: pd.DataFrame) -> pd.Series:
-    out = pd.to_datetime(frame["date"], errors="coerce", utc=True)
-    return out.dt.tz_convert("UTC")
+    return pd.to_datetime(frame["date"], errors="coerce", utc=True,
+                          format="mixed")
 
 
 def to_gw(dates: pd.Series, by_gw: dict[int, pd.Timestamp]) -> pd.Series:
-    """Each date's gameweek: the latest deadline on or before it, else NaN."""
+    """Each date's gameweek: the latest deadline day on or before it, else NaN.
+
+    Understat banks a bare day (``data/understat.py``'s ``.date()``), which
+    parses to midnight, so a deadline is compared by its day: a Friday opener
+    on deadline day is that gameweek's, not the one before.
+    """
     gws = sorted(by_gw)
-    marks = pd.Series([by_gw[g] for g in gws])
+    marks = pd.Series([by_gw[g].normalize() for g in gws])
     pos = marks.searchsorted(dates, side="right") - 1
     return pd.Series([gws[p] if p >= 0 else float("nan") for p in pos],
                      index=dates.index, dtype="float")
@@ -91,7 +96,7 @@ def _frame_cover(frame: pd.DataFrame | None, by_gw: dict,
             return {"rows": 0, "gws": [], "newest": None}
         frame = frame[frame["season"].astype(str) == season]
     dates = _dates(frame).dropna()
-    start = min(by_gw.values())
+    start = min(by_gw.values()).normalize()
     stop = max(by_gw.values()) + pd.Timedelta(days=SPAN_TAIL_DAYS)
     dates = dates[(dates >= start) & (dates <= stop)]
     gws = to_gw(dates, by_gw).dropna()
@@ -131,7 +136,9 @@ def understat_reading(team: pd.DataFrame | None, player: pd.DataFrame | None,
         end = _gw_end(gw, by_gw).tz_localize(None).normalize()
         gaps.append({"gw": gw, "days": int((day - end).days)})
     stale = [g for g in gaps if g["days"] >= GAP_DAYS]
-    if stale:
+    if team is None and player is None:
+        verdict = None
+    elif stale:
         verdict = ("the fallback earns a spec: no Understat rows for "
                    + ", ".join(f"GW{g['gw']} ({g['days']}d)" for g in stale))
     else:
