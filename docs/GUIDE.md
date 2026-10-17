@@ -707,9 +707,10 @@ One-time / rollover setup:
 - `gaffer calibrate-decisions` / `calibrate-injuries` / `calibrate-noise` —
   rebuild the committed calibration assets from replays and scrapes.
   `calibrate-decisions --start-gw N` (default 5);
-  `calibrate-injuries --clubs FILE`, a JSON file of {transfermarkt slug: club id} (default
-  `clubs.json`); `calibrate-noise --estimation` fits the estimation-only
-  sigma (K=5 seed-bagged ensemble spread) instead of the residual sigma,
+  `calibrate-injuries --clubs FILE`, a JSON file of
+  {transfermarkt slug: club id} (default `clubs.json`);
+  `calibrate-noise --estimation` fits the estimation-only sigma (K=5
+  seed-bagged ensemble spread) instead of the residual sigma,
   `--out PATH` says where to write the asset (point it at `reports/` to fit
   a candidate without replacing it), and `--force` overwrites a shipped
   estimation asset with a residual fit, refused without it

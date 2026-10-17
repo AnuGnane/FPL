@@ -86,11 +86,12 @@ def _options(name: str) -> list[str]:
 
 
 def _unnamed_options(options: list[str], text: str) -> list[str]:
-    # Inside any backticks of the section, `--n` not standing in for `--no-x`.
+    # Inside one backtick span of the section, `--n` not standing in for `--no-x`.
+    spans = re.findall(r"`([^`]*)`", text)
     return [
         option
         for option in options
-        if not re.search(rf"`[^`]*{re.escape(option)}(?![a-z0-9-])[^`]*`", text)
+        if not any(re.search(rf"{re.escape(option)}(?![a-z0-9-])", span) for span in spans)
     ]
 
 
