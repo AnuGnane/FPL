@@ -306,7 +306,9 @@ your note, checked mechanically so every number and every name in it is in
 the facts, with a *Write the brief* button; when no brief passed, the card
 falls back to the digest with the reason.
 
-**Planning** — the future. Six tabs:
+**Planning** — the future. Its `?tab=` values, in strip order:
+`?tab=timeline`, `?tab=board`, `?tab=whatif`, `?tab=drafts`, `?tab=chips`,
+`?tab=ticker`. Six tabs:
 - *Board* (v11): the solved horizon laid out week by week — buys, sells,
   prices, hits, chip, and the bank after each week. Price-change warnings
   ride each name. "Try these changes" hands a week to the What-If lab
@@ -343,7 +345,8 @@ falls back to the digest with the reason.
   any double/blank gameweeks in the published fixture list.
 - *Ticker*: the odds-implied fixture difficulty grid.
 
-**Players** — the evidence. Four tabs:
+**Players** — the evidence. Its `?tab=` values, in strip order:
+`?tab=explorer`, `?tab=compare`, `?tab=matrix`, `?tab=watchlist`. Four tabs:
 - *Explorer*: the full candidate pool with the "why 6.8?" breakdown behind
   every name, uncertainty ranges, haul/blank chips, a **Pin** button (set
   your own p_play/minutes for the week — applied over every other source),
@@ -361,6 +364,8 @@ falls back to the digest with the reason.
   including clearing it — stamps the row with the time you did it.
 
 **League** — every league you are in, and one of them drives the plan.
+Its `?tab=` values, in strip order: `?tab=leagues`, `?tab=race`,
+`?tab=rivals`, `?tab=whatif`.
 The *Leagues* tab (v15) lists your private mini-leagues with rank, size,
 last week's move, the gap to first or over second and what the dial *would*
 do there, marks the **focus** league — the one whose standings set λ — and
@@ -396,7 +401,9 @@ below you with what they need.
 
 **Model** — the mirror. Its header's Refresh data button runs the
 `refresh-data` job kind, which pulls the live season and re-writes the
-bootstrap snapshots. Seven tabs:
+bootstrap snapshots. Its `?tab=` values, in strip order: `?tab=quality`,
+`?tab=journal`, `?tab=review`, `?tab=season`, `?tab=history`, `?tab=health`,
+`?tab=settings`. Seven tabs:
 - *Quality*: holdout metrics, reliability curves (including calibration by
   gameweek — how good the probabilities the tool *actually served* were),
   your points vs the model's per gameweek, last week's biggest misses.
