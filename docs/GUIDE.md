@@ -631,7 +631,9 @@ The weekly core:
   first), the same body the web advise job runs with the train step on
 - `gaffer refresh` — pull latest FPL data
 - `gaffer train` — retrain all models
-- `gaffer ui` — `--lan` serves to your whole network and prints a QR code
+- `gaffer ui [--port N] [--open-browser/--no-open-browser]` — the port to
+  serve on (default 8927); opens the UI in your default browser on start.
+  `--lan` serves to your whole network and prints a QR code
   for your phone. Reads are open; **writes need a token** (v12), from
   `[web] token` in your config or generated and printed once per run. The QR
   carries it, so a phone that scans the code can write; a device you type the
@@ -642,7 +644,8 @@ Standing intelligence:
 
 - `gaffer prices` — tonight's likely price changes, banked
 - `gaffer snapshot` — bank today's availability state
-- `gaffer field-scrape [--gw N]` — bank the top-10k sample
+- `gaffer field-scrape [--gw N] [--force]` — bank the top-10k sample;
+  `--force` re-scrapes a gameweek already banked
 - `gaffer core-insights [--refresh N]` — ingest FPL-Core-Insights per-match
   stats, published cup and European fixtures and club Elo into
   `data/core_insights/`; the launchd job runs it twice a day (§7), and
@@ -654,17 +657,26 @@ Standing intelligence:
   the same body the web button and the web advise job run; never fails,
   a dead command or a brief that did not pass its check is one printed
   line and the card falls back to the digest
-- `gaffer league` / `gaffer live` / `gaffer league-sim [--seeds a,b,c]`
+- `gaffer league` / `gaffer live` / `gaffer league-sim [--seeds a,b,c]
+  [--n N] [--drift X]` — `--n` simulations per seed (default:
+  `league.sim_n`), `--drift` rival drift 0-1 (default: `league.rival_drift`)
 
 Evaluation and research:
 
 - `gaffer evaluate` — the full model scorecard
   (`--calibration` for served-probability reliability, `--news-shadow` for
-  the news layer's would-be effect)
+  the news layer's would-be effect, `--mode current|benchmark` for the
+  last-10-slot holdout or train <=2023-24, test 2024-25, `--decompose` to
+  run the {model,oracle} x {h1,h3} replay 2x2 instead, `--flag-latency` for
+  how much warning a status change gave before the deadline,
+  `--presser-grades` for the presser classifier's verdicts against who
+  actually started, `--season` and `--start-gw N`, default 5)
 - `gaffer backtest --season 2025-26 --horizon 6 --chips` — replay a season
-  following the tool's own advice
+  following the tool's own advice (`--start-gw N`, default 5)
 - `gaffer track-pens` — predicted penalty EP against penalties actually taken
-- `gaffer diagnose-zeros` — decompose the error on players who blanked
+- `gaffer diagnose-zeros [--holdout-slots N]` — decompose the error on
+  players who blanked; `--holdout-slots` is the gameweek slots to hold out
+  (default 10, the evaluation default)
 
 Housekeeping (v12):
 
@@ -693,7 +705,14 @@ One-time / rollover setup:
 - `gaffer build-history` — download the training seasons
 - `gaffer understat` / `gaffer cups` — auxiliary history ingestion
 - `gaffer calibrate-decisions` / `calibrate-injuries` / `calibrate-noise` —
-  rebuild the committed calibration assets from replays and scrapes
+  rebuild the committed calibration assets from replays and scrapes.
+  `calibrate-decisions --start-gw N` (default 5);
+  `calibrate-injuries --clubs FILE`, a JSON file of {transfermarkt slug: club id} (default
+  `clubs.json`); `calibrate-noise --estimation` fits the estimation-only
+  sigma (K=5 seed-bagged ensemble spread) instead of the residual sigma,
+  `--out PATH` says where to write the asset (point it at `reports/` to fit
+  a candidate without replacing it), and `--force` overwrites a shipped
+  estimation asset with a residual fit, refused without it
 
 ## 9. The data it collects and why
 
