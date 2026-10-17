@@ -51,7 +51,12 @@ from lightgbm.basic import LightGBMError
 from sklearn.isotonic import IsotonicRegression
 
 from gaffer.data import store
-from gaffer.models.minutes import ThreeModeModel
+from gaffer.models.minutes import (  # holiday F-81: one definition, in the model
+    STEP_BOUND,
+    ThreeModeModel,
+    _played,
+    out_of_fold,
+)
 from gaffer.models.train import (
     CALIBRATION_HOLDOUT_GWS,
     CALIBRATION_MIN_SLOTS,
@@ -63,9 +68,6 @@ N_BINS = 10
 LOG_GAIN = 0.001
 BIN_SLACK = 0.01
 """The pre-registered pass rule (holiday F-17's default)."""
-
-STEP_BOUND = 1e-3
-"""The isotonic step's floor and ceiling, part of the pre-registration."""
 
 EPS = 1e-6
 """Probabilities are clipped to ``[EPS, 1 - EPS]`` for the log loss only, so
@@ -99,31 +101,6 @@ def split_holdout(df: pd.DataFrame
     if train.empty or hold.empty:
         return None
     return train.reset_index(drop=True), hold.reset_index(drop=True)
-
-
-def _played(rows: pd.DataFrame) -> np.ndarray:
-    mins = pd.to_numeric(rows["minutes"], errors="coerce").fillna(0.0)
-    return (mins > 0).to_numpy(dtype="float64")
-
-
-def out_of_fold(train: pd.DataFrame, cols: list[str]
-                ) -> tuple[np.ndarray, np.ndarray, int]:
-    """Each training season's ``p_play`` from a minutes fit on every other
-    training season. A season with nothing else to fit on is left out of the
-    step's fit rather than predicted in-sample."""
-    preds, ys, folds = [], [], 0
-    for season in sorted(train["season_idx"].unique()):
-        rest = train[train["season_idx"] != season]
-        if rest.empty:
-            continue
-        rows = train[train["season_idx"] == season]
-        p = ThreeModeModel(cols).fit(rest).predict(rows)["p_play"]
-        preds.append(p.to_numpy(dtype="float64"))
-        ys.append(_played(rows))
-        folds += 1
-    if not folds:
-        return np.empty(0), np.empty(0), 0
-    return np.concatenate(preds), np.concatenate(ys), folds
 
 
 def _log_loss(p: np.ndarray, y: np.ndarray) -> float:
@@ -185,7 +162,7 @@ def pplay_reading(df: pd.DataFrame | None,
     raw = (ThreeModeModel(cols).fit(train).predict(hold)["p_play"]
            .to_numpy(dtype="float64"))
     y = _played(hold)
-    oof_p, oof_y, folds = out_of_fold(train, cols)
+    oof_p, oof_y, folds = out_of_fold(train, cols, ThreeModeModel)
     step = None
     if folds:
         iso = IsotonicRegression(y_min=STEP_BOUND, y_max=1 - STEP_BOUND,
