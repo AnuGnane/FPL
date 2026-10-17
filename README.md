@@ -399,9 +399,10 @@ cd frontend && npm run check                          # 1201 tests, types, drift
 The golden gate replays one recorded gameweek through the whole weekly solve in
 a frozen directory and compares the advice, the solve state and the ladder byte
 for byte with committed files. Run it with `-rs`: a stale board *skips*, and the
-skip line names the file. **0 skipped is the pass.** Read vitest's
-`Errors  N error` line as a failure — an unhandled rejection does not change
-its exit code.
+skip line names the file. **0 skipped is the pass.** vitest's
+`Errors  N error` line fails `npm run check` on its own: vitest 2 (the lock
+pins 2.1.9) exits 1 on an unhandled rejection even when every test passes, so
+the check's exit code is the verdict (proved in holiday F-74).
 
 A large share of the Python suite is *degradation rails*: tests that pin the
 honesty rules and the counts a later change must not move silently — API routes
