@@ -3,6 +3,7 @@
 ROADMAP candidate 7, in F-87's shape (``tests/test_guide_scripts.py``): both
 docs name all of ``gaffer --help``'s commands today, but nothing held the
 rule, so the next command could go unnamed. Membership only, no count.
+Since F-105 every option of every command is held to §8 the same way.
 """
 
 from __future__ import annotations
@@ -70,3 +71,45 @@ def test_a_readme_missing_one_commands_row_fails_the_rail():
     readme = _readme_section()
     row = next(line for line in readme.splitlines() if line.startswith("| `gaffer tidy"))
     assert _unnamed(_commands(), readme.replace(row + "\n", "")) == ["tidy"]
+
+
+# An option row of a command's Options box: the long name follows the border,
+# after an optional `*` (required) and short flag; the `--no-x` of a pair sits
+# later on the same row, so only `--x` is read (holiday F-105).
+_OPTION = re.compile(r"^│ (?:\* )?\s*(?:-[a-zA-Z],?\s+)?(--[a-z][a-z0-9-]*)", re.MULTILINE)
+
+
+def _options(name: str) -> list[str]:
+    result = CliRunner().invoke(app, [name, "--help"])
+    assert result.exit_code == 0, name
+    return [o for o in _OPTION.findall(_plain(result.output)) if o != "--help"]
+
+
+def _unnamed_options(options: list[str], text: str) -> list[str]:
+    # Inside any backticks of the section, `--n` not standing in for `--no-x`.
+    return [
+        option
+        for option in options
+        if not re.search(rf"`[^`]*{re.escape(option)}(?![a-z0-9-])[^`]*`", text)
+    ]
+
+
+def test_help_lists_the_options_this_rail_reads():
+    assert "--open-browser" in _options("ui")
+    assert "--no-open-browser" not in _options("ui")
+
+
+def test_every_cli_option_is_named_in_guide_section_eight():
+    section = _guide_section()
+    missing = {
+        name: unnamed
+        for name in _commands()
+        if (unnamed := _unnamed_options(_options(name), section))
+    }
+    assert missing == {}
+
+
+def test_a_section_missing_one_options_mention_fails_the_rail():
+    section = _guide_section()
+    assert "`--lan` serves" in section
+    assert _unnamed_options(["--lan"], section.replace("`--lan` serves", "serves")) == ["--lan"]
