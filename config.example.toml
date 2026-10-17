@@ -45,6 +45,13 @@ xg_per_shot = false
 # --fast` and the UI's Fast advise button do that per-run without editing this.
 n = 40               # gate D1: gated replay 1818 vs raw 1743 (+75), fewer transfers and hits
 decision_priors = true
+# The sweep's base seed; each gameweek draws from seed + gw, so a rerun of
+# the same week draws the same scenarios.
+# seed = 20260825
+# The share of scenarios a move must appear in to clear: a free transfer at
+# transfer_threshold, a hit or a chip (irreversible) at irreversible_threshold.
+# transfer_threshold = 0.60
+# irreversible_threshold = 0.75
 # Per scenario, draw whether each player turned out at all (Bernoulli on the
 # minutes model's p_play) before the EP noise is applied. "Did he play" is
 # most of FPL's forecast error, and a sweep that only widened the EP band was
@@ -56,11 +63,25 @@ draw_availability = true
 
 [odds]
 # api_key = "get one free at the-odds-api.com (500 requests/month)"
+# Anytime-goalscorer props for the next gameweek's fixtures, blended into the
+# model's e_goals; skipped without a key, and a failed fetch costs only the blend.
+# player_props = true
+# The market's share of e_goals on a row it priced (the model keeps 1 - w).
+# ags_blend_weight = 0.5
+
+[understat]
+# Understat's xG history behind `gaffer understat`; false skips the fetch.
+# enabled = true
 
 [league]
 # League mode is gated by fpl.league_id, not by a switch here: set that and
 # the tilt turns on. These are its dials, and every one of them ships at the
 # value below — this section exists to name them, not to change them.
+# focus: a private league id that wins over fpl.league_id when set and
+# non-zero (v15 §3.1); the League page writes it through config.local.toml.
+# focus = 0
+# stance: "auto" lets the dial set λ; chase, defend and neutral pin it.
+# stance = "auto"
 z_scale = 1.5             # points of gap per unit of z before the tilt moves
 lambda_cap = 0.5          # the most the tilt may ever bend the board
 sigma_floor = 8.0         # weekly points sigma the gap is measured in...
