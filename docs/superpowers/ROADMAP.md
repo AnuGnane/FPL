@@ -8,7 +8,7 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-10-16)
+## Where things stand (2026-10-17)
 
 **The model cycle, v20, is open.** v20a closed on 2026-10-13: `role`
 stays, because Δ = mean(off − on) = +9.2 is inside 2·SE = 41.1 at K = 5. No
@@ -24,9 +24,9 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-90
-except F-81, which is open as `needs-mac` PR #107; F-77, the other
-`needs-mac` package, has merged, and F-91 and F-92 wait on F-81.
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-100
+except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #107, and
+F-91 and F-92 wait on it; F-77, the other `needs-mac` package, has merged.
 `HOLIDAY.md` is the record. Pins: routes
 52 (`tests/test_v11_degradation.py`), job kinds 12
 (`tests/test_v12_w1_degradation.py`), `Config` 62
@@ -37,7 +37,13 @@ names as sentences (`tests/test_test_names.py`, F-73), whose allowlist is
 empty since F-76. Two more rails came after: F-87's `tests/test_guide_scripts.py` fails
 when a script outside `scripts/archive/` goes unnamed in the GUIDE, and
 F-89's `tests/test_pulp_filters.py` fails the suite when PuLP 4 arrives,
-naming the migration the four filters defer.
+naming the migration the four filters defer. Four more hold the docs to
+the code: F-96's `tests/test_guide_jobs.py` (every job kind in the GUIDE),
+F-97's `tests/test_launchd_tables.py` (every plist's fire times in both
+launchd tables), F-99's `frontend/src/kit/guideTabs.test.ts` (every
+hub's `?tab=` value in GUIDE §5) and F-100's `tests/test_guide_commands.py`
+(every CLI command in GUIDE §8 and the README).
+
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
@@ -780,8 +786,9 @@ models (spec §10). Spec `2026-09-07-v17d-pipeline-design.md`, plan
 `Config` 59); Python 4317 → **4329**, frontend 923 unchanged. Left open:
 the brief's failure note can print twice in `logs/advise.log` (as
 `gaffer brief` already does); `advise.py`'s docstring still says "the
-whole weekly pipeline"; `models/` has no backup until `com.gaffer.backup`
-is installed.
+whole weekly pipeline"; ~~`models/` has no backup until `com.gaffer.backup`
+is installed~~ (closed: the install box records `backup` loaded on
+2026-09-14, holiday F-101).
 
 ### v17c — the golden board harness (done, merged `ee02520` 2026-09-08)
 The gate for v17d–v17g: `tests/test_golden_board.py` runs `run_advise` over
