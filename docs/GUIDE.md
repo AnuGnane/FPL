@@ -1386,10 +1386,19 @@ code: F-96's `tests/test_guide_jobs.py` (every job kind), F-97's
 `tests/test_launchd_tables.py` (every plist's fire times in both launchd
 tables), F-99's `frontend/src/kit/guideTabs.test.ts` (every hub's `?tab=`
 value in §5) and F-100's `tests/test_guide_commands.py` (every CLI command
-in §8 and the README). The holiday queue has merged F-1 to
-F-100 except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #107,
-and F-91 and F-92 wait on it; F-77, the other `needs-mac` package, has
-merged.
+in §8 and the README). Seven more came after: F-102's
+`tests/test_guide_routes.py` (every API route in §5), F-103's
+`tests/test_config_example.py` (every key `load_config` reads in
+`config.example.toml`), F-104's `tests/test_readme_config.py` (`Config`'s
+defaults in the README), F-105's option test in
+`tests/test_guide_commands.py` (every CLI option in §8), F-106's
+`tests/test_readme_modules.py` (every module in the README), F-107's
+`tests/test_doc_paths.py` (every file path the docs name) and F-108's
+widened `tests/test_guide_anchors.py` (in-page links in the README as
+well as here). The holiday queue has merged F-1 to F-108 except F-81,
+F-91 and F-92: F-81 is open as `needs-mac` PR #134 (#107 relanded
+linear), and F-91 and F-92 wait on it; F-77, the other `needs-mac`
+package, has merged.
 `HOLIDAY.md` is the record.
 
 ## 12. What is pending and what was left open
@@ -1410,9 +1419,9 @@ v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-86's `TRACE_GAP` the latest, are listed in §12.5
 "The readings" and collected by `scripts/v20_appendix.py`. The holiday
 queue has merged F-1 to
-F-100 except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #107,
-and F-91 and F-92 wait on it; F-77, the other `needs-mac` package, has
-merged. `HOLIDAY.md` is the record. Pins: routes 52
+F-108 except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #134
+(#107 relanded linear), and F-91 and F-92 wait on it; F-77, the other
+`needs-mac` package, has merged. `HOLIDAY.md` is the record. Pins: routes 52
 (`tests/test_v11_degradation.py`), job kinds 12
 (`tests/test_v12_w1_degradation.py`), `Config` 62
 (`tests/test_v13_degradation.py`).
