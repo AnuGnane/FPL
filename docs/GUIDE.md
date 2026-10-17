@@ -1322,7 +1322,8 @@ are the replay's lever log lines (F-14, F-64) and the head-half scripts for v20c
 Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-86's `TRACE_GAP` the latest, are listed in §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday
+queue has merged F-1 to
 F-100 except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #107,
 and F-91 and F-92 wait on it; F-77, the other `needs-mac` package, has
 merged. `HOLIDAY.md` is the record. Pins: routes 52

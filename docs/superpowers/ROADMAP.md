@@ -44,7 +44,6 @@ launchd tables), F-99's `frontend/src/kit/guideTabs.test.ts` (every
 hub's `?tab=` value in GUIDE §5) and F-100's `tests/test_guide_commands.py`
 (every CLI command in GUIDE §8 and the README).
 
-
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
 rulings on 2026-09-15; plan `plans/2026-09-15-v19-programme.md`; tracker
