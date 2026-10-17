@@ -279,6 +279,8 @@ sentence telling you where your pick stands against the top-10k field
 armband, the run's own half-sentence saying why (v12 W5); the chip planner's
 best week per
 chip; the Friday/Tuesday digest cards; a re-run button (full or `--fast`).
+The fast one is the `advise-fast` job kind: the same run with the scenario
+sweep off.
 An **EO lens** toggle tints the pitch by how owned each player is; a
 **Table** toggle returns the dense squad table. Under the moves card sits
 the **transfer ladder** (v13): one row per rung of hits with the moves, the
@@ -392,7 +394,9 @@ provisional bonus reconstructed from BPS, a race chart of where your score
 is heading against the pre-gameweek plan, and the league places above and
 below you with what they need.
 
-**Model** — the mirror. Seven tabs:
+**Model** — the mirror. Its header's Refresh data button runs the
+`refresh-data` job kind, which pulls the live season and re-writes the
+bootstrap snapshots. Seven tabs:
 - *Quality*: holdout metrics, reliability curves (including calibration by
   gameweek — how good the probabilities the tool *actually served* were),
   your points vs the model's per gameweek, last week's biggest misses.
@@ -537,8 +541,8 @@ is why this one is scheduled twice a day. To pull a week the publisher
 corrected after it went final, run `gaffer core-insights --refresh 3` — the
 last three gameweeks of each season, cache ignored.
 
-Check with `launchctl list | grep com.gaffer`. Everything else — sensitivity
-sweeps, news-shadow evaluation, snapshots on demand — runs from UI buttons.
+Check with `launchctl list | grep com.gaffer`. Everything else — `sensitivity`
+sweeps, `news-shadow` evaluation, snapshots on demand — runs from UI buttons.
 
 launchd says whether a job is loaded but not when it next fires, so
 `scripts/automation_status.py` (holiday F-5) reads each plist's calendar and
