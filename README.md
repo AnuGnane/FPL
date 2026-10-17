@@ -444,7 +444,7 @@ morning it matters.
   - `watchlist.py` — the players the manager is keeping an eye on
   - `zeros_diagnostic.py` — where the zeros-stratum error actually lives
   - and the eight sub-packages: `api/` (the FPL client), `assets/`
-    (calibration), `data/` (ingestion), `features/`, `models/`,
+    (shipped data files), `data/` (ingestion), `features/`, `models/`,
     `optimize/` (the MILP), `report/` (rendering), `web/` (FastAPI).
 - `frontend/` — React and Vite source; the build lands in
   `src/gaffer/web/static/` (untracked, shipped in the wheel).
