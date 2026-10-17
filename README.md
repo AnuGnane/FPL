@@ -193,6 +193,7 @@ decision_priors = true
 
 [data]
 train_seasons = ["2022-23", "2023-24", "2024-25", "2025-26"]
+                     # what this tree trains on; the field defaults to []
 current_season = "2026-27"
 ```
 
