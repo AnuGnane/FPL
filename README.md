@@ -304,7 +304,7 @@ and changes nothing.
 | Thu 18:00 | `com.gaffer.advise` | `prices`, then `train`, then `advise` (which chains the brief). Logs to `logs/prices.log` and `logs/advise.log`. |
 | Nightly 23:15 | `com.gaffer.prices` | Banks every player's price-predictor reading. Local time, for a UK-midnight event: adjust `scripts/com.gaffer.prices.plist` if you are not on UK time. |
 | Daily 17:00 | `com.gaffer.snapshot` | Banks the day's availability state. |
-| Sat & Sun 12:30 | `com.gaffer.field` | Samples ~300 top-10k squads an hour after the deadline; banks their EO. |
+| Sat & Sun 18:30 | `com.gaffer.field` | Samples ~300 top-10k squads; banks their EO. |
 | Tue 09:00 | `com.gaffer.review` | Grades every gameweek FPL has finalised into the decision ledger. |
 | Fri 17:00 | `com.gaffer.digest-friday` | The briefing, after the pressers and before the deadline. |
 | Tue 09:30 | `com.gaffer.digest-tuesday` | The debrief, half an hour after the review has banked. |
