@@ -441,8 +441,9 @@ three-player XIs (178 → 118 KB); six closed-cycle drivers under
 58 passed, 0 skipped. Python 4496 → **4509**; frontend 1098 untouched; pins
 51 / 12 / 62. Left open: the PuLP 4 migration the filters defer (now
 named: `tests/test_pulp_filters.py` fails the suite when PuLP 4 arrives,
-holiday F-89, PR #116); the four
-singleton warnings; `test_advise.py` at 3.4 s is the next slow file.
+holiday F-89, PR #116); ~~the four
+singleton warnings~~ (closed at source by holiday F-22, the two off the
+golden path, and F-24); `test_advise.py` at 3.4 s is the next slow file.
 
 ### v18f — the surface, correct to the hand (done, merged `bf84d7c` 2026-09-14)
 Six components cut at their seams as pure moves (`QualityTab` 1060 → 546,
@@ -463,7 +464,8 @@ effects trip it and each fix is a behaviour change under the pixel gate.
 Gate: twelve pairs byte-identical against a same-time control; four new
 token rules each mutation-tested live; check exit 0 with zero errors; 1058
 → 1098 frontend tests; recharts 0 in both entry chunks. Python 4496
-untouched; pins 51 / 12 / 62. Left open: the eight warnings; ~~Tailwind's
+untouched; pins 51 / 12 / 62. Left open: ~~the eight warnings~~ (closed in
+v19h, pinned at zero by `--max-warnings 0`); ~~Tailwind's
 scanner regenerating the two retired classes from the rail's own patterns~~
 (closed: `theme.css` leaves the test files out of the scan, holiday F-88,
 PR #115).
@@ -484,9 +486,11 @@ first as the control (`8db1259`) — no hub asks for more; the Model walk's
 → 1; twelve screenshot pairs byte-identical against a same-time control
 (the first control differed by the clock alone); the nine-row 500/404
 table; the grep lists Live alone. Frontend 988 → 1058 (+1 skipped); Python
-4496 untouched; pins 51 / 12 / 62. Left open: the Players matrix tab's
+4496 untouched; pins 51 / 12 / 62. Left open: ~~the Players matrix tab's
 double fetch before the gameweek is known; a sentence for `FixtureTicker`'s
-cold clone (v18f).
+cold clone (v18f)~~ (closed in v19b §2.6: `FixtureMatrix` fetches nothing
+until the gameweek is known, and the ticker's cold clone is an empty state
+rather than an error).
 
 ### v18d — the core out of the web layer (done, merged `b94fbc4` 2026-09-14)
 Nothing under `src/gaffer` outside `web/` imports the web layer except the
@@ -507,9 +511,11 @@ mutation-tested live. Two rulings: the what-if validators stay in the router
 (a core copy would import the schemas) and went public; rail 1 exempts the
 two surfaces whole. Gate: golden 58 passed, 0 skipped, three times, fixture
 untouched; routes 51; types check silent. Suite 4496 Python (4438 without
-the golden), 988 frontend; pins 51 / 12 / 62. Left open: four private
+the golden), 988 frontend; pins 51 / 12 / 62. Left open: ~~four private
 reaches the spec did not name (`_history_stamp`, `_code_of_element`,
-`_source_of`, `_cached_get`), for v18g.
+`_source_of`, `_cached_get`), for v18g~~ (closed: holiday F-8 made
+`journal.code_of_element` and `data.cups.cached_get` public; F-28 made
+`artifacts.history_stamp` and `config.source_of` public).
 
 ### v18c — measurement that has never run (done, merged `dfb0984` 2026-09-12)
 The calibration report had said "no graded gameweeks" since 2026-09-01
