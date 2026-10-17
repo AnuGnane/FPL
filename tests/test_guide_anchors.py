@@ -4,6 +4,9 @@ The contents line for §11 pointed at ``#11-the-version-history-v1-to-v19f``
 for two cycles after the heading moved to v19h, so the link went nowhere and
 nothing failed. Each ``](#…)`` link is checked against the GitHub slug of
 every heading, so the next renumbering fails the gate instead of the reader.
+
+F-108 widened the rail to ``README.md``, whose contents line carries eleven
+such links no test read.
 """
 
 from __future__ import annotations
@@ -11,7 +14,10 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 GUIDE = Path("docs/GUIDE.md")
+README = Path("README.md")
 
 
 def _slug(heading: str) -> str:
@@ -54,9 +60,22 @@ def test_a_repeated_heading_takes_a_numbered_suffix():
     assert _anchors("## Gate\n\n## Gate\n") == {"gate", "gate-1"}
 
 
-def test_every_in_page_link_resolves_to_a_heading():
-    text = GUIDE.read_text()
+def _unresolved(text: str) -> list[str]:
+    """Each ``](#…)`` link in the text that names no heading in it; the
+    text must carry at least one link, so an emptied file cannot pass."""
     links = re.findall(r"\]\(#([^)]+)\)", text)
     assert links
     anchors = _anchors(text)
-    assert [link for link in links if link not in anchors] == []
+    return [link for link in links if link not in anchors]
+
+
+@pytest.mark.parametrize("path", [GUIDE, README], ids=["guide", "readme"])
+def test_every_in_page_link_resolves_to_a_heading(path):
+    assert _unresolved(path.read_text()) == []
+
+
+def test_a_readme_link_to_a_missing_heading_fails_the_rail():
+    """F-108: the README case bites, on a contents line shaped like its own."""
+    text = ("# gaffer\n\n**Contents:** [Commands](#commands) ·\n"
+            "[Tests](#tests)\n\n## Commands\n")
+    assert _unresolved(text) == ["tests"]
