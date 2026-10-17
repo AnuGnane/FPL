@@ -373,6 +373,79 @@ morning it matters.
   (the `ServedPlan` the advice JSON *is*), `pipeline.py` (the one weekly run),
   `config.py` (the one config reader), `ladder.py`, `brief.py`, `optimize/`,
   `models/`, `features/`, `web/`.
+  The package, module by module:
+  - `advise.py` — weekly advice, everything from a cold start to a JSON payload
+  - `artifacts.py` — the on-disk artifacts the local web UI reads
+  - `availability_eval.py` — grading the availability layer's inputs: flags,
+    and the verdicts on them
+  - `backtest.py` — season replay: what the tool would have scored, week by week
+  - `backup.py` — `gaffer backup`, one tar of the things no command can rebuild
+  - `brief.py` — the brief, written by an LLM from a facts document and checked
+    mechanically before it is banked
+  - `calibrate_decisions.py` — offline calibration for the v4c decision tables
+  - `calibrate_injuries.py` — offline calibration for the v5 injury-return
+    curves
+  - `calibrate_noise.py` — offline calibration of the scenario sweep's noise
+    scale
+  - `cli.py` — the `gaffer` command line
+  - `clock.py` — the one UTC day key the daily logs share
+  - `confidence.py` — confidence framing, derived from the banked record and
+    nothing else
+  - `config.py` — the one config reader (`config_in_force()`, the one cached
+    view)
+  - `decisions.py` — the deviation note: why the manager did something other
+    than the advice, one note per gameweek
+  - `difficulty.py` — how hard a fixture is, rated once for everyone
+  - `digest.py` — the Friday briefing and the Tuesday debrief
+  - `drafts.py` — `reports/drafts.json`, named what-if constraint sets
+  - `errors.py` — errors the user is meant to read
+  - `evaluation.py` — the standing evaluation harness: how good the model is,
+    on what yardstick
+  - `inputs.py` — the frozen seam between `gather_inputs` and `build_advice`
+  - `io.py` — one atomic write, for the places that were doing it themselves
+  - `journal.py` — the decision journal: the model's plan against the one you
+    actually played
+  - `ladder.py` — the transfer ladder, its rungs and restraint
+  - `league_mode.py` — rank-aware strategy for the mini-league
+  - `league_sim.py` — the mini-league Monte Carlo: who actually wins this thing
+  - `live_gw.py` — in-gameweek tracking: live points for me and for the
+    mini-league
+  - `mcp_server.py` — `gaffer mcp`, this tree readable by Claude Code over stdio
+  - `misses.py` — the week's biggest forecast errors, joined from two banked
+    artifacts
+  - `news_shadow.py` — gate N2's instrumentation: what the news layer changed,
+    banked weekly
+  - `overrides.py` — user overrides: the manager's own team news, and the last
+    word on minutes
+  - `pen_tracker.py` — the v6 penalty term measured forward: takers predicted
+    against pens taken
+  - `pipeline.py` — the one weekly run: train, advise, render, brief
+  - `price_log.py` — the daily price bank: FPL's own predictor, kept instead of
+    printed
+  - `price_timing.py` — tonight's price fall per owned player, for the
+    objective's timing term
+  - `prices.py` — imminent price changes among watched players, from FPL's
+    official predictor fields
+  - `refresh.py` — the body of the `refresh-data` job kind
+  - `review.py` — the decision loop: grading what I did against what the model
+    said in time
+  - `sensitivity.py` — how much of this week's plan is the forecast, and how
+    much is its error
+  - `served.py` — the `ServedPlan` the advice JSON *is*
+  - `set_pieces.py` — penalty-taker expected points, priced at prediction time
+  - `snapshot.py` — the daily availability snapshot: what the news said,
+    stamped with the day
+  - `tidy.py` — `gaffer tidy`, the three kinds of file that pile up and are
+    safe to lose
+  - `trace.py` — why the plan makes each move
+  - `tracking.py` — model-health tracking: stored predictions against realised
+    points
+  - `uncertainty.py` — EP bands and haul/blank probabilities
+  - `watchlist.py` — the players the manager is keeping an eye on
+  - `zeros_diagnostic.py` — where the zeros-stratum error actually lives
+  - and the eight sub-packages: `api/` (the FPL client), `assets/`
+    (calibration), `data/` (ingestion), `features/`, `models/`,
+    `optimize/` (the MILP), `report/` (rendering), `web/` (FastAPI).
 - `frontend/` — React and Vite source; the build lands in
   `src/gaffer/web/static/` (untracked, shipped in the wheel).
 - `data/` — downloaded and derived datasets, gitignored but for
