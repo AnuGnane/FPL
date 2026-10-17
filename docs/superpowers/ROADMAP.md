@@ -638,8 +638,9 @@ which is what `invalidatePrefix` exists for. Spec
 implementer with an Opus spec-and-code review between. Pins: routes 51, job
 kinds 12, `Config` 62 — none moved, no schema change, no server change.
 Python 4425 unchanged; frontend 926 → **986**. Left open: ~~`WhyPanel`'s
-guard~~ (closed: kept and pinned by a test, holiday F-98), and the source-scan half of the invalidation rail cannot see a call on
-the wrong branch (stated in its own docstring, which is why the guarded case
+guard~~ (closed: kept and pinned by a test, holiday F-98), and the
+source-scan half of the invalidation rail cannot see a call on the wrong
+branch (stated in its own docstring, which is why the guarded case
 has two behavioural tests).
 
 ### v17g — `build_advice` as a pure module (done, merged `0efa90b` 2026-09-09)

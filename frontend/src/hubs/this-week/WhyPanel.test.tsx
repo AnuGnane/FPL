@@ -289,9 +289,11 @@ describe('the retrain movers line', () => {
     await screen.findByText('Salah')
     expect(screen.queryByText(/moved/)).not.toBeInTheDocument()
   })
+})
 
-  // Holiday F-98: the guard is unreachable from This Week, whose codes are
-  // never empty, so this pins it; a panel asked about nobody fetches nothing.
+// Holiday F-98: the guard is unreachable from This Week, whose codes are
+// never empty, so this pins it; a panel asked about nobody fetches nothing.
+describe('WhyPanel with no players', () => {
   it('renders nothing and fetches nothing when asked about no players', () => {
     const { container } = render(
       <MemoryRouter><WhyPanel gw={5} codes={[]} /></MemoryRouter>)
