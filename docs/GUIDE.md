@@ -441,6 +441,72 @@ bootstrap snapshots. Its `?tab=` values, in strip order: `?tab=quality`,
   named rather than dropped. The note under the form is the server's own
   sentence about what a save reaches.
 
+### The routes behind the hubs
+
+Every path `gaffer ui` serves, as OpenAPI spells it (holiday F-102), each line
+read from the router that defines it under `src/gaffer/web/routers/` (or
+`web/app.py` for the ping). The total stays pinned in
+`tests/test_v11_degradation.py`; `tests/test_guide_routes.py` holds that every
+path is named here, and only the table rows name them in backticks, so a row
+removed fails it. The POSTs that run something (the question box, the brief,
+the ladder rebuild, the drafts' compare and the What-If Lab) answer 202 with a
+job id and run as anonymous jobs, not `JOB_KINDS` entries.
+
+| Path | Method | What it serves | Read by |
+|---|---|---|---|
+| `/api/ping` | GET | `{"ok": true, "app": "gaffer"}`, the liveness check | none (a probe) |
+| `/api/advice/latest` | GET | the saved advice payload and its staleness | This Week, Planning, Players |
+| `/api/advice/diff` | GET | the "since last run" strip; with `a` and `b`, one week's newest plan against another's (v19e §2.1) | This Week, Model (History) |
+| `/api/ask` | POST | one question about this week, answered from the brief's facts (v19f §2.2) | This Week |
+| `/api/assets/shirt/{team_code}` | GET | one team's kit, cached locally; the keeper's is its own file | the player card |
+| `/api/assets/photo/{player_code}` | GET | one player's face, cached locally | the explain modal |
+| `/api/brief` | GET, POST | the newest brief or the digest to fall back on; POST writes one now | This Week |
+| `/api/chips` | GET | the chip workbench's read model | Planning (Chips) |
+| `/api/components/{gw}` | GET | the saved EP decomposition | This Week, Players (compare) |
+| `/api/digest` | GET | the newest of the two banked digests | This Week |
+| `/api/confidence` | GET | what the banked record entitles the tool to claim | This Week |
+| `/api/decisions/{gw}` | GET, POST | the deviation note (v16 §5) | This Week |
+| `/api/drafts` | GET, POST | named constraint sets; a save is validated against today's pool | Planning (Drafts) |
+| `/api/drafts/{name}` | DELETE | removes one draft | Planning (Drafts) |
+| `/api/drafts/compare` | POST | the drafts' side-by-side re-solve | Planning (Drafts) |
+| `/api/fixtures/matrix` | GET | the classic fixture grid, priced by the trained model | Players |
+| `/api/fixtures/outlook` | GET | doubles and blanks in the season ahead, read off the published fixture list (v10b §F2a) | Planning |
+| `/api/jobs/{kind}` | POST | starts one of the standing job kinds; 404 names the allowed ones | every hub's run button |
+| `/api/jobs/current` | GET, DELETE | the job running now (204 when none); DELETE frees its lane (v9c) | every hub's run button, This Week |
+| `/api/jobs/{job_id}` | GET | one job's status | every hub's run button |
+| `/api/jobs/{job_id}/stream` | GET | every captured line as an event, then `end` | the job log |
+| `/api/journal` | GET | the decision journal | Model (Journal) |
+| `/api/ladder` | GET, POST | the transfer ladder (v13 §3.2); POST rebuilds it | This Week |
+| `/api/news/{gw}` | GET | what the news layer moved | This Week |
+| `/api/overrides` | GET, POST | the user's own team news; POST pins one | This Week, Planning, Players |
+| `/api/overrides/{code}` | DELETE | unpins one | Planning |
+| `/api/plan/{gw}` | GET | the served plan, shaped for the board | Planning |
+| `/api/league/leagues` | GET | every league the entry is in, with or without a focus (v15 §5.1) | League, This Week, Model (Settings) |
+| `/api/league/race` | GET | the league race | League |
+| `/api/league/rivals` | GET | the rivals' summaries | League |
+| `/api/league/rivals/{entry_id}` | GET | one rival's intel | League |
+| `/api/league/sim` | GET | the simulated league: P(win), P(top 3) | League |
+| `/api/league/whatif` | POST | the league re-run with this week's events pinned, apart from the squad What-If Lab | League, This Week |
+| `/api/live` | GET | the live gameweek, straight off `live_gw` | Live |
+| `/api/chips/plan` | GET | the chip planner, priced in raw points | Planning |
+| `/api/history` | GET | past runs, expected against actual, and prices | Model (History) |
+| `/api/meta/freshness` | GET | when each of the seven standing jobs last wrote something (v12 W1 §2.9) | Model, the freshness strip |
+| `/api/health` | GET | data freshness, model ages and the rest of the Health tab | Model (Health), Planning (Ticker) |
+| `/api/fixtures/ticker` | GET | the fixture ticker, a shape adapter over `gaffer.difficulty` (v18d §2) | Planning |
+| `/api/misses` | GET | the biggest forecast errors of the last scored week | Model (Quality) |
+| `/api/players` | GET | the player browser's rows | Players, This Week, Planning, Model |
+| `/api/players/{code}/explain` | GET | the "why 6.8?" explanation for one player | the explain modal |
+| `/api/prices/movers` | GET | tonight's price changes among watched players | Planning |
+| `/api/quality` | GET | the Model Quality page; 422 with the `gaffer evaluate` sentence when unevaluated | Model (Quality) |
+| `/api/model/calibration` | GET | the banked calibration report, or an honest empty one | Model (Quality, Season) |
+| `/api/pens` | GET | the penalty tracker artifact, read off disk | Model (Quality) |
+| `/api/review` | GET | the banked decision ledger | Model (Review, Season, Quality) |
+| `/api/sensitivity` | GET | the banked robustness report for this week's board | Planning |
+| `/api/settings` | GET, POST | the fourteen settings the UI may edit; POST writes `config.local.toml` | Model (Settings), League, This Week |
+| `/api/watchlist` | GET, POST | the players the manager is watching; POST stars one | Players |
+| `/api/watchlist/{code}` | DELETE | unstars one | Players |
+| `/api/whatif` | POST | the What-If Lab: the saved MILP re-solved under the user's constraints | Planning |
+
 ## 6. Your week with the tool
 
 Assuming the automation is installed (§7), a normal week is mostly reading:
