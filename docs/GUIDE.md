@@ -1468,7 +1468,20 @@ defaults in the README), F-105's option test in
 `tests/test_readme_modules.py` (every module in the README), F-107's
 `tests/test_doc_paths.py` (every file path the docs name) and F-108's
 widened `tests/test_guide_anchors.py` (in-page links in the README as
-well as here). The holiday queue has merged F-1 to F-108 except F-81,
+well as here). Ten more came after: F-110's `tests/test_doc_pins.py` (the pins the docs
+quote match the rails that hold them), F-111's `tests/test_guide_switches.py`
+(every v20 switch Health lists, named in this guide), F-112's widened
+`tests/test_doc_paths.py` (`CLAUDE.md`'s paths as well), F-113's default test
+in `tests/test_config_example.py` (every commented default in
+`config.example.toml` equals `Config`'s), F-114's `tests/test_guide_mcp.py`
+(every tool `gaffer mcp` serves, in §8), F-115's command test in
+`tests/test_launchd_tables.py` (every plist's `gaffer` command in both
+launchd tables), F-116's `tests/test_frontend_paths.py` (every `/api/` path
+the frontend fetches is one the server serves), F-117's
+`tests/test_guide_data_files.py` (every data file the code spells, in §9),
+F-118's `tests/test_readme_frontend.py` (the frontend's directories and hubs
+in the README) and F-119's `tests/test_ci_gates.py` (CI runs every gate line
+`CLAUDE.md` names). The holiday queue has merged F-1 to F-119 except F-81,
 F-91 and F-92: F-81 is open as `needs-mac` PR #134 (#107 relanded
 linear), and F-91 and F-92 wait on it; F-77, the other `needs-mac`
 package, has merged.
@@ -1476,7 +1489,7 @@ package, has merged.
 
 ## 12. What is pending and what was left open
 
-**As of 2026-10-17, the model cycle, v20, is open.** v20a closed on
+**As of 2026-10-18, the model cycle, v20, is open.** v20a closed on
 2026-10-13: `role` stays, because Δ = mean(off − on) = +9.2 is inside
 2·SE = 41.1 at K = 5. No served number moved and no pin moved
 (`docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md` §6.1). The
@@ -1492,7 +1505,7 @@ v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-86's `TRACE_GAP` the latest, are listed in §12.5
 "The readings" and collected by `scripts/v20_appendix.py`. The holiday
 queue has merged F-1 to
-F-108 except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #134
+F-119 except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #134
 (#107 relanded linear), and F-91 and F-92 wait on it; F-77, the other
 `needs-mac` package, has merged. `HOLIDAY.md` is the record. Pins: routes 52
 (`tests/test_v11_degradation.py`), job kinds 12
