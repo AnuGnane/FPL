@@ -690,7 +690,21 @@ Housekeeping (v12):
   tree, and it never touches the shared backtest log, the S2 arm logs, the corpus logs,
   `logs/advise.log`, an ungraded week's snapshots or the API snapshots
 - `gaffer mcp` — a stdio MCP server for Claude Code:
-  `claude mcp add gaffer -- gaffer mcp`. Six read tools, no writes
+  `claude mcp add gaffer -- gaffer mcp`. Six read tools, no writes:
+  - `projections` — this week's expected points per player, as the Players
+    page sees them, narrowed by `position`, `team` (a team code) and `top`.
+  - `explain` — why one player's expected points are what they are, the same
+    breakdown the Players page shows when you open a row, keyed by the FPL
+    player `code`, which is stable across seasons.
+  - `whatif` — previews a set of transfers against the saved board: it
+    re-solves locally and returns the baseline, the constrained plan and
+    their difference; it touches nothing on the FPL site and starts no job.
+  - `ledger` — the banked decision ledger, what was advised, what was done
+    and how each graded week turned out; `gw` narrows it to one gameweek.
+  - `freshness` — how old each of the five standing data sources is, the
+    line the UI draws atop every page; answers on a tree with no data.
+  - `health` — data files, model ages, the launchd log, the season check and
+    the last backup; answers on a tree with no data.
 - `cd frontend && npm run types` (v12 W5, one command since v17a) — not a
   `gaffer` subcommand: a developer command. It writes `frontend/src/schemas.json`
   from the live pydantic models and `frontend/src/types.generated.ts` from
