@@ -3,7 +3,7 @@
 // sources rather than rendering anything, so a class that drifts back in is
 // caught wherever it lands.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -18,10 +18,13 @@ function walk(dir: string): string[] {
 }
 
 // Holiday F-70: `App.tsx` and `api/` joined the scan, which CLAUDE.md had
-// left to be checked by hand.
+// left to be checked by hand. Holiday F-127: so did `main.tsx`, and the two
+// files beside `src/` (`index.html`, `vitest.setup.ts`), which `rel` prints
+// as `../index.html`; `styles/` holds only theme.css and its tests.
 const FILES = [...walk(join(SRC, 'hubs')), ...walk(join(SRC, 'kit')),
-  join(SRC, 'App.tsx'), ...walk(join(SRC, 'api'))]
-const rel = (path: string) => path.slice(SRC.length)
+  join(SRC, 'App.tsx'), ...walk(join(SRC, 'api')), join(SRC, 'main.tsx'),
+  join(SRC, '..', 'index.html'), join(SRC, '..', 'vitest.setup.ts')]
+const rel = (path: string) => relative(SRC, path)
 
 function offenders(pattern: RegExp, allow: string[] = []): string[] {
   return FILES
@@ -74,6 +77,14 @@ function colourProps(path: string): Array<{ at: string, value: string }> {
 }
 
 describe('the ledger rules (spec §3–§5)', () => {
+  it('reads main.tsx, index.html and vitest.setup.ts, so a move out of the scan is seen', () => {
+    const names = FILES.map(rel)
+    for (const name of ['App.tsx', 'main.tsx', '../index.html', '../vitest.setup.ts']) {
+      expect(names).toContain(name)
+    }
+    for (const path of FILES) expect(existsSync(path)).toBe(true)
+  })
+
   it('has no rounded-full, no card radius, no shadow, no gradient', () => {
     expect(offenders(/rounded-full|rounded-card|shadow-|gradient/)).toEqual([])
   })
