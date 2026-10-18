@@ -442,6 +442,9 @@ export interface DigestSection {
    * The section's identifier, distinguishing it for the client's layout.
    */
   key: string
+  /**
+   * The section's heading, as the digest card prints it.
+   */
   title: string
 }
 /**
@@ -1349,6 +1352,10 @@ export interface DraftCompareRow {
    * Players this row's plan buys.
    */
   buys: WirePlayerRef[]
+  /**
+   * This row's plan's first-week captain, on the Drafts tab's comparison.
+   * ``None`` on an empty row.
+   */
   captain: WirePlayerRef | null
   /**
    * The chip this row's plan plays, if any.
@@ -2659,6 +2666,9 @@ export interface LadderWeek {
    * Players bought in this week of the plan.
    */
   buys: WirePlayerRef[]
+  /**
+   * The captain this week of the plan, as the ladder shows it.
+   */
   captain: WirePlayerRef
   /**
    * Expected points for this week alone, net of its hits
@@ -2677,6 +2687,10 @@ export interface LadderWeek {
    * Players sold in this week of the plan.
    */
   sells: WirePlayerRef[]
+  /**
+   * The vice-captain this week of the plan, who takes the armband when the
+   * captain does not play.
+   */
   vice: WirePlayerRef
   /**
    * The starting eleven this week of the plan.
@@ -4400,6 +4414,9 @@ export interface PlanSummary {
    * Players bought into this plan.
    */
   buys: WirePlayerRef[]
+  /**
+   * This plan's captain, as the what-if lab compares them.
+   */
   captain: WirePlayerRef
   /**
    * Raw expected points for ``gw`` alone, net of hits.
@@ -4421,6 +4438,10 @@ export interface PlanSummary {
    * Players sold out of this plan.
    */
   sells: WirePlayerRef[]
+  /**
+   * This plan's vice-captain, who takes the armband when the captain does
+   * not play.
+   */
   vice: WirePlayerRef
   /**
    * The starting eleven.
@@ -5444,6 +5465,10 @@ export interface SettingsPanel {
    * the "no config.toml at all" case, which is the state a cold clone is in.
    */
   overlay_error: string | null
+  /**
+   * Every whitelisted setting this build has, one row each, as the Model
+   * hub's Settings tab lists them.
+   */
   rows: SettingRow[]
   /**
    * Whitelisted settings this build's ``Config`` does not have. Named
@@ -5818,6 +5843,9 @@ export interface PlanSummary1 {
    * Players bought into this plan.
    */
   buys: WirePlayerRef[]
+  /**
+   * This plan's captain, as the what-if lab compares them.
+   */
   captain: WirePlayerRef
   /**
    * Raw expected points for ``gw`` alone, net of hits.
@@ -5839,6 +5867,10 @@ export interface PlanSummary1 {
    * Players sold out of this plan.
    */
   sells: WirePlayerRef[]
+  /**
+   * This plan's vice-captain, who takes the armband when the captain does
+   * not play.
+   */
   vice: WirePlayerRef
   /**
    * The starting eleven.
@@ -5857,6 +5889,9 @@ export interface PlanSummary2 {
    * Players bought into this plan.
    */
   buys: WirePlayerRef[]
+  /**
+   * This plan's captain, as the what-if lab compares them.
+   */
   captain: WirePlayerRef
   /**
    * Raw expected points for ``gw`` alone, net of hits.
@@ -5878,6 +5913,10 @@ export interface PlanSummary2 {
    * Players sold out of this plan.
    */
   sells: WirePlayerRef[]
+  /**
+   * This plan's vice-captain, who takes the armband when the captain does
+   * not play.
+   */
   vice: WirePlayerRef
   /**
    * The starting eleven.

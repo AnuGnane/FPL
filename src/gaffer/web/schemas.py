@@ -213,7 +213,10 @@ class PlanSummary(BaseModel):
     bench: list[PlayerRef]
     """The bench, in order."""
     captain: PlayerRef
+    """This plan's captain, as the what-if lab compares them."""
     vice: PlayerRef
+    """This plan's vice-captain, who takes the armband when the captain does
+    not play."""
     buys: list[PlayerRef]
     """Players bought into this plan."""
     sells: list[PlayerRef]
@@ -2960,7 +2963,10 @@ class LadderWeek(BaseModel):
     bench: list[PlayerRef] = Field(default_factory=list)
     """The bench this week of the plan."""
     captain: PlayerRef
+    """The captain this week of the plan, as the ladder shows it."""
     vice: PlayerRef
+    """The vice-captain this week of the plan, who takes the armband when the
+    captain does not play."""
     expected_pts: float
     """Expected points for this week alone, net of its hits
     (``ladder.plan_points`` over one week)."""
@@ -3160,6 +3166,8 @@ class DraftCompareRow(BaseModel):
     sells: list[PlayerRef] = Field(default_factory=list)
     """Players this row's plan sells."""
     captain: PlayerRef | None = None
+    """This row's plan's first-week captain, on the Drafts tab's comparison.
+    ``None`` on an empty row."""
     error: str | None = None
     """Why this row is empty. An infeasible draft is a row with a reason, not
     a failed comparison."""
@@ -3360,6 +3368,7 @@ class DigestSection(BaseModel):
     key: str
     """The section's identifier, distinguishing it for the client's layout."""
     title: str
+    """The section's heading, as the digest card prints it."""
     bits: list[str] = Field(default_factory=list)
     """The section's clauses, joined by the client into prose."""
 
@@ -3511,6 +3520,8 @@ class SettingRow(BaseModel):
 
 class SettingsPanel(BaseModel):
     rows: list[SettingRow] = Field(default_factory=list)
+    """Every whitelisted setting this build has, one row each, as the Model
+    hub's Settings tab lists them."""
     unavailable: list[str] = Field(default_factory=list)
     """Whitelisted settings this build's ``Config`` does not have. Named
     rather than dropped: a form that is quietly shorter is a setting nobody
