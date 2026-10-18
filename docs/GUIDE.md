@@ -1693,8 +1693,10 @@ weekly use.
   (`web/routers/whatif.py`); the fix is hunk 2 of
   `docs/superpowers/specs/2026-10-14-whatif-chip-arm-design.md` (holiday F-36, F-50).
 - ~~The generated `types.ts` half lost the client's field comments~~ —
-  closed in v19h: 1,024 of 1,031 schema fields carry a sentence the
-  generator copies into `types.generated.ts`.
+  closed in v19h, and finished by holiday F-121: every one of the 1,036
+  fields of the models `schemas.py` defines carries a sentence the
+  generator copies into `types.generated.ts`, held by
+  `tests/test_schema_sentences.py`.
 - **`density_pub_7d` is built on both seams and fed to no head**, kept for a
   later re-measure with a replay half of its own; its head half is
   `scripts/density_head.py` (holiday F-32), the Mac's to run; the replay
