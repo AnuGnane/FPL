@@ -450,8 +450,8 @@ morning it matters.
   `src/gaffer/web/static/` (untracked, shipped in the wheel).
   Under `frontend/src/`:
   - `api/` — the fetch client (`client.ts`: every response the server sends
-    is JSON, its errors included) and the hooks over it, `pageData.ts`,
-    `useJob.ts`, `useDebounced.ts`, `useSettingWrite.ts`
+    is JSON, its errors included) and the request hooks beside it,
+    `pageData.ts`, `useJob.ts`, `useDebounced.ts`, `useSettingWrite.ts`
   - `kit/` — shared components and tokens
   - `styles/` — `theme.css`, which holds the tokens
   - `hubs/` — the six hubs, one file each, with each hub's parts in its own
