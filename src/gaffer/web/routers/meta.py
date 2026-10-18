@@ -504,7 +504,7 @@ def calibration_health() -> CalibrationHealth | None:
 
 
 def arm_switches() -> list[ArmSwitch]:
-    """The three v20 switches by name, ``on`` and value (holiday F-30).
+    """The v20 switches by name, ``on`` and value (holiday F-30).
 
     Read as module attributes at call time rather than bound by ``from …
     import``, which would freeze each at the value the router saw when it was
@@ -516,7 +516,8 @@ def arm_switches() -> list[ArmSwitch]:
     values = [("models.components.BONUS_SEES_ATTACK",
                components.BONUS_SEES_ATTACK),
               ("models.dixon_coles.MU_BOUNDS", dixon_coles.MU_BOUNDS),
-              ("backtest.REPLAY_TEAM_MODEL", backtest.REPLAY_TEAM_MODEL)]
+              ("backtest.REPLAY_TEAM_MODEL", backtest.REPLAY_TEAM_MODEL),
+              ("backtest.REPLAY_AVAILABILITY", backtest.REPLAY_AVAILABILITY)]
     return [ArmSwitch(name=name,
                       on=bool(value) if isinstance(value, bool)
                       else value is not None,

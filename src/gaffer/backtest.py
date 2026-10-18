@@ -70,6 +70,7 @@ from gaffer.models.train import (  # noqa: F401
     predict_components_simple,
     train_all,
 )
+from gaffer.news_shadow import load_shadow
 from gaffer.optimize.chip_policy import chip_thresholds_from_asset, flat_thresholds
 from gaffer.optimize.chips import (  # noqa: F401
     CHIP_PLAY_THRESHOLD,
@@ -105,6 +106,21 @@ with no market (the replay has no odds in the loop). Off by default so every
 replay banked before v20 stays reproducible; the K = 5 re-baseline pair
 (``MULTISEED_DONE v20c0-harness-*``) is the Mac's.
 """
+
+REPLAY_AVAILABILITY: str | None = None
+"""Holiday F-122, C1's replay half step one (v20 spec §4): the availability layer.
+
+The replay applies no availability layer in either ep mode, so the C1
+ablation had nothing to ablate. ``"flags"`` or ``"news"`` replaces each
+played gameweek's ``p_play`` with the shadow log's banked ``p_play_<mode>``
+for that ``(code, gw)``: the number the live path's ``apply_availability``
+produced that week, not a ratio on the refit's own (ruling 1). Rows without
+a shadow row, and every later horizon week, keep the model's number. ``None``
+ships: no load, no line, byte-identical to the replay before it; the pair and
+its verdict are the Mac's, on the season F-79's ``C1_COVER`` names.
+"""
+
+REPLAY_AVAILABILITY_MODES = ("flags", "news")
 
 
 def club_fixtures(rows: pd.DataFrame) -> pd.DataFrame:
@@ -168,6 +184,58 @@ def team_model_lever_line(fixtures: pd.DataFrame) -> str:
     p = uniq["p_cs"]
     return (f"REPLAY_TEAM_MODEL p_cs min={p.min():.4f} max={p.max():.4f} "
             f"distinct={p.round(6).nunique()} n={len(uniq)}")
+
+
+def replay_shadow(season: str) -> pd.DataFrame | None:
+    """The shadow log cut to ``season``, loaded once per replay (F-122).
+
+    ``None`` while ``REPLAY_AVAILABILITY`` is off, without touching the
+    store, so the shipped replay reads no file it did not read before.
+    """
+    if REPLAY_AVAILABILITY is None:
+        return None
+    shadow = load_shadow()
+    return shadow[shadow["season"].astype(str) == str(season)]
+
+
+def apply_replay_availability(comp: pd.DataFrame,
+                              shadow: pd.DataFrame | None, mode: str | None,
+                              season: str, gw: int
+                              ) -> tuple[pd.DataFrame, str | None]:
+    """``comp`` with gameweek ``gw``'s ``p_play`` read off the shadow log.
+
+    Only ``gw`` itself: a later horizon week's shadow row was banked after
+    this deadline, so reading it would leak. A week the live path ran more
+    than once banked one row per run; the latest ``run_at`` is what the last
+    solve before the deadline saw. Returns the frame and the lever line,
+    ``REPLAY_AVAILABILITY <mode> gw=<n> replaced=<k> of <m> mean_before=<x>
+    mean_after=<y>``, the means over the gameweek's ``m`` rows (in
+    ``team_model_lever_line``'s shape); ``(comp, None)`` when ``mode`` is off.
+    """
+    if mode is None:
+        return comp, None
+    if mode not in REPLAY_AVAILABILITY_MODES:
+        raise ValueError(f"unknown REPLAY_AVAILABILITY: {mode!r} "
+                         f"(expected one of {REPLAY_AVAILABILITY_MODES})")
+    by_code: dict[int, float] = {}
+    if shadow is not None:
+        week = shadow[(shadow["season"].astype(str) == str(season))
+                      & (shadow["gw"].astype(int) == int(gw))]
+        latest = (week.sort_values("run_at", kind="stable")
+                  .drop_duplicates(subset="code", keep="last"))
+        by_code = dict(zip(latest["code"].astype(int),
+                           latest[f"p_play_{mode}"].astype(float)))
+    out = comp.copy()
+    codes = out["code"].astype(int)
+    in_week = out["gw"] == int(gw)
+    hit = in_week & codes.isin(list(by_code))
+    before = out.loc[in_week, "p_play"].mean()
+    out.loc[hit, "p_play"] = codes[hit].map(by_code)
+    after = out.loc[in_week, "p_play"].mean()
+    line = (f"REPLAY_AVAILABILITY {mode} gw={int(gw)} "
+            f"replaced={int(hit.sum())} of {int(in_week.sum())} "
+            f"mean_before={before:.4f} mean_after={after:.4f}")
+    return out, line
 
 
 LEVER_HEADS = (("minutes", "feature_cols"), ("bonus", "cols_"))
@@ -508,7 +576,8 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     (:func:`oracle_ep`) and feeds them through the identical pipeline — same
     pool, same solver, same chip logic. Two simplifications are worth being
     explicit about: the replay applies no availability filtering in either
-    mode, and no league tilt unless one is injected, so an oracle run is
+    mode (unless ``REPLAY_AVAILABILITY`` reads the banked layer back in,
+    holiday F-122), and no league tilt unless one is injected, so an oracle run is
     clairvoyant about scores and no more privileged than the model run about
     news; and it skips model training altogether, since nothing reads the
     fitted components.
@@ -570,6 +639,8 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
     team_fixtures: list[pd.DataFrame] = []
     levers_logged = False
     corr_logged = False
+    # Holiday F-122: loaded once per replay, and not at all while off.
+    shadow = replay_shadow(season)
 
     for gw in range(start_gw, LAST_GW + 1):
         rows = season_rows[season_rows["gw"] == gw]
@@ -620,6 +691,10 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
             if not corr_logged:
                 print(lever_corr_line(comp), flush=True)
                 corr_logged = True
+            comp, avail_line = apply_replay_availability(
+                comp, shadow, REPLAY_AVAILABILITY, season, gw)
+            if avail_line is not None:
+                print(avail_line, flush=True)
             if REPLAY_TEAM_MODEL:
                 comp, tp = with_team_model(comp, horizon_rows, models["team"])
                 team_fixtures.append(tp[tp["gw"] == gw])
