@@ -22,11 +22,13 @@ from pathlib import Path
 
 from gaffer.web.app import create_app
 
-SOURCES = [Path("frontend/src") / part for part in ("api", "hubs", "kit")]
+SOURCES = [Path(__file__).parent.parent / "frontend/src" / part for part in ("api", "hubs", "kit")]
 
 _LITERAL = re.compile(r"(?<=['\"`])/api(?:/(?:[A-Za-z0-9_-]+|\$\{[^}]*\}))*/?")
-# `:` before `//` is a URL's scheme, not a comment.
-_COMMENT = re.compile(r"/\*.*?\*/|(?<![:\w'\"`])//[^\n]*", re.S)
+# A block comment is cut only where it opens a line, so a glob such as
+# "src/**/*.ts" in a string cannot swallow the fetches after it; `:` before
+# `//` is a URL's scheme, not a comment.
+_COMMENT = re.compile(r"^[ \t]*/\*.*?\*/|(?<![:\w'\"`])//[^\n]*", re.S | re.M)
 
 
 def _served() -> set[str]:
