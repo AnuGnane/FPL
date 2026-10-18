@@ -448,6 +448,21 @@ morning it matters.
     `optimize/` (the MILP), `report/` (rendering), `web/` (FastAPI).
 - `frontend/` — React and Vite source; the build lands in
   `src/gaffer/web/static/` (untracked, shipped in the wheel).
+  Under `frontend/src/`:
+  - `api/` — the fetch client (`client.ts`: every response the server sends
+    is JSON, its errors included) and the hooks over it, `pageData.ts`,
+    `useJob.ts`, `useDebounced.ts`, `useSettingWrite.ts`
+  - `kit/` — shared components and tokens
+  - `styles/` — `theme.css`, which holds the tokens
+  - `hubs/` — the six hubs, one file each, with each hub's parts in its own
+    directory (GUIDE §5 gives the hub-by-hub tour):
+    - `ThisWeek.tsx` — the answer; its parts are in `this-week/`
+    - `Planning.tsx` — the future; its parts are in `planning/`
+    - `Players.tsx` — the evidence; its parts are in `players/`
+    - `League.tsx` — every league you are in, and one of them drives the
+      plan; its parts are in `league/`
+    - `Live.tsx` — matchday
+    - `Model.tsx` — the mirror; its parts are in `model/`
 - `data/` — downloaded and derived datasets, gitignored but for
   `data/manager_tenures.toml`, curated EPL head-coach spells. `data/live/`
   holds the standing logs — price, availability, field EO, presser — the
