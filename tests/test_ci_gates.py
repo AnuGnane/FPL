@@ -55,7 +55,8 @@ def run_steps(text: str) -> list[str]:
             continue
         value = m.group(2).strip()
         if value in (">", ">-", "|", "|-"):
-            indent = len(m.group(1))
+            # The key's own column, so `- run: >-` stops at a sibling key.
+            indent = lines[i - 1].index("run:")
             body: list[str] = []
             while i < len(lines) and (
                 not lines[i].strip() or len(lines[i]) - len(lines[i].lstrip()) > indent
@@ -120,6 +121,6 @@ def test_a_workflow_running_an_unnamed_command_fails_the_check():
 def test_a_folded_run_block_is_joined_as_yaml_folds_it():
     text = (
         'steps:\n  - name: x\n    run: >-\n      uv run pytest -q\n      -m "fast"\n'
-        "  - run: npm ci\n"
+        "  - run: >-\n      npm run check\n    working-directory: frontend\n"
     )
-    assert run_steps(text) == ['uv run pytest -q -m "fast"', "npm ci"]
+    assert run_steps(text) == ['uv run pytest -q -m "fast"', "npm run check"]
