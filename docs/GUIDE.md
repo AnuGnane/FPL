@@ -425,9 +425,9 @@ bootstrap snapshots. Its `?tab=` values, in strip order: `?tab=quality`,
   config names, the solver's per-position pool sizes, and the last backup
   with its size (or `never — run gaffer backup`). Since holiday F-30 it
   lists each v20 arm's switch (`models.components.BONUS_SEES_ATTACK`,
-  `models.dixon_coles.MU_BOUNDS`, `backtest.REPLAY_TEAM_MODEL`) with its
-  state and value, under the team model's band, so a screenshot says which
-  switches were on.
+  `models.dixon_coles.MU_BOUNDS`, `backtest.REPLAY_TEAM_MODEL`, and since
+  holiday F-122 `backtest.REPLAY_AVAILABILITY`) with its state and value,
+  under the team model's band, so a screenshot says which switches were on.
 - *Journal*: the decision journal with its deadline guard.
 - *History*: past runs, expected versus actual, price charts.
 - *Settings* (v12 W5): the fourteen settings the UI may edit
