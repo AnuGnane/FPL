@@ -1716,6 +1716,7 @@
      "type": "string"
     },
     "title": {
+     "description": "The section's heading, as the digest card prints it.",
      "type": "string"
     }
    },
@@ -1787,7 +1788,8 @@
        "type": "null"
       }
      ],
-     "default": null
+     "default": null,
+     "description": "This row's plan's first-week captain, on the Drafts tab's comparison.\n``None`` on an empty row."
     },
     "chip": {
      "anyOf": [
@@ -3628,7 +3630,12 @@
      "type": "array"
     },
     "captain": {
-     "$ref": "#/definitions/WirePlayerRef"
+     "allOf": [
+      {
+       "$ref": "#/definitions/WirePlayerRef"
+      }
+     ],
+     "description": "The captain this week of the plan, as the ladder shows it."
     },
     "expected_pts": {
      "description": "Expected points for this week alone, net of its hits\n(``ladder.plan_points`` over one week).",
@@ -3650,7 +3657,12 @@
      "type": "array"
     },
     "vice": {
-     "$ref": "#/definitions/WirePlayerRef"
+     "allOf": [
+      {
+       "$ref": "#/definitions/WirePlayerRef"
+      }
+     ],
+     "description": "The vice-captain this week of the plan, who takes the armband when the\ncaptain does not play."
     },
     "xi": {
      "description": "The starting eleven this week of the plan.",
@@ -6244,7 +6256,12 @@
      "type": "array"
     },
     "captain": {
-     "$ref": "#/definitions/WirePlayerRef"
+     "allOf": [
+      {
+       "$ref": "#/definitions/WirePlayerRef"
+      }
+     ],
+     "description": "This plan's captain, as the what-if lab compares them."
     },
     "expected_pts": {
      "description": "Raw expected points for ``gw`` alone, net of hits.",
@@ -6270,7 +6287,12 @@
      "type": "array"
     },
     "vice": {
-     "$ref": "#/definitions/WirePlayerRef"
+     "allOf": [
+      {
+       "$ref": "#/definitions/WirePlayerRef"
+      }
+     ],
+     "description": "This plan's vice-captain, who takes the armband when the captain does\nnot play."
     },
     "xi": {
      "description": "The starting eleven.",
@@ -8556,6 +8578,7 @@
      "description": "Why ``config.local.toml`` is being ignored, or ``None``. Also carries\nthe \"no config.toml at all\" case, which is the state a cold clone is in."
     },
     "rows": {
+     "description": "Every whitelisted setting this build has, one row each, as the Model\nhub's Settings tab lists them.",
      "items": {
       "$ref": "#/definitions/SettingRow"
      },

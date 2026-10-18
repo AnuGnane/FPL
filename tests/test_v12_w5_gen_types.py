@@ -153,9 +153,17 @@ def test_the_sentence_under_a_field_in_schemas_py_reaches_the_schema():
         "Whitelisted settings this build's ``Config`` does not have.")
 
 
-def test_a_field_with_no_sentence_gets_no_description():
+def test_a_field_with_no_sentence_gets_no_description(monkeypatch):
     """Not every field is documented, and inventing a description for one that
-    is not would put the generator's voice in the browser."""
+    is not would put the generator's voice in the browser. Holiday F-121 gave
+    every field a sentence, so the undocumented field is made here by taking
+    one away."""
+    import scripts.gen_types as gen_types
+
+    sentences = gen_types._field_sentences()
+    monkeypatch.setattr(gen_types, "_field_sentences", lambda: {
+        key: text for key, text in sentences.items()
+        if key != ("SettingsPanel", "rows")})
     props = build_schema()["definitions"]["SettingsPanel"]["properties"]
     assert "description" not in props["rows"]
 
@@ -212,7 +220,11 @@ def test_a_field_actually_called_title_survives_the_title_strip():
     could not compile against and nothing saying which side was wrong."""
     section = build_schema()["definitions"]["DigestSection"]
     assert "title" in section["properties"]
-    assert section["properties"]["title"] == {"type": "string"}
+    # The sentence under it (holiday F-121) rides along; pydantic's own
+    # ``title`` key inside the property is what must be gone.
+    title = dict(section["properties"]["title"])
+    title.pop("description", None)
+    assert title == {"type": "string"}
 
 
 def test_a_bare_any_field_compiles_to_unknown_and_not_to_a_record():

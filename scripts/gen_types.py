@@ -278,6 +278,14 @@ def build_schema() -> dict:
         for field, prop in sorted(body.get("properties", {}).items()):
             sentence = sentences.get((name, field))
             if sentence and "description" not in prop:
+                ref = prop.get("$ref", "").rsplit("/", 1)[-1]
+                if ref in RENAME and not set(prop) - {"$ref"}:
+                    # A bare ``$ref`` beside a description compiles to a
+                    # numbered twin (``WirePlayerRef1``), which the client's
+                    # one-narrowing-per-Wire-model rail counts. Wrapped in a
+                    # one-member ``allOf`` it names the wire type and still
+                    # carries the sentence (holiday F-121).
+                    prop["allOf"] = [{"$ref": prop.pop("$ref")}]
                 prop["description"] = sentence
             if not set(prop) - {"description", "default"}:
                 # ``value: Any``. An empty schema compiles to an *object* —
