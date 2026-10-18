@@ -15,6 +15,8 @@ which the path rule above never matches, so for ``CLAUDE.md`` alone a bare
 name is resolved against the roots joined to every directory its own
 paragraph or bullet names. The README, GUIDE and ROADMAP write bare names in
 prose about many directories at once, so for them bare names stay unread.
+The bare rule catches a deleted or renamed file, not one named under the
+wrong directory: any root joined to any directory of the block may hold it.
 """
 
 from __future__ import annotations
