@@ -221,7 +221,9 @@ def apply_replay_availability(comp: pd.DataFrame,
     if shadow is not None:
         week = shadow[(shadow["season"].astype(str) == str(season))
                       & (shadow["gw"].astype(int) == int(gw))]
-        latest = (week.sort_values("run_at", kind="stable")
+        # A NaN banked number is no reading: the row keeps the model's.
+        latest = (week.dropna(subset=[f"p_play_{mode}"])
+                  .sort_values("run_at", kind="stable")
                   .drop_duplicates(subset="code", keep="last"))
         by_code = dict(zip(latest["code"].astype(int),
                            latest[f"p_play_{mode}"].astype(float)))

@@ -92,6 +92,16 @@ def test_the_latest_run_of_the_week_wins():
                    "p_play"].item() == 0.60
 
 
+def test_a_nan_banked_number_keeps_the_model_number():
+    shadow = _shadow([
+        ("2025-26", 5, 103, float("nan"), float("nan"),
+         "2025-09-26T10:00:00+00:00")])
+    out, line = bt.apply_replay_availability(_comp(), shadow, "flags",
+                                             "2025-26", 5)
+    assert out["p_play"].tolist() == _comp()["p_play"].tolist()
+    assert "replaced=0 of 3" in line
+
+
 def test_the_lever_line_counts_the_replaced_rows():
     _, line = bt.apply_replay_availability(_comp(), SHADOW, "flags",
                                            "2025-26", 5)
