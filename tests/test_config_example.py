@@ -17,8 +17,13 @@ only, no count: ``Config`` stays pinned in ``tests/test_v13_degradation.py``.
 from __future__ import annotations
 
 import ast
+import dataclasses
 import re
+import tomllib
 from pathlib import Path
+
+from gaffer.config import Config
+from tests.test_readme_config import _FIELD as _README_FIELD
 
 CONFIG = Path("src/gaffer/config.py")
 EXAMPLE = Path("config.example.toml")
@@ -101,3 +106,102 @@ def test_an_example_missing_one_key_line_fails_the_rail():
                 if re.match(r"(# )?irreversible_threshold =", row))
     assert _missing(_read_pairs(), text.replace(line + "\n", "")) == [
         ("scenarios", "irreversible_threshold")]
+
+
+# (section, key) → the Config field each commented-out example key binds to
+# (F-113): the README rail's mapping, plus the keys only the example names,
+# each read from load_config's binding (config.py:586-646).
+_FIELD = {
+    **_README_FIELD,
+    ("scenarios", "seed"): "scenarios_seed",
+    ("scenarios", "transfer_threshold"): "transfer_threshold",
+    ("scenarios", "irreversible_threshold"): "irreversible_threshold",
+    ("odds", "player_props"): "player_props",
+    ("odds", "ags_blend_weight"): "ags_blend_weight",
+    ("understat", "enabled"): "understat_enabled",
+    ("league", "stance"): "stance",
+    ("news", "lineup_providers"): "news_lineup_providers",
+}
+# Commented keys whose value is not a Config default, by name (F-113):
+# focus falls through to fpl.league_id when 0 (config.py:586), so 0 is its
+# default and is asserted as such; api_key and token show a placeholder
+# sentence, dir and rsync_target an example path, where Config holds "".
+_FOCUS = ("league", "focus")
+_PLACEHOLDERS = {("odds", "api_key"), ("web", "token"),
+                 ("backup", "dir"), ("backup", "rsync_target")}
+# A ``# key = ...`` line whose value is not TOML is prose, as
+# config.example.toml's "# n = 0 disables the sweep" sentence is; the set is
+# held exactly so a new one is seen, not skipped.
+_PROSE = {("scenarios", "n")}
+
+
+def _config_defaults() -> dict[str, object]:
+    out: dict[str, object] = {}
+    for f in dataclasses.fields(Config):
+        if f.default is not dataclasses.MISSING:
+            out[f.name] = f.default
+        elif f.default_factory is not dataclasses.MISSING:
+            out[f.name] = f.default_factory()
+    return out
+
+
+def _commented(text: str) -> tuple[list[tuple[str, str, object]],
+                                   set[tuple[str, str]]]:
+    """Each ``# key = value`` line under a ``[section]``, parsed with tomllib,
+    and the (section, key) of each such line whose value is not TOML."""
+    section, rows, prose = None, [], set()
+    for line in text.splitlines():
+        head = re.match(r"\[([a-z_]+)\]", line)
+        if head:
+            section = head.group(1)
+            continue
+        m = re.match(r"^# (\w+) = (.+)$", line)
+        if not m or section is None:
+            continue
+        try:
+            value = tomllib.loads(f"{m.group(1)} = {m.group(2)}")[m.group(1)]
+        except tomllib.TOMLDecodeError:
+            prose.add((section, m.group(1)))
+            continue
+        rows.append((section, m.group(1), value))
+    return rows, prose
+
+
+def _stale(text: str) -> list[str]:
+    defaults = _config_defaults()
+    rows, prose = _commented(text)
+    wrong = [f"[{s}] {k} is prose the rail does not know"
+             for s, k in sorted(prose - _PROSE)]
+    for section, key, value in rows:
+        if (section, key) in _PLACEHOLDERS:
+            continue
+        if (section, key) == _FOCUS:
+            if value != 0:
+                wrong.append(f"[{section}] {key} = {value!r}, falls through at 0")
+            continue
+        name = _FIELD.get((section, key))
+        if name is None:
+            wrong.append(f"[{section}] {key} has no Config field in the rail")
+        elif value != defaults[name]:
+            wrong.append(f"[{section}] {key} = {value!r}, "
+                         f"Config.{name} = {defaults[name]!r}")
+    return wrong
+
+
+def test_the_example_reads_the_commented_keys_this_rail_checks():
+    rows, prose = _commented(EXAMPLE.read_text())
+    keys = {(s, k) for s, k, _ in rows}
+    assert {("scenarios", "seed"), ("league", "focus"),
+            ("odds", "player_props")} <= keys, keys
+    assert prose == _PROSE, prose
+
+
+def test_every_commented_default_in_the_example_equals_config():
+    assert _stale(EXAMPLE.read_text()) == []
+
+
+def test_an_example_with_one_commented_default_changed_fails_by_key():
+    text = EXAMPLE.read_text()
+    assert "# seed = 20260825\n" in text
+    assert _stale(text.replace("# seed = 20260825\n", "# seed = 7\n")) == [
+        "[scenarios] seed = 7, Config.scenarios_seed = 20260825"]
