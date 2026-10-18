@@ -500,9 +500,11 @@ to edit, and the staging rules that keep `config.toml` out of git. A rail
 failing after an edit is telling you which rule the edit crossed, and its
 message names the file that owns it. Do not edit a rail to make it pass.
 The suite also holds the docs to the code: the API routes, config keys,
-defaults, CLI commands and options, modules, file paths and in-page anchors
-the GUIDE, this README and `config.example.toml` name are each checked against
-the source, so a
+defaults, CLI commands and options, MCP tools, the launchd jobs' commands,
+the v20 switches, modules, data files, the frontend's layout and the paths it
+fetches, file paths, in-page anchors, the pins the docs quote and the gate
+lines CI runs, as the GUIDE, this README, `CLAUDE.md` and
+`config.example.toml` name them, are each checked against the source, so a
 rename that leaves a doc behind fails the gate.
 
 CI (`.github/workflows/ci.yml`, holiday F-1 and F-57) runs on every pull request and on
