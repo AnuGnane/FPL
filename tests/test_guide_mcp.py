@@ -4,7 +4,8 @@ ROADMAP candidate 7, in F-100's shape (``tests/test_guide_commands.py``): the
 ``gaffer mcp`` bullet said "Six read tools" and named none. The names are the
 keys of ``mcp_server.TOOLS``, the dict ``build_server`` registers; importing
 it needs no ``mcp`` package (that import sits inside ``build_server``) and
-starts no server. Membership only, no count.
+starts no server. Membership against the GUIDE; the one count is the walk's
+six, the number the bullet itself states.
 """
 
 from __future__ import annotations
