@@ -68,6 +68,11 @@ def disagreements(guide: list[tuple[str, bool, str]],
     if len(guide) != 9 or len(roadmap) != 9:
         out.append(f"rows: GUIDE {len(guide)}, ROADMAP {len(roadmap)}, "
                    "expected nine each")
+    untagged = [f"{side} {row}" for side, rows in (("GUIDE", guide),
+                                                     ("ROADMAP", roadmap))
+                for tag, _, row in rows if tag == "?"]
+    if untagged:
+        out.append(f"no W tag: {untagged}")
     g_tags, r_tags = Counter(t for t, _, _ in guide), Counter(t for t, _, _ in roadmap)
     if g_tags != r_tags:
         out.append(f"W tags: GUIDE only {sorted((g_tags - r_tags).elements())}, "
@@ -98,3 +103,6 @@ def test_a_row_filled_on_one_side_only_fails():
     assert any(d.startswith("rows:") for d in dropped)
     assert f"ROADMAP only ['{guide[0][0]}']" in next(
         d for d in dropped if d.startswith("W tags:"))
+    stripped = [("?", met, r) for _, met, r in guide]
+    assert any(d.startswith("no W tag:") and guide[0][2] in d
+               for d in disagreements(stripped, [("?", m, r) for _, m, r in roadmap]))
