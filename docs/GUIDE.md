@@ -759,6 +759,65 @@ that cannot be backfilled — the tool started banking early:
 - `data/manager_tenures.toml` — the one committed data file: curated EPL
   head-coach spells for the rotation features.
 
+### File by file
+
+Every data file name the code spells, with where it lives and the line from
+the module that writes or reads it (holiday F-117; a rail,
+`tests/test_guide_data_files.py`, holds the list to the code). A file under
+`data/raw/` is an upstream download the code only caches and reads.
+
+- `player_gw.parquet` — `data/history/` and `data/live/`. `data/history.py`:
+  "Download + concatenate seasons -> data/history/player_gw.parquet"; the
+  refresh writes the live one, which the freshness row reads.
+- `field_eo_log.parquet` — `data/live/`; the top-10k EO log above.
+- `merged_gw.csv`, `players_raw.csv`, `teams.csv`, `fixtures.csv` —
+  `data/raw/vaastav/<season>/`, upstream downloads `data/history.py` caches
+  and concatenates into the history.
+- `players.csv`, `teams.csv`, `playermatchstats.csv`, `fixtures.csv`,
+  `matches.csv` — `data/raw/core_insights/`, upstream downloads from
+  FPL-Core-Insights (`data/core_insights.py`: "per-match detail, published cup
+  fixtures, club Elo"); `matches.csv` is taken only where no `fixtures.csv`
+  shares the gameweek.
+- `E0.csv` — `data/raw/football-data/<season>/`, an upstream download
+  (`data/match_odds.py`: "One season's `E0.csv`"; a finished season's file is
+  fetched once).
+- `set_pieces.toml` — `data/`; the set-piece overrides
+  (`data/set_piece_overrides.py`); its template ships with the package below.
+- `manager_tenures.toml` — `data/`; the committed file above
+  (`data/managers.py`).
+- `decision_ledger.json` — `reports/`; the graded decision record above
+  (`review.py`).
+- `decisions.json` — `reports/`; your reason codes and notes per gameweek
+  (`decisions.py`).
+- `overrides.json`, `watchlist.json`, `drafts.json` — `reports/`; above
+  (`artifacts.py`, `watchlist.py`, `drafts.py`).
+- `brief_note.json` — `reports/`; `brief.py`: "Why there is no brief for the
+  newest gameweek, for the card."
+- `journal.json` — `reports/`; the journal (`journal.py`).
+- `health.json` — `reports/`; the health record (`tracking.py`).
+- `evaluation.json` — `reports/`; `evaluation.py`: "One artifact, three
+  independent keys."
+- `zeros_diagnostic.json` — `reports/`; the zeros diagnostic
+  (`zeros_diagnostic.py`).
+- `pen_tracker.json` — `reports/`; the penalty tracker (`pen_tracker.py`).
+- `league_sim_history.json` — `reports/`; the league simulation's history
+  (`league_sim.py`: "Under `artifacts.REPORTS`").
+- `calibration.meta.json` — `models/`; the calibration's `saved_at`, read by
+  the Model hub (`web/routers/meta.py`).
+- `bootstrap_sample.json`, `understat_overrides.json`, `decision_priors.json`,
+  `injury_return_curves.json`, `scenario_noise.json`,
+  `set_pieces.example.toml` — `src/gaffer/assets/`, data files shipped with
+  the package (`assets/__init__.py`): a real `bootstrap-static` payload, the
+  curated `understat_id -> FPL code` table, the calibrated decision priors,
+  per-injury return curves and residual-σ table, and the
+  `data/set_pieces.toml` template.
+- `clubs.json` — the working directory; `cli.py`'s `calibrate-injuries`
+  reads it: "JSON file of {transfermarkt slug: club id}."
+- `predicted.parquet`, `my_picks.parquet`, `scalars.json` — a recorded
+  `inputs/` directory (the golden board's is `tests/data/golden_board/inputs/`);
+  `inputs.py`'s `save_inputs` writes "Parquet per frame plus one JSON" so a
+  later run can build with no `models/`.
+
 ## 10. How the project measures itself
 
 This is the part that separates the project from a heuristics spreadsheet,
