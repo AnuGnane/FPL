@@ -303,14 +303,14 @@ and changes nothing.
 | When | Job | What it does |
 |---|---|---|
 | Thu 18:00 | `com.gaffer.advise` | `prices`, then `train`, then `advise` (which chains the brief). Logs to `logs/prices.log` and `logs/advise.log`. |
-| Nightly 23:15 | `com.gaffer.prices` | Banks every player's price-predictor reading. Local time, for a UK-midnight event: adjust `scripts/com.gaffer.prices.plist` if you are not on UK time. |
-| Daily 17:00 | `com.gaffer.snapshot` | Banks the day's availability state. |
-| Sat & Sun 18:30 | `com.gaffer.field` | Samples ~300 top-10k squads; banks their EO. |
-| Tue 09:00 | `com.gaffer.review` | Grades every gameweek FPL has finalised into the decision ledger. |
-| Fri 17:00 | `com.gaffer.digest-friday` | The briefing, after the pressers and before the deadline. |
-| Tue 09:30 | `com.gaffer.digest-tuesday` | The debrief, half an hour after the review has banked. |
-| Nightly 23:45 | `com.gaffer.backup` | Tars `data/live/`, `data/raw/field/`, `data/raw/tier_eo/`, `reports/` and `models/` — about 16 MB — into `~/gaffer-backups`; keeps fourteen. A `--rsync` copy is never pruned. |
-| 06:30 & 18:30 | `com.gaffer.core-insights` | The FPL-Core-Insights pull. Twice a day because the gameweek being played is re-fetched every run. |
+| Nightly 23:15 | `com.gaffer.prices` | `prices`: banks every player's price-predictor reading. Local time, for a UK-midnight event: adjust `scripts/com.gaffer.prices.plist` if you are not on UK time. |
+| Daily 17:00 | `com.gaffer.snapshot` | `snapshot`: banks the day's availability state. |
+| Sat & Sun 18:30 | `com.gaffer.field` | `field-scrape`: samples ~300 top-10k squads; banks their EO. |
+| Tue 09:00 | `com.gaffer.review` | `review`: grades every gameweek FPL has finalised into the decision ledger. |
+| Fri 17:00 | `com.gaffer.digest-friday` | `digest --kind friday`: the briefing, after the pressers and before the deadline. |
+| Tue 09:30 | `com.gaffer.digest-tuesday` | `digest --kind tuesday`: the debrief, half an hour after the review has banked. |
+| Nightly 23:45 | `com.gaffer.backup` | `backup`: tars `data/live/`, `data/raw/field/`, `data/raw/tier_eo/`, `reports/` and `models/` — about 16 MB — into `~/gaffer-backups`; keeps fourteen. A `--rsync` copy is never pruned. |
+| 06:30 & 18:30 | `com.gaffer.core-insights` | `core-insights`: the FPL-Core-Insights pull. Twice a day because the gameweek being played is re-fetched every run. |
 
 Check what is loaded with `launchctl list | grep com.gaffer`; **on this machine
 today only two of the nine are** (see `docs/GUIDE.md` §12.0). Remove them with
