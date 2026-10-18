@@ -34,6 +34,19 @@ def cited(text: str) -> set[int]:
     return {int(n) for n in _ID.findall(text)}
 
 
+def struck_cites(text: str) -> set[int]:
+    """The ids in each struck span and the parenthetical right after it.
+
+    The GUIDE strikes the line and names what closed it just outside the
+    tildes, ``~~the web button banking prices~~ (holiday F-3)``, so the span
+    alone would read nothing.
+    """
+    out: set[int] = set()
+    for span, after in re.findall(r"~~(.+?)~~(\s*\([^)]*\))?", text, re.S):
+        out |= cited(span) | cited(after)
+    return out
+
+
 def closed_cites(guide: str) -> set[int]:
     """The ids GUIDE §12.4 and §12.5 cite as closed.
 
@@ -44,8 +57,7 @@ def closed_cites(guide: str) -> set[int]:
     assert section, "GUIDE §12.4 to §12.5 not found"
     body = section.group(0)
     out: set[int] = set()
-    for span in re.findall(r"~~(.+?)~~", body, re.S):
-        out |= cited(span)
+    out |= struck_cites(body)
     readings = re.search(r"^#### The readings\n.*?(?=^#|\Z)", body,
                          re.M | re.S)
     assert readings, "GUIDE §12.5 has no readings table"
@@ -73,6 +85,7 @@ def test_every_cited_holiday_id_is_a_box():
 def test_every_id_cited_as_closed_is_ticked():
     box = boxes(HOLIDAY.read_text())
     guide = Path("docs/GUIDE.md").read_text()
+    assert struck_cites(guide), "no struck cites read: the regex went stale"
     assert closed_cites(guide), "no closed cites read: the regexes went stale"
     assert unticked(guide, box) == []
 
@@ -82,7 +95,7 @@ def test_the_rail_bites_on_an_unknown_id_and_an_open_one():
     assert unboxed(["closed by holiday F-999"], box) == [999]
     open_id = min(n for n, ticked in box.items() if not ticked)
     done_id = min(n for n, ticked in box.items() if ticked)
-    guide = (f"### 12.4 Open\n~~a line (holiday F-{open_id})~~ and "
+    guide = (f"### 12.4 Open\n~~a line~~ (holiday F-{open_id}) and "
              f"F-{done_id}\n### 12.5 Not planned\n#### The readings\n"
              "| `scripts/x.py` (holiday F-999) | X |\n## 13. End\n")
     assert unticked(guide, box) == [open_id, 999]
