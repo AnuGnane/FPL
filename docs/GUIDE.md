@@ -599,13 +599,13 @@ the project folder moves — the plists embed the path):
 | When | Job | What it does |
 |---|---|---|
 | Thu 18:00 | `com.gaffer.advise` | `prices`, then `train` then `advise`; logs to `logs/prices.log` and `logs/advise.log`. The price bank comes first so the optimizer's timing term has a same-day log; a failed fetch does not stop the advice. Since v17d `advise` chains the brief, so the Thursday log ends with the brief's line (or its note) and Friday's digest headline comes from the brief. |
-| Nightly 23:15 | `com.gaffer.prices` | Banks every player's price reading; flags likely changes. |
-| Daily 17:00 | `com.gaffer.snapshot` | Banks the day's availability state (the corpus a future news model trains on), and since holiday F-4 the top-10k threshold: one standings request, under `[league] field_scrape`. |
-| Sat & Sun 18:30 | `com.gaffer.field` | Samples ~300 top-10k squads; banks their EO with standard errors. |
-| Tue 09:00 | `com.gaffer.review` | Grades every gameweek FPL has finalised into the decision ledger. |
-| Fri 17:00 | `com.gaffer.digest-friday` | The briefing. |
-| Tue 09:30 | `com.gaffer.digest-tuesday` | The debrief (after the review has banked). |
-| Nightly 23:45 | `com.gaffer.backup` | Tars the ~16 MB no command can rebuild into `~/gaffer-backups`; keeps fourteen. |
+| Nightly 23:15 | `com.gaffer.prices` | `prices`: banks every player's price reading; flags likely changes. |
+| Daily 17:00 | `com.gaffer.snapshot` | `snapshot`: banks the day's availability state (the corpus a future news model trains on), and since holiday F-4 the top-10k threshold: one standings request, under `[league] field_scrape`. |
+| Sat & Sun 18:30 | `com.gaffer.field` | `field-scrape`: samples ~300 top-10k squads; banks their EO with standard errors. |
+| Tue 09:00 | `com.gaffer.review` | `review`: grades every gameweek FPL has finalised into the decision ledger. |
+| Fri 17:00 | `com.gaffer.digest-friday` | `digest --kind friday`: the briefing. |
+| Tue 09:30 | `com.gaffer.digest-tuesday` | `digest --kind tuesday`: the debrief (after the review has banked). |
+| Nightly 23:45 | `com.gaffer.backup` | `backup`: tars the ~16 MB no command can rebuild into `~/gaffer-backups`; keeps fourteen. |
 | 06:30 & 18:30 | `com.gaffer.core-insights` | `gaffer core-insights` — FPL-Core-Insights per-match stats, published cup/European fixtures and club Elo into `data/core_insights/`. |
 
 Fetched CSVs are cached under `data/raw/core_insights/`. A finished gameweek
