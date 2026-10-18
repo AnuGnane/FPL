@@ -17,6 +17,14 @@ paragraph or bullet names. The README, GUIDE and ROADMAP write bare names in
 prose about many directories at once, so for them bare names stay unread.
 The bare rule catches a deleted or renamed file, not one named under the
 wrong directory: any root joined to any directory of the block may hold it.
+
+Holiday F-126 adds the v20 spec
+(``specs/2026-10-07-v20-model-cycle-design.md``), which names the arms'
+scripts, switches and test files, and ``CONVENTIONS.md``, which names
+``scripts/seed_stats.py``. The spec's ``2026-10-xx-v20<letter>-<slug>-design.md``
+pattern holds ``<``, which the path rule never matches; its plan path,
+not yet written, had ``2026-10-xx`` for a date and now reads ``{dd}``, a
+template like the others.
 """
 
 from __future__ import annotations
@@ -29,6 +37,8 @@ DOCS = [
     Path("docs/GUIDE.md"),
     Path("docs/superpowers/ROADMAP.md"),
     Path("CLAUDE.md"),
+    Path("docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md"),
+    Path("docs/superpowers/CONVENTIONS.md"),
 ]
 RULES = Path("CLAUDE.md")
 
