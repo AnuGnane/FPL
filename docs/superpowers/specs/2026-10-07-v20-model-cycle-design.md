@@ -10,7 +10,7 @@ and one gate each.
 two readings); `specs/2026-09-01-gaffer-v12-program-design.md` §5.2 (the
 role arm's record). Every rule below is held to
 `docs/superpowers/CONVENTIONS.md`, cited by section.
-**Plan:** `docs/superpowers/plans/2026-10-xx-v20-model-cycle.md`, to be
+**Plan:** `docs/superpowers/plans/2026-10-{dd}-v20-model-cycle.md`, to be
 written after the rulings in §1 are confirmed; tracker beside it.
 **Branches:** `v20<letter>-<slug>` off `main`, one at a time, ff-merged.
 **Date:** 2026-10-07. **Status:** draft, written unattended on the holiday
