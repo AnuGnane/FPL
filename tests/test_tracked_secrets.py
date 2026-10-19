@@ -18,9 +18,14 @@ from __future__ import annotations
 import re
 import secrets
 import subprocess
+from pathlib import Path
 
 _ASSIGN = re.compile(r"""api_key\s*=\s*["']([^"']+)""")
 _HEX = re.compile(r"[0-9a-f]{20,}")
+
+# Run from the repo root wherever pytest starts, so a run from tests/ scans
+# the whole tree, not its own subtree.
+_ROOT = Path(__file__).resolve().parents[1]
 
 # v17c §2.3: the golden board's fixture, written from golden_config() with
 # no [odds] table; .gitignore un-ignores it by name.
@@ -47,7 +52,8 @@ def key_shaped(text: str) -> list[str]:
 
 
 def _git(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(["git", *args], capture_output=True, text=True)
+    return subprocess.run(["git", *args], capture_output=True, text=True,
+                          cwd=_ROOT)
 
 
 def _tracked() -> list[str]:
@@ -69,7 +75,7 @@ def test_no_tracked_file_carries_a_key_shaped_value():
     found = {}
     for path in _tracked():
         try:
-            with open(path, encoding="utf-8") as f:
+            with open(_ROOT / path, encoding="utf-8") as f:
                 text = f.read()
         except (UnicodeDecodeError, FileNotFoundError, IsADirectoryError):
             continue  # a binary, or a path deleted in the working tree
