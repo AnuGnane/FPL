@@ -1,8 +1,9 @@
 """Every holiday id the docs cite is a box in HOLIDAY.md (holiday F-123).
 
 ROADMAP candidate 7, in F-110's shape (``tests/test_doc_pins.py``, the docs
-read against their source as text). The README, the GUIDE, the ROADMAP and
-the v20 spec cite ``F-<n>`` as the record of what closed a line and where a
+read against their source as text). The README, the GUIDE, the ROADMAP,
+the v20 spec, and since F-134 ``CLAUDE.md`` and
+``docs/superpowers/CONVENTIONS.md`` cite ``F-<n>`` as the record of what closed a line and where a
 script came from; nothing checked that the id exists or is done. Each cited
 id must be a box in ``HOLIDAY.md``, and an id cited where the GUIDE says a
 line is closed (a struck ``~~…~~`` span in §12.4 or §12.5, or a row of the
@@ -17,7 +18,10 @@ from pathlib import Path
 
 DOCS = [Path("README.md"), Path("docs/GUIDE.md"),
         Path("docs/superpowers/ROADMAP.md"),
-        Path("docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md")]
+        Path("docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md"),
+        # F-134: CLAUDE.md cites F-74 and F-82; CONVENTIONS.md is where a
+        # replay package's id lands next (F-126's shape applied here).
+        Path("CLAUDE.md"), Path("docs/superpowers/CONVENTIONS.md")]
 HOLIDAY = Path("HOLIDAY.md")
 
 _ID = re.compile(r"\bF-(\d+)\b")
