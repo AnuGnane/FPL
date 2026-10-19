@@ -504,7 +504,9 @@ defaults, CLI commands and options, MCP tools, the launchd jobs' commands,
 the v20 switches, modules, data files, the frontend's layout and the paths it
 fetches, file paths, in-page anchors, the pins the docs quote, the gate
 lines CI runs, the holiday ids the docs cite, the two data-gated tables, the
-reading scripts' pass rules and the wire models' field sentences, as the
+reading scripts' pass rules, the wire models' field sentences, the specs
+and plans the ROADMAP names, the tabs `shots.sh` shoots, the commands and
+markers `CLAUDE.md` names and the tests that skip without local data, as the
 GUIDE, this README, `CLAUDE.md` and `config.example.toml` name them, are
 each checked against the source, so a rename that leaves a doc behind fails
 the gate.

@@ -19,17 +19,18 @@ that default off: v20c0's harness step zero, `REPLAY_TEAM_MODEL`
 (`src/gaffer/models/dixon_coles.py`, F-10); v20b's bonus head,
 `BONUS_SEES_ATTACK` (`src/gaffer/models/components.py`, F-18); and C1's
 replay half, step one, `REPLAY_AVAILABILITY` (`src/gaffer/backtest.py`,
-F-122), beside `REPLAY_TEAM_MODEL`. Beside them
+F-122), beside `REPLAY_TEAM_MODEL`; and C2's top-bin `p_play` step,
+`PPLAY_TOP_BIN_STEP` (`src/gaffer/models/train.py`, F-81, merged from the
+Mac as #134). Beside them
 are the replay's lever log lines (F-14, F-64) and the head-half scripts for v20c
 (F-13) and v20b (F-15). v20d has no switch, only its scripts (F-12, F-16).
 Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-127
-except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #134 (#107
-relanded linear), and F-91 and F-92 wait on it; F-77, the other
-`needs-mac` package, has merged.
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-134
+except F-92, which is open as `needs-mac` PR #166; F-77 and F-81 (#134,
+#107 relanded linear), the other `needs-mac` packages, have merged.
 `HOLIDAY.md` is the record. Pins: routes
 52 (`tests/test_v11_degradation.py`), job kinds 12
 (`tests/test_v12_w1_degradation.py`), `Config` 62
@@ -77,7 +78,17 @@ tables hold the same rows), F-125's rule test in
 its pass rule in its docstring), F-126's widened `tests/test_doc_paths.py`
 (the v20 spec's and `CONVENTIONS.md`'s paths as well) and F-127's widened
 scan in `frontend/src/kit/tokens.test.ts` (`frontend/src/main.tsx`,
-`frontend/index.html` and `frontend/vitest.setup.ts` as well).
+`frontend/index.html` and `frontend/vitest.setup.ts` as well). Six more
+came after those: F-129's `tests/test_roadmap_specs.py` (every spec and plan
+under `docs/superpowers/` is named in this file), F-130's
+`frontend/src/kit/shotsTabs.test.ts` (`shots.sh` shoots every `?tab=` value
+the four tabbed hubs accept), F-131's `tests/test_claude_commands.py`
+(`CLAUDE.md`'s Commands block names real commands, npm scripts and
+markers), F-132's `--strict-markers` with `tests/test_pytest_markers.py`
+(an unregistered marker fails collection), F-133's
+`tests/test_guide_skips.py` (GUIDE §10 names every test that skips without
+local data) and F-134's widened `tests/test_holiday_cites.py` (`CLAUDE.md`
+and `CONVENTIONS.md` as well).
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
