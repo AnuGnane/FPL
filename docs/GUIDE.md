@@ -908,7 +908,7 @@ condition; none is changed by this table, and
 | `tests/test_golden_board.py` | the recorded `Inputs` seam is missing | the Mac's golden gate |
 | `tests/test_automation_status.py` | `zsh` is not installed (the installer is a zsh script) | the Mac, or any machine with zsh |
 | `tests/test_cli.py` | the `gaffer` console script is not installed | any `uv sync`ed clone |
-| `tests/test_manager_tenures.py` | no history parquet or no manager-tenure asset under `data/` | the Mac, after `gaffer refresh` |
+| `tests/test_manager_tenures.py` | no history parquet under `data/` (or the tracked `data/manager_tenures.toml` fails to load) | the Mac, after `gaffer refresh` |
 | `tests/test_v10b_degradation.py` | no fixture list (`live/fixtures_all.parquet`) | the Mac, after `gaffer refresh` |
 | `tests/test_v10b_fixture_outlook.py` | no fixture list | the Mac, after `gaffer refresh` |
 | `tests/test_v10b_outlook_api.py` | no fixture list | the Mac, after `gaffer refresh` |
