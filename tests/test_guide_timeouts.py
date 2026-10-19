@@ -25,7 +25,8 @@ _DURATION = re.compile(r"\b\d+ (?:s|min)\b")
 
 def _render(seconds: float) -> str:
     # The GUIDE's own spelling: seconds for the short reap, whole minutes
-    # from ten minutes up (F-141's ruling: "120 s", not "2 min").
+    # from ten minutes up (F-141 PR ruling 1: the GUIDE reads "120 s", not
+    # "2 min", so the package's 60 s threshold could not stand as written).
     if seconds >= 600 and seconds % 60 == 0:
         return f"{int(seconds // 60)} min"
     return f"{int(seconds)} s"
