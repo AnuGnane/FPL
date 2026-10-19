@@ -506,10 +506,11 @@ fetches, file paths, in-page anchors, the pins the docs quote, the gate
 lines CI runs, the holiday ids the docs cite, the two data-gated tables, the
 reading scripts' pass rules, the wire models' field sentences, the specs
 and plans the ROADMAP names, the tabs `shots.sh` shoots, the commands and
-markers `CLAUDE.md` names and the tests that skip without local data, as the
-GUIDE, this README, `CLAUDE.md` and `config.example.toml` name them, are
-each checked against the source, so a rename that leaves a doc behind fails
-the gate.
+markers `CLAUDE.md` names, the tests that skip without local data, the
+secrets rule (no key-shaped value in a tracked file) and `HOLIDAY.md`'s own
+shape, as the GUIDE, this README, `CLAUDE.md` and `config.example.toml`
+name them, are each checked against the source, so a rename that leaves a
+doc behind fails the gate.
 
 CI (`.github/workflows/ci.yml`, holiday F-1 and F-57) runs on every pull request and on
 `main`: `uvx ruff check src tests`, `zsh -n scripts/install_automation.sh`,

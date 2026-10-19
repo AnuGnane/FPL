@@ -73,6 +73,9 @@ arm ends up measured against its own author's expectation.
 
 Grep the diff for keys, and confirm `git show main:config.toml` fails. Every
 time, not only when the cycle touched config.
+Since holiday F-138, `tests/test_tracked_secrets.py` runs the tracked-file
+half of that grep in CI, by the key's shape rather than its value; the
+history grep and the `git show` check stay by hand.
 
 ## 9. An arm rule pre-registers both halves, and the outcome measure decides
 

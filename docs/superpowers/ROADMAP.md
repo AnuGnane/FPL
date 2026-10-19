@@ -28,7 +28,7 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-134
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-142
 except F-92, which is open as `needs-mac` PR #166; F-77 and F-81 (#134,
 #107 relanded linear), the other `needs-mac` packages, have merged.
 `HOLIDAY.md` is the record. Pins: routes
@@ -88,7 +88,18 @@ markers), F-132's `--strict-markers` with `tests/test_pytest_markers.py`
 (an unregistered marker fails collection), F-133's
 `tests/test_guide_skips.py` (GUIDE §10 names every test that skips without
 local data) and F-134's widened `tests/test_holiday_cites.py` (`CLAUDE.md`
-and `CONVENTIONS.md` as well).
+and `CONVENTIONS.md` as well). Seven more followed: F-136's
+`tests/test_ruff_target.py` (ruff's `target-version` and `.python-version`
+name the `requires-python` floor), F-137's `tests/test_guide_sections.py`
+(every GUIDE section the docs cite by `§` is a heading), F-138's
+`tests/test_tracked_secrets.py` (no tracked file assigns a key-shaped value
+to `api_key`, and the machine-local files stay untracked), F-139's
+`tests/test_holiday_shape.py` (`HOLIDAY.md`'s ids run without a gap and its
+dependencies name earlier boxes), F-140's `tests/test_guide_history.py`
+(GUIDE §11 opens a paragraph for every cycle "Shipped" lists), F-141's
+`tests/test_guide_timeouts.py` (GUIDE §13 quotes the job kinds' reap
+timeouts) and F-142's token rail in `frontend/src/kit/tokens.test.ts`
+(every `--color-*` token `theme.css` defines is read somewhere).
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
