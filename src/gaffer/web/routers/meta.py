@@ -519,7 +519,9 @@ def arm_switches() -> list[ArmSwitch]:
               ("backtest.REPLAY_TEAM_MODEL", backtest.REPLAY_TEAM_MODEL),
               ("backtest.REPLAY_AVAILABILITY", backtest.REPLAY_AVAILABILITY),
               # Holiday F-91: F-81's step, shipped off beside the arms.
-              ("models.train.PPLAY_TOP_BIN_STEP", train.PPLAY_TOP_BIN_STEP)]
+              ("models.train.PPLAY_TOP_BIN_STEP", train.PPLAY_TOP_BIN_STEP),
+              # Holiday F-92: C3's splits, shipped off the same way.
+              ("models.train.HOME_AWAY_SPLITS", train.HOME_AWAY_SPLITS)]
     return [ArmSwitch(name=name,
                       on=bool(value) if isinstance(value, bool)
                       else value is not None,
