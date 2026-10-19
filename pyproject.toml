@@ -77,7 +77,7 @@ filterwarnings = [
 [tool.ruff]
 # v18g §1: E, F, B and I at line 100; the ignores below each carry a reason.
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "B", "I"]
