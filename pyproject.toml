@@ -45,6 +45,9 @@ include = ["src/gaffer", "tests", "README.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# holiday F-132: an unregistered marker fails collection, so a misspelt
+# -m "not slwo" in the inner loop cannot deselect nothing and say nothing.
+addopts = "--strict-markers"
 # v17c §2.11: the golden board runs in the default suite; a fast local loop
 # deselects it with -m "not golden".
 markers = [

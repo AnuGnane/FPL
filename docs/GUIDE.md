@@ -864,7 +864,10 @@ and it is worth knowing because you can read the evidence yourself:
   **any** machine, with no `models/` directory at all; only the full
   `run_advise` replay still needs the recorded models. `python -m
   tests.golden_client --write` re-records the board after a retrain, and
-  `--inputs` re-records the seam without restamping it.
+  `--inputs` re-records the seam without restamping it. The suite runs
+  under `--strict-markers` (holiday F-132), so a marker used in `tests/`
+  that `pyproject.toml` does not register fails collection rather than
+  letting `-m "not golden"` or `-m "not slow"` deselect nothing silently.
 
 **The drivers in `scripts/`.** `scripts/v7b_replay.py` and
 `scripts/replay_pair.sh` run the replays; `scripts/seed_stats.py` reads
