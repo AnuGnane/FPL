@@ -1491,8 +1491,8 @@ tables hold the same rows), F-125's rule test in
 its pass rule in its docstring), F-126's widened `tests/test_doc_paths.py`
 (the v20 spec's and `CONVENTIONS.md`'s paths as well) and F-127's widened
 scan in `frontend/src/kit/tokens.test.ts` (`frontend/src/main.tsx`,
-`frontend/index.html` and `frontend/vitest.setup.ts` as well). The holiday queue has merged F-1 to F-127 except F-81,
-F-91 and F-92: F-81 is open as `needs-mac` PR #134 (#107 relanded
+`frontend/index.html` and `frontend/vitest.setup.ts` as well). The holiday queue has merged F-1 to F-127
+except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #134 (#107 relanded
 linear), and F-91 and F-92 wait on it; F-77, the other `needs-mac`
 package, has merged.
 `HOLIDAY.md` is the record.
@@ -1506,7 +1506,7 @@ package, has merged.
 holiday has shipped the rest of v20's code off, behind switches that
 default off: v20c0's harness step zero, `REPLAY_TEAM_MODEL`
 (`src/gaffer/backtest.py`, holiday F-7); v20c's clip, `MU_BOUNDS`
-(`src/gaffer/models/dixon_coles.py`, F-10); and v20b's bonus head,
+(`src/gaffer/models/dixon_coles.py`, F-10); v20b's bonus head,
 `BONUS_SEES_ATTACK` (`src/gaffer/models/components.py`, F-18); and C1's
 replay half, step one, `REPLAY_AVAILABILITY` (`src/gaffer/backtest.py`,
 F-122), beside `REPLAY_TEAM_MODEL`. Beside them

@@ -16,7 +16,7 @@ served number moved and no pin moved (`specs/2026-10-07-v20-model-cycle-design.m
 §6.1). The holiday has shipped the rest of v20's code off, behind switches
 that default off: v20c0's harness step zero, `REPLAY_TEAM_MODEL`
 (`src/gaffer/backtest.py`, holiday F-7); v20c's clip, `MU_BOUNDS`
-(`src/gaffer/models/dixon_coles.py`, F-10); and v20b's bonus head,
+(`src/gaffer/models/dixon_coles.py`, F-10); v20b's bonus head,
 `BONUS_SEES_ATTACK` (`src/gaffer/models/components.py`, F-18); and C1's
 replay half, step one, `REPLAY_AVAILABILITY` (`src/gaffer/backtest.py`,
 F-122), beside `REPLAY_TEAM_MODEL`. Beside them
