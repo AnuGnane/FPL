@@ -75,6 +75,7 @@ def test_the_commands_block_names_real_commands_scripts_and_markers():
     assert gaffer_subcommands(block), "the block names no gaffer command"
     assert marker_names(block), "the block names no -m marker"
     docs = [p.read_text() for p in DOCS]
+    assert any(npm_scripts(t) for t in docs), "the docs name no npm script"
     assert problems(block, docs, _commands(), _scripts(),
                     registered_markers()) == []
 
