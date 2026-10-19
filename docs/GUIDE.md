@@ -261,7 +261,7 @@ frontend gate is one command — `cd frontend && npm run check` runs `tsc
 a screenshot pass — build the frontend, serve it with
 `uv run gaffer ui --no-open-browser --port 8927`, then
 `frontend/scripts/shots.sh <stage>` writes the six hubs, and since holiday
-F-130 every tab of the four tabbed hubs, in both themes to
+F-130 the nine tabs no stage list shot, in both themes to
 `.superpowers/shots/<stage>/` (the shell is playwright's
 `chromium-headless-shell`; if its cache under `~/Library/Caches/ms-playwright`
 has been cleaned, `cd frontend && npx -y playwright@latest install

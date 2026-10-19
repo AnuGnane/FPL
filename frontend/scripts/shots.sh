@@ -19,9 +19,9 @@ BASE="${GAFFER_UI:-http://localhost:8927}"
 WIDTHS="${WIDTHS:-1400}"
 read -r -a SET_WIDTHS <<< "$WIDTHS"
 mkdir -p "$OUT"
-# Holiday F-130: the default list also shoots every `?tab=` value the four
-# tabbed hubs accept, so no tab goes without a screenshot in any gate
-# (`src/kit/shotsTabs.test.ts` holds it).
+# Holiday F-130: the default list also shoots the nine tabs no stage list
+# named, so across the lists every `?tab=` value the four tabbed hubs accept
+# has a screenshot (`src/kit/shotsTabs.test.ts` holds it).
 HUBS=(
   "this-week:/"
   "planning-whatif:/planning?tab=whatif"
