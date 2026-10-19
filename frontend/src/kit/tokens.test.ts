@@ -230,3 +230,39 @@ describe("Tailwind's scan", () => {
     expect(theme).toContain('@source not "../**/*.test.tsx";')
   })
 })
+
+// Holiday F-142: the rules above forbid values, but nothing noticed a token
+// nobody reads, so a retired colour could live on in theme.css (v14 R11, the
+// names F-58 closed). Every `--color-<name>` the theme defines is read
+// somewhere: as a custom property outside its own definition (`var()`, an
+// arbitrary value) or as a whole Tailwind utility, so `accent` is not read by
+// `accent-text`. theme.css joins the sources it searches here only, not
+// FILES, because the ledger scans above allow its hex by name and would
+// otherwise read its definitions as offences.
+const THEME = join(SRC, 'styles/theme.css')
+const UTILITY = 'bg|text|border|fill|stroke|ring|outline|decoration|divide|from|via|to|placeholder|caret|accent|shadow'
+
+function deadTokens(theme: string, sources: string[]): string[] {
+  const names = [...new Set([...theme.matchAll(/--color-([a-z0-9-]+)\s*:/g)].map((m) => m[1]))]
+  const read = [theme, ...sources].map((text) => text.replace(/--color-[a-z0-9-]+\s*:/g, ''))
+  return names.filter((name) => {
+    const property = new RegExp(`--color-${name}(?![a-z0-9-])`)
+    const utility = new RegExp(`(?<![a-z0-9-])(?:${UTILITY})-${name}(?![a-z0-9-])`)
+    return !read.some((text) => property.test(text) || utility.test(text))
+  })
+}
+
+describe('the theme tokens', () => {
+  it('defines no colour token that nothing reads', () => {
+    const sources = [...FILES, THEME].map((path) => readFileSync(path, 'utf8'))
+    expect(deadTokens(sources.pop() as string, sources)).toEqual([])
+  })
+
+  it('names a token defined but never read, and a longer name does not stand in', () => {
+    const theme = '@theme {\n  --color-accent: #000;\n  --color-accent-text: #fff;\n  --color-unused: #111;\n}\n'
+    expect(deadTokens(theme, ['<p className="bg-accent-text text-accent-text">']))
+      .toEqual(['accent', 'unused'])
+    expect(deadTokens(theme, ['<p className="hover:bg-accent/50 text-accent-text">',
+      "style={{ color: 'var(--color-unused)' }}"])).toEqual([])
+  })
+})
