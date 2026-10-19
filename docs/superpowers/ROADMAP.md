@@ -273,6 +273,7 @@ taken on the way: rail 1 exempts `cli.py` and `mcp_server.py` whole (v18d);
 a `GafferError` is a 422 and the loader treats it as empty (v18e);
 `set-state-in-effect` is `warn` (v18f); seventeen job-kind homes, not
 fourteen, and typer's builders as immutable calls (v18g).
+v18h, which has no block of its own: spec `2026-09-14-v18h-docs-design.md`.
 
 ### The v17 deepening programme (planned 2026-09-07; **complete**, all eight merged 2026-09-07 → 09)
 
@@ -347,7 +348,7 @@ review unions derived from `ReviewLane`. Four rulings (spec §1):
 BLE001 narrows only where evident. Gate: full suite 4581 + 1 xfail in
 21:24 with the golden's 62, ruff clean, `npm run check` 1201 at zero
 warnings, eighteen pairs identical (Health's age column ticked a hundredth
-of an hour). Pins 52 / 12 / 62.
+of an hour). Pins 52 / 12 / 62. Spec `2026-09-16-v19h-health-design.md`.
 
 ### v19g — the model's free half (done, merged `508025e` 2026-09-16)
 `CalibrationHealth` and `TeamModelHealth` on `/api/health` (the loader
@@ -366,6 +367,7 @@ warnings, five default pairs identical, This Week's one-line difference a
 live-odds flicker shown by two same-code controls, Health and Chips
 approved. A GW5 advise ran at 16:59 from the UI left on port 8927, not
 from the gate; reported. Pins 52 / 12 / 62.
+Spec `2026-09-16-v19g-model-free-design.md`.
 
 ### v19f — the question box (done, merged `58f5960` 2026-09-16)
 `brief.check_question` (500 characters), `build_question_prompt` (the
@@ -380,7 +382,7 @@ when the check fails. Gate: inner loop 4406, ruff clean, golden 62/0 in
 18:14, `npm run check` 1189 with the same eight warnings, fetch rails
 untouched, twelve desktop pairs identical (the box sits below the shot
 height; a tall crop approved), three real answers with 0 offences. Pins
-52 / 12 / 62.
+52 / 12 / 62. Spec `2026-09-16-v19f-ask-design.md`.
 
 ### v19e — compare and act (done, merged `d9881d9` 2026-09-16)
 `/api/advice/diff?a=&b=` (the newest plan of each gameweek, `gw_from`/
@@ -393,7 +395,7 @@ default); the moves card's since-line; row menus on `SquadTable` and over
 `Planning`. Gate: inner loop 4394 (one flake, passed twice after), ruff
 clean, golden 62/0 in 18:18, `npm run check` 1184, rails +2 declared, five
 desktop pairs identical, This Week approved at 1400 and 375. Pins
-51 / 12 / 62.
+51 / 12 / 62. Spec `2026-09-16-v19e-compare-design.md`.
 
 ### v19d — This Week, readable (done, merged `f2d61d3` 2026-09-16)
 `this-week/ContextStrip` (sticky, `Countdown short`, six anchors onto
@@ -407,6 +409,7 @@ path); an `@media print` block pinned by a tokens rule. Gate: inner loop
 4390, ruff clean, golden 62/0 in 18:16, `npm run check` 1172, desktop
 pairs as named plus the What-If tab (it renders the same ladder card),
 phone shot approved. Pins 51 / 12 / 62.
+Spec `2026-09-16-v19d-readable-design.md`.
 
 ### v19c — the phone (done, merged `dc7cd6f` 2026-09-16)
 Six-item tab bar (`ThemeToggle` above the strip; `pb-[calc(0.25rem+env(
@@ -420,6 +423,7 @@ sort headers and an expand column); `shots.sh` at three widths with the
 installed shell build. Rails: six-item bar, rail mode, no `pb-16`, no
 table at 375 in the four cards. Gate: `npm run check` 1149, twelve desktop
 pairs byte-identical, 36 phone/tablet shots approved. Pins 51 / 12 / 62.
+Spec `2026-09-16-v19c-phone-design.md`.
 
 ### v19b — the loop closed (done, merged `4927a15` 2026-09-16)
 `weekly_run` banks a price reading before the solve through one seam,
@@ -435,6 +439,7 @@ ticker's 404/422 empty state; the matrix's pre-gameweek fetch removed
 golden 62/0 in 18:01, `npm run check` 1135, twelve pairs identical (one
 render flake settled by a same-code control); the real-run price line is
 pasted into the spec after Thursday's job. Pins 51 / 12 / 62.
+Spec `2026-09-15-v19b-loop-design.md`.
 
 ### v19a — the week's clock and health (done, merged `8354a21` 2026-09-16)
 The countdown on This Week always, the staleness reason in the callout; the
@@ -458,7 +463,7 @@ installed copy and say which file they read); ~~the core-insights plist's
 fixed~~ (fixed at source by holiday F-55, PR #75; the readers keep their
 tolerance for installed copies); ~~`shots.sh`'s default shell path names build 1234 while 1243 is
 installed (export `CHROME_HEADLESS_SHELL`)~~ (closed: `frontend/scripts/shots.sh`
-names `chromium_headless_shell-1243`).
+names `chromium_headless_shell-1243`). Spec `2026-09-15-v19a-clock-design.md`.
 
 ### v18g — the suite, one home per rule (done, merged `bc02faf` 2026-09-14)
 Ruff committed (`E`, `F`, `B`, `I` at line 100; `B905` ignored with its
@@ -484,6 +489,7 @@ named: `tests/test_pulp_filters.py` fails the suite when PuLP 4 arrives,
 holiday F-89, PR #116); ~~the four
 singleton warnings~~ (closed at source by holiday F-22, the two off the
 golden path, and F-24); `test_advise.py` at 3.4 s is the next slow file.
+Spec `2026-09-14-v18g-suite-design.md`.
 
 ### v18f — the surface, correct to the hand (done, merged `bf84d7c` 2026-09-14)
 Six components cut at their seams as pure moves (`QualityTab` 1060 → 546,
@@ -508,7 +514,7 @@ untouched; pins 51 / 12 / 62. Left open: ~~the eight warnings~~ (closed in
 v19h, pinned at zero by `--max-warnings 0`); ~~Tailwind's
 scanner regenerating the two retired classes from the rail's own patterns~~
 (closed: `theme.css` leaves the test files out of the scan, holiday F-88,
-PR #115).
+PR #115). Spec `2026-09-14-v18f-surface-design.md`.
 
 ### v18e — the loader, finished (done, merged `b1867b9` 2026-09-14)
 Every artifact read in `hubs/` and `kit/` goes through `usePageData`; the
@@ -530,7 +536,7 @@ table; the grep lists Live alone. Frontend 988 → 1058 (+1 skipped); Python
 double fetch before the gameweek is known; a sentence for `FixtureTicker`'s
 cold clone (v18f)~~ (closed in v19b §2.6: `FixtureMatrix` fetches nothing
 until the gameweek is known, and the ticker's cold clone is an empty state
-rather than an error).
+rather than an error). Spec `2026-09-14-v18e-loader-design.md`.
 
 ### v18d — the core out of the web layer (done, merged `b94fbc4` 2026-09-14)
 Nothing under `src/gaffer` outside `web/` imports the web layer except the
@@ -556,6 +562,7 @@ reaches the spec did not name (`_history_stamp`, `_code_of_element`,
 `_source_of`, `_cached_get`), for v18g~~ (closed: holiday F-8 made
 `journal.code_of_element` and `data.cups.cached_get` public; F-28 made
 `artifacts.history_stamp` and `config.source_of` public).
+Spec `2026-09-12-v18d-layering-design.md`.
 
 ### v18c — measurement that has never run (done, merged `dfb0984` 2026-09-12)
 The calibration report had said "no graded gameweeks" since 2026-09-01
@@ -574,7 +581,7 @@ byte-identical, the Inputs re-recorded for the one added column; four
 screenshot pairs differing by the sentence alone. Two gate lines were
 written wrong and corrected in the spec: the `jq` path, and health's
 trigger, which is the advise run rather than `review`. Suite 4458 Python,
-988 frontend; pins 51 / 12 / 62.
+988 frontend; pins 51 / 12 / 62. Spec `2026-09-12-v18c-measurement-design.md`.
 
 ### v18b — the advice path tells the truth (done, merged `f662d6d` 2026-09-12)
 Rulings 2, 3 and 4 of the polish design. The ladder's guard in
@@ -604,7 +611,7 @@ two fake FPL clients had never answered `get_entry` behind a warm cache.
 Gate: 58 passed, 0 skipped, three expected files and the Inputs
 byte-identical to v18a's recording, the ladder file added; every rail
 shown to fire. Suite 4434 Python (4445 with the golden), 986 frontend;
-pins 51 / 12 / 62.
+pins 51 / 12 / 62. Spec `2026-09-12-v18b-advice-path-design.md`.
 
 ### v18a — the gate, back on (done, merged `20185aa` 2026-09-12)
 The first sub-cycle of the v18 polish programme
@@ -631,6 +638,7 @@ the pipeline file alone 15 passed; the rail mutation-tested; with `models/`
 absent 48 passed, 8 skipped naming the reason. Suite 4427 Python (4418 +
 9 golden), 986 frontend; pins 51 / 12 / 62. Also this day, by the user's
 decision: the 26 local and 5 remote fully merged branches deleted.
+Spec `2026-09-12-v18a-gate-design.md`.
 
 ### v17h — This Week's data fetched once; one job hook (done, merged `339f5d1` 2026-09-09)
 Review card #c7, the one the review marked **Speculative** — it asked the
@@ -943,6 +951,8 @@ the user before its commit.
 - Deferred: the in-app chat (Candidates 10); a rule that the walk never
   steps above the objective's own hits (GUIDE §12.4); more reason codes.
 
+Plan `2026-09-06-gaffer-v16-restraint-brief.md`.
+
 ### v15 — leagues (done, merged `5bf0ed8` 2026-09-06)
 Every private league in the hub, one focus league drives the solver, a manual
 stance at full tilt. Brainstormed with the visual companion on 2026-09-06
@@ -975,10 +985,14 @@ Fable's review.
 - Deferred: blended stance (Candidates 9); per-league stance overrides;
   head-to-head leagues; a CLI overview command.
 
+Plan `2026-09-06-gaffer-v15-leagues.md`.
+
 ### v1 — core advisor (done)
 - [x] LightGBM component models (minutes p_play/p60, goals, assists, CS via team model, saves, bonus)
 - [x] Multi-period MILP squad/transfer/chip optimizer, 3-GW receding horizon
 - [x] CLI (`gaffer advise`, `gaffer backtest`)
+
+Spec `2026-08-23-fpl-ml-advisor-design.md`, plan `2026-08-23-fpl-ml-advisor.md`.
 
 ### v2 — calibration, odds, league (done)
 - [x] Probability calibration layer
@@ -987,9 +1001,13 @@ Fable's review.
 - [x] Penalty-save EP; scoring-table bonus multiplier
 - [x] `gaffer live` in-gameweek tracker
 
+Spec `2026-08-24-gaffer-v2-design.md`, plan `2026-08-24-gaffer-v2.md`.
+
 ### v3 / v3.1 — web UI + fixes (done)
 - [x] Local FastAPI + React web UI (advise, squad, league, live pages)
 - [x] Fix cycle (GW19/20 chip horizon, differential tagging, etc.)
+
+Spec `2026-08-24-gaffer-v3-ui-design.md`, plan `2026-08-24-gaffer-v3-ui.md`.
 
 ### v4a — measure (done, merged `b36a430` 2026-08-25)
 Spec: `specs/2026-08-25-gaffer-v4a-measure-design.md` · Plan: `plans/2026-08-25-gaffer-v4a-measure.md`
@@ -1085,6 +1103,8 @@ Spec: `specs/2026-08-30-gaffer-v7b-measurement-design.md` (§5–7 = results, co
 - [x] N2 first news verdict — **banked 2026-09-02 under v12 W2**: GW2, n=620, Brier news 0.1276 vs flags 0.1191, MAE 13.29 vs 13.02, flags ahead on both. One gameweek, so a residual and not a verdict (CONVENTIONS §5)
 - 12 replay runs + 1 probe; suite 1548; no serving changes
 
+Plan `2026-08-30-gaffer-v7b.md`.
+
 ### v7c — foundations (done, 2026-08-30)
 Spec: `specs/2026-08-30-gaffer-v7c-foundations-design.md` (§8 = outcome + evidence) · Plan: `plans/2026-08-30-gaffer-v7c-foundations.md`
 - [x] F1 daily availability snapshot: `gaffer snapshot` → append-only `data/live/availability_log.parquet` (idempotent per UTC day, atomic rewrite, never raises); web job kind; launchd plist shipped — **run `scripts/install_automation.sh` to activate the 17:00 daily job**
@@ -1113,6 +1133,22 @@ entry-API scrape approved.
 - [x] v8e solver trust — done 2026-08-31, spec §4 = outcome. Editable availability pins (authoritative last pass, DGW-whole-first-GW, model reading banked), 20-solve sensitivity sweep (signed margin, seed-independent of the advice draws; first live result: modal plan 5/20 — coin-flip board), drafts CRUD+compare (min-horizon scoring), chip sanity rails. Review: both blockers were wrong sentences to the manager (backwards negative margin; FH draft mis-scoring); chip-frequency claim dropped as structurally impossible rather than faked.
 - [x] v8g honest uncertainty — done 2026-08-31, spec §4 = outcome. Calibration cards (reliability curves incl. P(start), ledger-sourced scatter, biggest misses), outcome-variance EP bands + haul/blank chips (review caught the estimation-σ trap AGAIN — dead 0% chips/blank-100% certainty; now quadrature with OUTCOME_VAR_PER_EP, one uncertainty answer across tabs), counts-not-percentages confidence, compare radar. The cycle named for honesty needed its review most.
 - [x] v8f daily companion — done 2026-08-31, spec §4 = outcome. Price log banked daily (626 rows, idempotent per UTC day), starred watchlist cloning the pin pattern, Friday briefing + Tuesday debrief as pure-reader artifacts with an osascript notification (both built on real GW1 data), real EP movers in the retrain diff (absent on the first run, 5 named on the second). Review FIX-FIRST with no blockers; the sharpest of the four was a NaT deadline parsed under a guard and then multiplied outside it. The queue closes — user must re-run `scripts/install_automation.sh` for the four new plists.
+
+Specs and plans: v8a's spec
+`2026-08-30-gaffer-v8a-minutes-intelligence-design.md`, plan
+`2026-08-30-gaffer-v8a-minutes-intelligence.md`; v8b's spec
+`2026-08-31-gaffer-v8b-decision-loop-design.md`, plan
+`2026-08-31-gaffer-v8b-decision-loop.md`; v8c's spec
+`2026-08-31-gaffer-v8c-field-intelligence-design.md`, plan
+`2026-08-31-gaffer-v8c-field-intelligence.md`; v8d's spec
+`2026-08-31-gaffer-v8d-live-matchday-design.md`, plan
+`2026-08-31-gaffer-v8d-live-matchday.md`; v8e's spec
+`2026-08-31-gaffer-v8e-solver-trust-design.md`, plan
+`2026-08-31-gaffer-v8e-solver-trust.md`; v8f's spec
+`2026-08-31-gaffer-v8f-daily-companion-design.md`, plan
+`2026-08-31-gaffer-v8f-daily-companion.md`; v8g's spec
+`2026-08-31-gaffer-v8g-honest-uncertainty-design.md`, plan
+`2026-08-31-gaffer-v8g-honest-uncertainty.md`.
 
 ### v9a — pitch view (done, merged `02cf26e` 2026-08-31)
 Spec: `specs/2026-08-31-gaffer-v9a-pitch-view-design.md` (§4 outcome) · Plan: `plans/2026-08-31-gaffer-v9a-pitch-view.md`
@@ -1324,6 +1360,9 @@ Spec: §6 · Plan: `plans/2026-09-01-gaffer-v12-w5-interface.md` (16 tasks incl.
   rises with hits while raw XI points fall — decay, the chase tilt and the
   bench/FT/ITB terms buy the hits, not the players' forecasts.
 
+Spec `2026-09-04-gaffer-v13-transfer-ladder-design.md`, plan
+`2026-09-04-gaffer-v13-transfer-ladder.md`.
+
 ### v14 — the dark ledger (done, merged `40d4dcd` 2026-09-05)
 Design language only: no route, no schema, no number, no backend line. Decided
 with the visual companion on 2026-09-04 and spec'd in `bb6ae40`
@@ -1394,6 +1433,8 @@ branch `v14-ledger` off `main` at `bb6ae40`, 15 commits.
   the mockup. (`EmptyState`'s bare `<code>` closed in holiday F-11.) (Ruled
   by holiday F-48: kept as the spec's value by default; `docs/GUIDE.md`
   §12.4 strikes it.)
+
+Plan `2026-09-05-gaffer-v14-ui-ledger.md`.
 
 ## Operational / housekeeping
 - [x] Untrack `reports/` artifacts + `.claude/`; gitignore both (`31dc239`)
