@@ -19,13 +19,25 @@ BASE="${GAFFER_UI:-http://localhost:8927}"
 WIDTHS="${WIDTHS:-1400}"
 read -r -a SET_WIDTHS <<< "$WIDTHS"
 mkdir -p "$OUT"
+# Holiday F-130: the default list also shoots every `?tab=` value the four
+# tabbed hubs accept, so no tab goes without a screenshot in any gate
+# (`src/kit/shotsTabs.test.ts` holds it).
 HUBS=(
   "this-week:/"
   "planning-whatif:/planning?tab=whatif"
   "planning-board:/planning?tab=board"
+  "planning-timeline:/planning?tab=timeline"
+  "planning-drafts:/planning?tab=drafts"
+  "planning-ticker:/planning?tab=ticker"
   "players:/players"
+  "players-explorer:/players?tab=explorer"
+  "players-compare:/players?tab=compare"
+  "players-matrix:/players?tab=matrix"
+  "players-watchlist:/players?tab=watchlist"
   "league:/league"
   "settings:/model?tab=settings"
+  "model-season:/model?tab=season"
+  "model-history:/model?tab=history"
 )
 # v15 gate (specs/2026-09-06-gaffer-v15-leagues-design.md §10): the League
 # hub's four tabs, a non-focus league open, This Week and Settings. Pass the
