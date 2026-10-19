@@ -8,7 +8,7 @@ script came from; nothing checked that the id exists or is done. Each cited
 id must be a box in ``HOLIDAY.md``, and an id cited where the GUIDE says a
 line is closed (a struck ``~~…~~`` span in §12.4 or §12.5, or a row of the
 §12.5 readings table) must be a ticked one. An id cited as still open, as
-ROADMAP "Where things stand" names F-81, is not read for its tick.
+ROADMAP "Where things stand" names F-92, is not read for its tick.
 """
 
 from __future__ import annotations
