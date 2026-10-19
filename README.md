@@ -502,8 +502,9 @@ message names the file that owns it. Do not edit a rail to make it pass.
 The suite also holds the docs to the code: the API routes, config keys,
 defaults, CLI commands and options, MCP tools, the launchd jobs' commands,
 the v20 switches, modules, data files, the frontend's layout and the paths it
-fetches, file paths, in-page anchors, the pins the docs quote and the gate
-lines CI runs, as the GUIDE, this README, `CLAUDE.md` and
+fetches, file paths, in-page anchors, the pins the docs quote, the gate
+lines CI runs, the holiday ids the docs cite, the two data-gated tables, the
+reading scripts' pass rules and the wire models' field sentences, as the GUIDE, this README, `CLAUDE.md` and
 `config.example.toml` name them, are each checked against the source, so a
 rename that leaves a doc behind fails the gate.
 

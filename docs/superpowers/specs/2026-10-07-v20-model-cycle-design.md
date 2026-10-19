@@ -527,6 +527,9 @@ As v19 §3, with the replay rules added.
   season; `news_shadow` already leans to the plain flag (Brier 0.1276
   against 0.1191). Costed, deferred to the cycle after this one with the
   same two-half shape; it would be v20e if the night shifts run long.
+  Holiday F-122 shipped the replay half's first step off: the switch
+  `backtest.REPLAY_AVAILABILITY` (`src/gaffer/backtest.py`), `None` by
+  default, with the pair and its verdict the Mac's.
 - C2 (`p_play` top-bin isotonic step), C3 (home/away splits), B1's second
   half (days since status changed), `density_pub_7d`'s re-measure: each a
   minutes- or attacking-head arm with its own K ≥ 5, none costed by the

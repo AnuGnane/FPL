@@ -1481,7 +1481,17 @@ the frontend fetches is one the server serves), F-117's
 `tests/test_guide_data_files.py` (every data file the code spells, in §9),
 F-118's `tests/test_readme_frontend.py` (the frontend's directories and hubs
 in the README) and F-119's `tests/test_ci_gates.py` (CI runs every gate line
-`CLAUDE.md` names). The holiday queue has merged F-1 to F-119 except F-81,
+`CLAUDE.md` names). Six more came after: F-121's
+`tests/test_schema_sentences.py` (every field of every wire model carries
+a sentence), F-123's `tests/test_holiday_cites.py` (every holiday id the
+docs cite is a box in `HOLIDAY.md`), F-124's
+`tests/test_data_gated_tables.py` (the ROADMAP's and §12.2's data-gated
+tables hold the same rows), F-125's rule test in
+`tests/test_guide_readings.py` (every reading script with a verdict holds
+its pass rule in its docstring), F-126's widened `tests/test_doc_paths.py`
+(the v20 spec's and `CONVENTIONS.md`'s paths as well) and F-127's widened
+scan in `frontend/src/kit/tokens.test.ts` (`frontend/src/main.tsx`,
+`frontend/index.html` and `frontend/vitest.setup.ts` as well). The holiday queue has merged F-1 to F-127 except F-81,
 F-91 and F-92: F-81 is open as `needs-mac` PR #134 (#107 relanded
 linear), and F-91 and F-92 wait on it; F-77, the other `needs-mac`
 package, has merged.
@@ -1489,7 +1499,7 @@ package, has merged.
 
 ## 12. What is pending and what was left open
 
-**As of 2026-10-18, the model cycle, v20, is open.** v20a closed on
+**As of 2026-10-19, the model cycle, v20, is open.** v20a closed on
 2026-10-13: `role` stays, because Δ = mean(off − on) = +9.2 is inside
 2·SE = 41.1 at K = 5. No served number moved and no pin moved
 (`docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md` §6.1). The
@@ -1497,7 +1507,9 @@ holiday has shipped the rest of v20's code off, behind switches that
 default off: v20c0's harness step zero, `REPLAY_TEAM_MODEL`
 (`src/gaffer/backtest.py`, holiday F-7); v20c's clip, `MU_BOUNDS`
 (`src/gaffer/models/dixon_coles.py`, F-10); and v20b's bonus head,
-`BONUS_SEES_ATTACK` (`src/gaffer/models/components.py`, F-18). Beside them
+`BONUS_SEES_ATTACK` (`src/gaffer/models/components.py`, F-18); and C1's
+replay half, step one, `REPLAY_AVAILABILITY` (`src/gaffer/backtest.py`,
+F-122), beside `REPLAY_TEAM_MODEL`. Beside them
 are the replay's lever log lines (F-14, F-64) and the head-half scripts for v20c
 (F-13) and v20b (F-15). v20d has no switch, only its scripts (F-12, F-16).
 Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
@@ -1505,7 +1517,7 @@ v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-86's `TRACE_GAP` the latest, are listed in §12.5
 "The readings" and collected by `scripts/v20_appendix.py`. The holiday
 queue has merged F-1 to
-F-119 except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #134
+F-127 except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #134
 (#107 relanded linear), and F-91 and F-92 wait on it; F-77, the other
 `needs-mac` package, has merged. `HOLIDAY.md` is the record. Pins: routes 52
 (`tests/test_v11_degradation.py`), job kinds 12
@@ -1759,7 +1771,7 @@ Carried out of the v17 and v18 programmes, all of them small:
   every complete window clears the floor.
 - ~~Eight `react-hooks` set-state-in-effect warnings~~ — closed in v19h,
   each by the mechanism that fit its site, and pinned at zero by
-  `--max-warnings 0`; `ExplainModal`'s lines are long. (`FixtureTicker`'s
+  `--max-warnings 0`. (`FixtureTicker`'s
   cold-clone sentence came in v19b §2.6.)
 - ~~Four singleton warnings in the Python suite~~ (v18g) — closed at source
   by holiday F-22 (the two off the golden path) and F-24 (`ladder.p_best`'s
@@ -1778,7 +1790,8 @@ brainstorm would start from, in the order the 2026-09-01 research ranked it
    news-shadow reading points the same way. It could retire the v5/v6 news
    subsystem or justify it; either answer is worth having. Gate on the
    blanks and zeros buckets *and* a K ≥ 5 replay. (The replay half's coverage
-   is read by `scripts/c1_replay_cover.py`, holiday F-79.)
+   is read by `scripts/c1_replay_cover.py`, holiday F-79; its switch,
+   `backtest.REPLAY_AVAILABILITY`, shipped off in holiday F-122.)
 2. ~~**The K ≥ 5 role replay** (12.3)~~ — ran 2026-10-13 (v20a): `role`
    stays, the minutes model ships as it is.
 3. ~~A top-10k score-threshold scrape~~ — banked daily since holiday F-4,
