@@ -1531,8 +1531,8 @@ package, has merged.
 
 **As of 2026-10-19, the model cycle, v20, is open.** v20a closed on
 2026-10-13: `role` stays, because Δ = mean(off − on) = +9.2 is inside
-2·SE = 41.1 at K = 5. No served number moved and no pin moved
-(`docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md` §6.1). The
+2·SE = 41.1 at K = 5. No served number moved and no pin moved (v20 spec
+§6.1, `docs/superpowers/specs/2026-10-07-v20-model-cycle-design.md`). The
 holiday has shipped the rest of v20's code off, behind switches that
 default off: v20c0's harness step zero, `REPLAY_TEAM_MODEL`
 (`src/gaffer/backtest.py`, holiday F-7); v20c's clip, `MU_BOUNDS`
@@ -1543,10 +1543,10 @@ F-122), beside `REPLAY_TEAM_MODEL`. Beside them
 are the replay's lever log lines (F-14, F-64) and the head-half scripts for v20c
 (F-13) and v20b (F-15). v20d has no switch, only its scripts (F-12, F-16).
 Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
-v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
-The holiday's readings, F-86's `TRACE_GAP` the latest, are listed in §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday
-queue has merged F-1 to
+v20d's Thursday readings. The v20 spec §6.2 records them as empty:
+"nothing has run". The holiday's readings, F-86's `TRACE_GAP` the latest,
+are listed in §12.5 "The readings" and collected by
+`scripts/v20_appendix.py`. The holiday queue has merged F-1 to
 F-127 except F-81, F-91 and F-92: F-81 is open as `needs-mac` PR #134
 (#107 relanded linear), and F-91 and F-92 wait on it; F-77, the other
 `needs-mac` package, has merged. `HOLIDAY.md` is the record. Pins: routes 52
@@ -1670,8 +1670,8 @@ the spread, and the question was whether −27 was real. At K = 5, seeds
 built): on `[1834, 1911, 1903, 1800, 1796]` mean 1848.8, off `[1848, 1873,
 1866, 1862, 1841]` mean 1858.0; paired off − on `[+14, −38, −37, +62, +45]`,
 Δ = +9.2, SE 20.6, inside 2·SE = 41.1, so under the spec's rule
-(`specs/2026-10-07-v20-model-cycle-design.md` §2 v20a, evidence in §6.1)
-the feature is kept and the experiment is closed; the −27 sat inside the
+(`specs/2026-10-07-v20-model-cycle-design.md` §2 v20a, evidence in v20 spec
+§6.1) the feature is kept and the experiment is closed; the −27 sat inside the
 seed spread.
 Recorded, not concluded (CONVENTIONS §5): the on side's spread was 115 to
 the off side's 32. No further role replay runs in this programme. It
