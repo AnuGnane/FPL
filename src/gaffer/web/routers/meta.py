@@ -511,13 +511,15 @@ def arm_switches() -> list[ArmSwitch]:
     imported and miss a constant flipped for a screenshot pair.
     """
     import gaffer.backtest as backtest
-    from gaffer.models import components, dixon_coles
+    from gaffer.models import components, dixon_coles, train
 
     values = [("models.components.BONUS_SEES_ATTACK",
                components.BONUS_SEES_ATTACK),
               ("models.dixon_coles.MU_BOUNDS", dixon_coles.MU_BOUNDS),
               ("backtest.REPLAY_TEAM_MODEL", backtest.REPLAY_TEAM_MODEL),
-              ("backtest.REPLAY_AVAILABILITY", backtest.REPLAY_AVAILABILITY)]
+              ("backtest.REPLAY_AVAILABILITY", backtest.REPLAY_AVAILABILITY),
+              # Holiday F-91: F-81's step, shipped off beside the arms.
+              ("models.train.PPLAY_TOP_BIN_STEP", train.PPLAY_TOP_BIN_STEP)]
     return [ArmSwitch(name=name,
                       on=bool(value) if isinstance(value, bool)
                       else value is not None,

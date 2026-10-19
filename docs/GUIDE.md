@@ -427,7 +427,8 @@ bootstrap snapshots. Its `?tab=` values, in strip order: `?tab=quality`,
   with its size (or `never — run gaffer backup`). Since holiday F-30 it
   lists each v20 arm's switch (`models.components.BONUS_SEES_ATTACK`,
   `models.dixon_coles.MU_BOUNDS`, `backtest.REPLAY_TEAM_MODEL`, and since
-  holiday F-122 `backtest.REPLAY_AVAILABILITY`) with its state and value,
+  holiday F-122 `backtest.REPLAY_AVAILABILITY`, and since holiday F-91 F-81's
+  `models.train.PPLAY_TOP_BIN_STEP`) with its state and value,
   under the team model's band, so a screenshot says which switches were on.
 - *Journal*: the decision journal with its deadline guard.
 - *History*: past runs, expected versus actual, price charts.

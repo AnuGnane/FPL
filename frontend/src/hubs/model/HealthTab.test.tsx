@@ -275,6 +275,8 @@ describe('The v20 arm switches', () => {
     { name: 'models.components.BONUS_SEES_ATTACK', on: false, value: 'False' },
     { name: 'models.dixon_coles.MU_BOUNDS', on: true, value: '(0.1, 9.0)' },
     { name: 'backtest.REPLAY_TEAM_MODEL', on: false, value: 'False' },
+    // Holiday F-91: F-81's step joins the list.
+    { name: 'models.train.PPLAY_TOP_BIN_STEP', on: true, value: 'True' },
   ]
 
   const withArms = (arms: unknown) => {
@@ -296,7 +298,7 @@ describe('The v20 arm switches', () => {
     withArms(ARMS)
     render(<MemoryRouter><HealthTab /></MemoryRouter>)
     const rows = await screen.findAllByTestId('arm-switch')
-    expect(rows).toHaveLength(3)
+    expect(rows).toHaveLength(4)
     expect(rows[0].textContent).toContain('models.components.BONUS_SEES_ATTACK')
     expect(within(rows[0]).getByText('off')).toBeInTheDocument()
     expect(rows[1].textContent).toContain('models.dixon_coles.MU_BOUNDS')
@@ -306,6 +308,8 @@ describe('The v20 arm switches', () => {
     expect(rows[0].textContent).toContain('False')
     expect(rows[2].textContent).toContain('backtest.REPLAY_TEAM_MODEL')
     expect(within(rows[2]).getByText('off')).toBeInTheDocument()
+    expect(rows[3].textContent).toContain('models.train.PPLAY_TOP_BIN_STEP')
+    expect(within(rows[3]).getByText('on')).toBeInTheDocument()
   })
 
   it('renders no switch rows for a server older than the field', async () => {
