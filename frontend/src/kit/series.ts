@@ -15,9 +15,9 @@ export const SERIES_DASH: Array<string | undefined> = [
 
 /**
  * Holiday F-158 (ROADMAP v11's residual): a one-point series is no path at
- * all, and recharts' own fallback dot is a white ring no token names. A lone
- * point is drawn as a dot filled in the series' own stroke; two points are a
- * line and need none, so `dot` stays off for every longer season.
+ * all, and recharts' own fallback dot is filled white, a colour no token
+ * names. A lone point is drawn as a dot filled in the series' own stroke; two
+ * points are a line and need none, so `dot` stays off for every longer season.
  */
 export function dotFor(n: number, stroke: string)
   : false | { r: number, strokeWidth: number, fill: string } {
