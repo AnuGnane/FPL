@@ -62,7 +62,7 @@ export {
 } from './table'
 export { TAB_CLASS, TAB_LIST_CLASS } from './tabs'
 export { INPUT_CLASS } from './field'
-export { SERIES_COLOURS, SERIES_DASH } from './series'
+export { SERIES_COLOURS, SERIES_DASH, dotFor } from './series'
 export { difficultyTone, difficultyWord } from './scale'
 export { TONE_TINT_CLASS } from './format'
 export { TONE_CLASS, fmtDelta, fmtNum, fmtPct, fmtPrice, toneOf } from './format'

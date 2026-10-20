@@ -5,7 +5,7 @@ import {
 import { usePageData } from '../../api/pageData'
 import {
   Callout, Card, EmptyState, Loaded, Loading, SERIES_COLOURS, SERIES_DASH,
-  Stat, StatRow, TONE_CLASS, fmtDelta, toneOf,
+  Stat, StatRow, TONE_CLASS, dotFor, fmtDelta, toneOf,
 } from '../../kit'
 import type {
   CalibrationData, ReviewData, ReviewLaneName,
@@ -110,8 +110,8 @@ function TrendBody({ data }: { data: CalibrationData }) {
                 third and fourth heads are told apart by their dash. */}
             {drawn.map(([key, label], i) => (
               <Line key={key} type="monotone" dataKey={key} name={label}
-                    dot={false} strokeWidth={2}
-                    stroke={SERIES_COLOURS[i % 4]}
+                    dot={dotFor(rows.length, SERIES_COLOURS[i % 4])}
+                    strokeWidth={2} stroke={SERIES_COLOURS[i % 4]}
                     strokeDasharray={SERIES_DASH[i % 4]} />
             ))}
           </LineChart>
@@ -246,7 +246,8 @@ export default function SeasonTab() {
                 <YAxis stroke="var(--color-text-muted)" />
                 <Tooltip contentStyle={{ background: 'var(--color-raised)',
                                          border: '1px solid var(--color-border)' }} />
-                <Line type="monotone" dataKey="bench" dot={false}
+                <Line type="monotone" dataKey="bench"
+                      dot={dotFor(bench.length, SERIES_COLOURS[0])}
                       strokeWidth={2} stroke={SERIES_COLOURS[0]} />
               </LineChart>
             </ResponsiveContainer>
@@ -276,7 +277,8 @@ export default function SeasonTab() {
                 <YAxis stroke="var(--color-text-muted)" />
                 <Tooltip contentStyle={{ background: 'var(--color-raised)',
                                          border: '1px solid var(--color-border)' }} />
-                <Line type="monotone" dataKey="accuracy" dot={false}
+                <Line type="monotone" dataKey="accuracy"
+                      dot={dotFor(accuracy.length, SERIES_COLOURS[0])}
                       strokeWidth={2} stroke={SERIES_COLOURS[0]} />
               </LineChart>
             </ResponsiveContainer>
@@ -306,7 +308,8 @@ export default function SeasonTab() {
                 {/* `connectNulls` is false by default and stays that way: a
                     straight line through a missing rank is the most confident
                     lie this dashboard could tell. */}
-                <Line type="monotone" dataKey="overall_rank" dot={false}
+                <Line type="monotone" dataKey="overall_rank"
+                      dot={dotFor(ranks.length, SERIES_COLOURS[0])}
                       strokeWidth={2} stroke={SERIES_COLOURS[0]} />
               </LineChart>
             </ResponsiveContainer>
