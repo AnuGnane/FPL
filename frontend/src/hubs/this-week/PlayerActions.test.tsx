@@ -37,6 +37,14 @@ describe('PlayerActions', () => {
     })
   })
 
+  it('hands the lab a ban on the player’s code', async () => {
+    await choose('Ban')
+    expect(navigate).toHaveBeenCalledWith('/planning?tab=whatif', {
+      state: { whatif: expect.objectContaining({ ban: [7], lock: [],
+                                                 force_out: [] }) },
+    })
+  })
+
   it('makes must sell a force_out, not a ban', async () => {
     await choose('Must sell')
     expect(navigate).toHaveBeenCalledWith('/planning?tab=whatif', {
