@@ -10,6 +10,11 @@ JSON the types could describe.
 ``ALLOWED`` is F-69's shape (``tests/test_noqa_reasons.py``): path to the
 reason it cannot comply, and it can only shrink, since an entry whose route
 has come to comply fails until it is struck.
+
+What it does not catch: FastAPI turns a return annotation into the
+``response_model``, so ``-> dict`` passes while being as opaque as a bare
+dict (``/api/ping`` is one, by design). Closing that is a rule on the model's
+type, a wider change than F-157 asked for.
 """
 from __future__ import annotations
 
@@ -22,7 +27,7 @@ from fastapi.routing import APIRoute, iter_route_contexts
 
 from gaffer.web.app import create_app
 
-# Value: why the route cannot name one model.
+# F-157: the routes that cannot name one model. Value: why.
 ALLOWED = {
     "/api/jobs/{job_id}": (
         "serves both runners: a v7 JobRunner id answers a JobRunView, any "
