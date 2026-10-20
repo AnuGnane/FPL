@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ApiError, errorText } from '../../api/client'
 import { useJob } from '../../api/useJob'
+import { EMPTY_WHATIF } from '../../api/whatifRequest'
 import { Button, Callout, Card, Skeleton } from '../../kit'
 import type { WhatIfRequest, WhatIfResult } from '../../types'
 import LadderCard from '../this-week/LadderCard'
@@ -10,16 +11,6 @@ import OverridesCard from './OverridesCard'
 import PlanDiffTable from './PlanDiffTable'
 import SensitivityCard from './SensitivityCard'
 import { useWhatIfSubmit } from './useWhatIfSubmit'
-
-/** The unconstrained request the lab opens on.
- *
- *  Exported since v19e §2.4: the squad's row menu builds its handoff from the
- *  same object the lab itself starts from, so a field added to the request
- *  cannot arrive in one of them and not the other. */
-export const EMPTY_WHATIF: WhatIfRequest = {
-  lock: [], ban: [], force_in: [], force_out: [], max_hits: 0,
-  max_transfers: null, chip: 'none', horizon: null,
-}
 
 interface StructuredError {
   constraint: string
