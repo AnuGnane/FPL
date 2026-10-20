@@ -17,23 +17,7 @@ vi.mock('../api/client', () => ({
   errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
-vi.mock('recharts', async () => {
-  const actual = await vi.importActual<typeof import('recharts')>('recharts')
-  const { cloneElement, isValidElement } = await import('react')
-  return {
-    ...actual,
-    // The chart itself needs the measured box: cloning it with a fixed one is
-    // what the real container does once it has measured.
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div style={{ width: 400, height: 200 }}>
-        {isValidElement(children)
-          ? cloneElement(children as React.ReactElement<Record<string, unknown>>,
-                         { width: 400, height: 200 })
-          : children}
-      </div>
-    ),
-  }
-})
+vi.mock('recharts', () => import('../kit/rechartsShim').then((m) => m.mockRecharts()))
 
 // The field names are the ones `/api/league/race` actually emits
 // (`trajectory`, `gap`, `win_probability`) — see web/schemas.py::LeagueRace.
