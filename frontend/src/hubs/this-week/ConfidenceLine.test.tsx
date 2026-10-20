@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import ConfidenceLine from './ConfidenceLine'
 import * as client from '../../api/client'
@@ -41,9 +41,12 @@ describe('ConfidenceLine', () => {
   })
 
   it('draws no line when the answer carries no sentence', async () => {
-    mock({ captain: null })
+    // Waits on the answer itself, not on the request: absence asserted
+    // before the data lands would pass whatever the guard did.
+    const answer = Promise.resolve({ captain: null })
+    vi.spyOn(client, 'apiGet').mockReturnValue(answer as never)
     const { container } = render(<ConfidenceLine />)
-    await waitFor(() => expect(client.apiGet).toHaveBeenCalled())
+    await act(async () => { await answer })
     expect(screen.queryByTestId('captain-confidence')).toBeNull()
     expect(container).toBeEmptyDOMElement()
   })
