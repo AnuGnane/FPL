@@ -39,7 +39,9 @@ def unnamed(scripts: dict[str, str], texts: list[str]) -> list[str]:
 def test_every_npm_script_is_named_by_a_doc_ci_or_another_script():
     scripts = json.loads(PACKAGE.read_text())["scripts"]
     assert len(scripts) >= 6, sorted(scripts)
-    texts = [path.read_text() for path in READERS if path.is_file()]
+    missing = [str(path) for path in READERS if not path.is_file()]
+    assert missing == [], "a reader the rail scans is gone"
+    texts = [path.read_text() for path in READERS]
     assert unnamed(scripts, texts) == []
 
 
@@ -47,9 +49,10 @@ def test_an_unnamed_script_fails_the_check(tmp_path):
     package = tmp_path / "package.json"
     package.write_text(json.dumps({"scripts": {
         "check": "vitest run && npm run lint", "lint": "eslint .",
-        "test": "vitest", "stray": "node stray.js", "types": "node gen.ts"}}))
+        "test": "vitest", "stray": "node stray.js", "types": "node gen.ts",
+        "self": "npm run self"}}))
     scripts = json.loads(package.read_text())["scripts"]
     docs = ["cd frontend && npm run check\nnpm test\nnpm run types -- --check\n"
             "npm run typescript"]
-    assert unnamed(scripts, docs) == ["stray"]
-    assert unnamed(scripts, []) == ["check", "test", "stray", "types"]
+    assert unnamed(scripts, docs) == ["stray", "self"]
+    assert unnamed(scripts, []) == ["check", "test", "stray", "types", "self"]
