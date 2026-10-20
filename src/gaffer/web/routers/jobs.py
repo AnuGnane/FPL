@@ -46,7 +46,7 @@ def start(kind: str, request: Request):
     return JobStarted(job_id=job_id, kind=kind)
 
 
-@router.get("/current")
+@router.get("/current", response_model=JobRunView)
 def current(request: Request):
     run = request.app.state.job_runner.current()
     if run is None:
@@ -54,7 +54,7 @@ def current(request: Request):
     return _view(run).model_dump()
 
 
-@router.delete("/current")
+@router.delete("/current", response_model=JobRunView)
 def cancel_current(request: Request):
     """Free the lane held by the job running now. 404 when nothing holds it.
 
@@ -120,7 +120,8 @@ def _sse(name: str, data: str, event_id: int | None = None) -> str:
 
 
 @router.get("/{job_id}/stream")
-def stream(job_id: str, request: Request, from_: int = Query(0, alias="from")):
+def stream(job_id: str, request: Request,
+           from_: int = Query(0, alias="from")) -> StreamingResponse:
     """Every captured line as an event, then a terminal ``end``.
 
     Hand-rolled rather than a new dependency: this is one generator yielding
