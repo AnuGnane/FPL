@@ -60,6 +60,7 @@ To work on the web UI as well:
 cd frontend && npm install
 npm run dev        # http://localhost:5173, proxies /api to 127.0.0.1:8927
 npm run build      # emits src/gaffer/web/static/, which the wheel ships
+npm test           # vitest in watch mode; `npm run check` is the gate
 ```
 
 The build output is untracked, so a fresh clone serves a "frontend not built"
