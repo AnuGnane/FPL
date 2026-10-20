@@ -318,3 +318,62 @@ describe('the kit exports', () => {
     expect(unreadExports(modules, { ...others, 'kit/Fake.test.tsx': 'unusedThing()' })).toEqual([])
   })
 })
+
+// Holiday F-146: v18f gave the rung's `<tr onClick>` a `<button>` label
+// because a click on a plain element is not reachable by Tab and announces
+// nothing (v18f §2.2), and nothing stopped the next `<div onClick>`. Each
+// `onClick=` belongs to the nearest preceding `<tag`; a lowercase tag that is
+// not natively interactive carries `role=`, `tabIndex` and `onKeyDown` in its
+// opening tag, or is a row or cell whose body holds a `<button` (RungRow's
+// shape). A capitalised tag is a component, checked where it renders. A
+// regex over source text, as the scans above are, not a parser.
+const NATIVE = new Set(['button', 'a', 'input', 'select', 'textarea', 'summary', 'label', 'option'])
+const ROWLIKE = new Set(['tr', 'td', 'li'])
+
+function openingTag(text: string, start: number): string {
+  let depth = 0
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '{') depth++
+    else if (text[i] === '}') depth--
+    else if (text[i] === '>' && depth === 0) return text.slice(start, i + 1)
+  }
+  return text.slice(start)
+}
+
+function keyboardless(file: string, text: string): string[] {
+  return [...text.matchAll(/\bonClick=/g)].flatMap((click) => {
+    const tags = [...text.slice(0, click.index).matchAll(/<([A-Za-z][\w.]*)/g)]
+    const last = tags.at(-1)
+    if (last === undefined) return []
+    const [, tag] = last
+    if (/^[A-Z]/.test(tag) || NATIVE.has(tag)) return []
+    const start = last.index as number
+    const open = openingTag(text, start)
+    if (/\brole=/.test(open) && /\btabIndex\b/.test(open) && /\bonKeyDown\b/.test(open)) return []
+    if (ROWLIKE.has(tag)) {
+      const close = text.indexOf(`</${tag}>`, start)
+      if (text.slice(start, close === -1 ? undefined : close).includes('<button')) return []
+    }
+    const line = text.slice(0, click.index).split('\n').length
+    return [`${file}:${line} <${tag}>`]
+  })
+}
+
+describe('the click targets', () => {
+  it('gives every click a keyboard path', () => {
+    const scanned = FILES.filter((path) => path.endsWith('.tsx') && !rel(path).startsWith('api/')
+      && !rel(path).startsWith('../') && rel(path) !== 'main.tsx')
+    expect(scanned.flatMap((path) => keyboardless(rel(path), readFileSync(path, 'utf8')))).toEqual([])
+  })
+
+  it('names a div with a click and no keyboard path, and passes the shapes that have one', () => {
+    expect(keyboardless('hubs/Fake.tsx', 'const a = 1\n<div className="x" onClick={() => go()}>go</div>'))
+      .toEqual(['hubs/Fake.tsx:2 <div>'])
+    expect(keyboardless('hubs/Fake.tsx', [
+      '<div role="button" tabIndex={0} onClick={() => go()} onKeyDown={(e) => e.key === "Enter" && go()}>go</div>',
+      '<tr onClick={toggle}><td><button type="button" onClick={toggle}>x</button></td></tr>',
+      '<button type="button" onClick={go}>go</button>',
+      '<Button onClick={go}>go</Button>',
+    ].join('\n'))).toEqual([])
+  })
+})
