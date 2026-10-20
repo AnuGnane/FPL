@@ -7,21 +7,7 @@ import type { ComponentsBreakdown, FixtureMatrixData, PlayerRow } from
 // Recharts measures its container, which jsdom reports as 0x0 — and reaches
 // for a ResizeObserver jsdom does not have. Stub it to a fixed box, the same
 // way every other chart test in this hub does.
-vi.mock('recharts', async () => {
-  const actual = await vi.importActual<typeof import('recharts')>('recharts')
-  const { cloneElement, isValidElement } = await import('react')
-  return {
-    ...actual,
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div style={{ width: 400, height: 300 }}>
-        {isValidElement(children)
-          ? cloneElement(children as React.ReactElement<Record<string, unknown>>,
-                         { width: 400, height: 300 })
-          : children}
-      </div>
-    ),
-  }
-})
+vi.mock('recharts', () => import('../../kit/rechartsShim').then((m) => m.mockRecharts({ height: 300 })))
 
 function player(over: Partial<PlayerRow>): PlayerRow {
   return {
