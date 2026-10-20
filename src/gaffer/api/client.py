@@ -1,4 +1,4 @@
-"""The read-only FPL HTTP client: every request gaffer makes to the game.
+"""The read-only FPL HTTP client: every API request gaffer makes.
 
 It only ever GETs (gaffer never logs in or makes a transfer). A transport
 error, a 5xx or a 429 is retried with backoff and any other 4xx fails at once;
