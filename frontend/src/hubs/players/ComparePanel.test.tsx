@@ -14,23 +14,7 @@ vi.mock('../../api/client', () => ({
 
 // Recharts measures its container, which jsdom reports as 0x0; the responsive
 // wrapper then renders nothing. Stub it to a fixed box so the bars exist.
-vi.mock('recharts', async () => {
-  const actual = await vi.importActual<typeof import('recharts')>('recharts')
-  const { cloneElement, isValidElement } = await import('react')
-  return {
-    ...actual,
-    // The chart itself needs the measured box: cloning it with a fixed one is
-    // what the real container does once it has measured.
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div style={{ width: 400, height: 200 }}>
-        {isValidElement(children)
-          ? cloneElement(children as React.ReactElement<Record<string, unknown>>,
-                         { width: 400, height: 200 })
-          : children}
-      </div>
-    ),
-  }
-})
+vi.mock('recharts', () => import('../../kit/rechartsShim').then((m) => m.mockRecharts()))
 
 const PLAYERS: PlayerRow[] = [
   { code: 1, element: 7, name: 'Salah', position: 'MID', team_code: 300,
