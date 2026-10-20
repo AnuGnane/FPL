@@ -15,7 +15,7 @@ const LABELS: Record<string, string> = {
 const DEFAULT_CADENCE = 24
 
 /** Where a reader goes to find out which job stopped (v19a §2.2). */
-export const HEALTH_PATH = '/model?tab=health'
+const HEALTH_PATH = '/model?tab=health'
 
 /**
  * Grey inside one cadence (information), amber inside two (doubt, rule 2),

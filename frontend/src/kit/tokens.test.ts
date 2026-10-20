@@ -266,3 +266,55 @@ describe('the theme tokens', () => {
       "style={{ color: 'var(--color-unused)' }}"])).toEqual([])
   })
 })
+
+// Holiday F-144: F-142's question asked of `kit/` itself. An export nobody
+// imports is a retired name living on (v14 R11), so every named export of a
+// kit module that is not a test appears as a whole word in another file
+// under `src/`. A test counts as a reader, since some exports are seams kept
+// for one (`PLAIN_SHIRT`); `index.ts` re-exporting a name counts too.
+function allSources(dir: string): string[] {
+  return readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name)
+    if (statSync(path).isDirectory()) return allSources(path)
+    return /\.tsx?$/.test(name) ? [path] : []
+  })
+}
+
+function exportedNames(text: string): string[] {
+  const declared = [...text.matchAll(
+    /^export\s+(?:default\s+)?(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?(?:const|let|var|function\*?|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/gm,
+  )].map((m) => m[1])
+  const listed = [...text.matchAll(/^export\s+(?:type\s+)?\{([^}]*)\}/gm)]
+    .flatMap((m) => m[1].split(','))
+    .map((entry) => entry.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()?.trim() ?? '')
+    .filter((name) => name !== '' && name !== 'default')
+  return [...new Set([...declared, ...listed])]
+}
+
+function unreadExports(modules: Record<string, string>, others: Record<string, string>): string[] {
+  const all = { ...others, ...modules }
+  return Object.entries(modules).flatMap(([file, text]) => exportedNames(text)
+    .filter((name) => {
+      const word = new RegExp(`(?<![\\w$])${name.replace(/\$/g, '\\$')}(?![\\w$])`)
+      return !Object.entries(all).some(([path, source]) => path !== file && word.test(source))
+    })
+    .map((name) => `${file}: ${name}`))
+}
+
+describe('the kit exports', () => {
+  it('exports nothing that no other file reads', () => {
+    const sources = Object.fromEntries(allSources(SRC).map((path) => [rel(path), readFileSync(path, 'utf8')]))
+    const modules = Object.fromEntries(Object.entries(sources)
+      .filter(([path]) => /^kit\/[^/]+\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path)))
+    expect(unreadExports(modules, sources)).toEqual([])
+  })
+
+  it('names an export no other file reads, and a longer name does not stand in', () => {
+    const modules = {
+      'kit/Fake.tsx': "export const unusedThing = 1\nexport function used() {}\nconst a = 2\nexport { a as aliased }\nexport default function Fake() {}\n",
+    }
+    const others = { 'hubs/Page.tsx': "import Fake, { used, aliased } from '../kit/Fake'\nconst unusedThingy = 3\n" }
+    expect(unreadExports(modules, others)).toEqual(['kit/Fake.tsx: unusedThing'])
+    expect(unreadExports(modules, { ...others, 'kit/Fake.test.tsx': 'unusedThing()' })).toEqual([])
+  })
+})
