@@ -868,6 +868,10 @@ and it is worth knowing because you can read the evidence yourself:
   under `--strict-markers` (holiday F-132), so a marker used in `tests/`
   that `pyproject.toml` does not register fails collection rather than
   letting `-m "not golden"` or `-m "not slow"` deselect nothing silently.
+  Every module under `src/gaffer/` opens with a docstring
+  (`tests/test_module_docstrings.py`, holiday F-147), and every `onClick`
+  in the frontend has a keyboard path (F-146's rail in
+  `frontend/src/kit/tokens.test.ts`).
 
 **The drivers in `scripts/`.** `scripts/v7b_replay.py` and
 `scripts/replay_pair.sh` run the replays; `scripts/seed_stats.py` reads
