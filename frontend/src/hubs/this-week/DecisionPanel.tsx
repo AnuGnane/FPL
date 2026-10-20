@@ -67,7 +67,7 @@ export default function DecisionPanel({ gw }: { gw: number }) {
 
   const grade = note.grade
   return (
-    <div data-testid="decision-panel">
+    <div>
       <Card title="What I did and why" className="mb-4">
         {note.state === 'before_deadline' && (
           <p className="text-text-muted">

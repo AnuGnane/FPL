@@ -442,3 +442,38 @@ describe('the hub boundaries', () => {
                  'hubs/live/Quoted.tsx:2 -> hubs/players/side.css'])
   })
 })
+
+// Holiday F-159: F-144's question asked of the test hooks. A `data-testid` is
+// a promise that a test finds the element by it; one no test reads is a
+// retired name living on (v14 R11). Each literal `data-testid="…"` in a
+// non-test source under `hubs/`, `kit/` and `App.tsx` appears as a whole
+// quoted string in some test file under `src/`. A template id
+// (`board-${side}`) has no one literal to look for and is not read here.
+function testIds(sources: Record<string, string>): Array<[string, string]> {
+  return Object.entries(sources).flatMap(([file, text]) =>
+    [...text.matchAll(/data-testid="([^"]+)"/g)].map((m): [string, string] => [m[1], file]))
+}
+
+function unreadTestIds(sources: Record<string, string>, tests: Record<string, string>): string[] {
+  const bodies = Object.values(tests)
+  return testIds(sources)
+    .filter(([id]) => !bodies.some((body) => ["'", '"', '`'].some((q) => body.includes(`${q}${id}${q}`))))
+    .map(([id, file]) => `${file}: ${id}`)
+}
+
+describe('the test hooks', () => {
+  it('carries no data-testid that no test reads', () => {
+    const all = Object.fromEntries(allSources(SRC).map((path) => [rel(path), readFileSync(path, 'utf8')]))
+    const sources = Object.fromEntries(Object.entries(all).filter(([path]) =>
+      (/^(hubs|kit)\//.test(path) || path === 'App.tsx') && !/\.test\.tsx?$/.test(path)))
+    const tests = Object.fromEntries(Object.entries(all).filter(([path]) => /\.test\.tsx?$/.test(path)))
+    expect(unreadTestIds(sources, tests)).toEqual([])
+  })
+
+  it('names an id no test reads, and a longer id does not stand in', () => {
+    const sources = { 'hubs/Page.tsx': '<p data-testid="page-empty" /><div data-testid="page-panel" /><i data-testid={`row-${n}`} />' }
+    const tests = { 'hubs/Page.test.tsx': "screen.getByTestId('page-panel')\nscreen.getByTestId('page-empty-note')\n" }
+    expect(unreadTestIds(sources, tests)).toEqual(['hubs/Page.tsx: page-empty'])
+    expect(unreadTestIds(sources, { ...tests, 'kit/x.test.ts': 'findByTestId("page-empty")' })).toEqual([])
+  })
+})

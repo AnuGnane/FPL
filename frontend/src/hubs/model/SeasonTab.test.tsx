@@ -275,6 +275,18 @@ describe('SeasonTab, filled', () => {
       expect(screen.queryByText(/Cumulative, over the/)).toBeNull()
     })
 
+  // Holiday F-159: the rank card's empty state had a hook and no test.
+  it('says no graded gameweek carries a rank when every rank is null',
+    async () => {
+      wire({ ...GRADED,
+             gws: GRADED.gws.map((row) => ({ ...row, overall_rank: null })) })
+      const { container } = render(<SeasonTab />)
+      expect(await screen.findByTestId('rank-empty'))
+        .toHaveTextContent('No graded gameweek carries a rank yet.')
+      expect(container.querySelector(
+        '[aria-label="Overall rank by gameweek"]')).toBeNull()
+    })
+
   it('draws the bench series when even one gameweek carries a total',
     async () => {
       render(<SeasonTab />)
