@@ -280,9 +280,11 @@ function allSources(dir: string): string[] {
   })
 }
 
+// Holiday F-160: a default export is read under whatever name its importer
+// picks (`lazy(() => import(...))` names none), so only named exports count.
 function exportedNames(text: string): string[] {
   const declared = [...text.matchAll(
-    /^export\s+(?:default\s+)?(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?(?:const|let|var|function\*?|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/gm,
+    /^export\s+(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?(?:const|let|var|function\*?|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/gm,
   )].map((m) => m[1])
   const listed = [...text.matchAll(/^export\s+(?:type\s+)?\{([^}]*)\}/gm)]
     .flatMap((m) => m[1].split(','))
@@ -309,6 +311,17 @@ describe('the kit exports', () => {
     expect(unreadExports(modules, sources)).toEqual([])
   })
 
+  // Holiday F-160: F-144's question asked of `hubs/` and `api/`, under the
+  // same rule: a test, an `index.ts` re-export or any file under `src/`
+  // (a `types.generated.ts` docstring included) counts as a reader.
+  it('leaves no hubs or api export that no other file reads', () => {
+    const sources = Object.fromEntries(allSources(SRC).map((path) => [rel(path), readFileSync(path, 'utf8')]))
+    const modules = Object.fromEntries(Object.entries(sources)
+      .filter(([path]) => /^(?:hubs|api)\/.+\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path)))
+    expect(Object.keys(modules).length).toBeGreaterThan(20)
+    expect(unreadExports(modules, sources)).toEqual([])
+  })
+
   it('names an export no other file reads, and a longer name does not stand in', () => {
     const modules = {
       'kit/Fake.tsx': "export const unusedThing = 1\nexport function used() {}\nconst a = 2\nexport { a as aliased }\nexport default function Fake() {}\n",
@@ -316,6 +329,15 @@ describe('the kit exports', () => {
     const others = { 'hubs/Page.tsx': "import Fake, { used, aliased } from '../kit/Fake'\nconst unusedThingy = 3\n" }
     expect(unreadExports(modules, others)).toEqual(['kit/Fake.tsx: unusedThing'])
     expect(unreadExports(modules, { ...others, 'kit/Fake.test.tsx': 'unusedThing()' })).toEqual([])
+  })
+
+  it('names an unread hubs export but not a default export nobody names', () => {
+    const modules = {
+      'hubs/fake/Card.tsx': "export const SHAPES = ['a']\nexport function shown() {}\nexport default function Card() {}\n",
+    }
+    const others = { 'hubs/fake/index.ts': "export { shown } from './Card'\n", 'App.tsx': "lazy(() => import('./hubs/fake/Card'))\n" }
+    expect(unreadExports(modules, others)).toEqual(['hubs/fake/Card.tsx: SHAPES'])
+    expect(unreadExports(modules, { ...others, 'api/fake.ts': '// SHAPES is listed here' })).toEqual([])
   })
 })
 
