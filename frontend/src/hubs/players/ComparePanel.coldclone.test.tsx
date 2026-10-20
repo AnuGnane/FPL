@@ -34,21 +34,7 @@ vi.mock('../../api/client', () => ({
   errorText: (e: unknown) => (e instanceof Error ? e.message : String(e)),
 }))
 
-vi.mock('recharts', async () => {
-  const actual = await vi.importActual<typeof import('recharts')>('recharts')
-  const { cloneElement, isValidElement } = await import('react')
-  return {
-    ...actual,
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div style={{ width: 400, height: 200 }}>
-        {isValidElement(children)
-          ? cloneElement(children as React.ReactElement<Record<string, unknown>>,
-                         { width: 400, height: 200 })
-          : children}
-      </div>
-    ),
-  }
-})
+vi.mock('recharts', () => import('../../kit/rechartsShim').then((m) => m.mockRecharts()))
 
 function player(over: Partial<PlayerRow>): PlayerRow {
   return {
