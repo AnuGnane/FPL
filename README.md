@@ -507,8 +507,9 @@ lines CI runs, the holiday ids the docs cite, the two data-gated tables, the
 reading scripts' pass rules, the wire models' field sentences, the specs
 and plans the ROADMAP names, the tabs `shots.sh` shoots, the commands and
 markers `CLAUDE.md` names, the tests that skip without local data, the
-secrets rule (no key-shaped value in a tracked file) and `HOLIDAY.md`'s own
-shape, as the GUIDE, this README, `CLAUDE.md` and `config.example.toml`
+secrets rule (no key-shaped value in a tracked file), `HOLIDAY.md`'s own
+shape, the keyboard path every click needs and the docstring every module
+opens with, as the GUIDE, this README, `CLAUDE.md` and `config.example.toml`
 name them, are each checked against the source, so a rename that leaves a
 doc behind fails the gate.
 

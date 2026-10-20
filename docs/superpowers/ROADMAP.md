@@ -28,8 +28,9 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-142
-except F-92, which is open as `needs-mac` PR #166; F-77 and F-81 (#134,
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-151
+except F-92, which is open as `needs-mac` PR #166, and F-148, the Mac's
+`config.py` docstring, which is still queued; F-77 and F-81 (#134,
 #107 relanded linear), the other `needs-mac` packages, have merged.
 `HOLIDAY.md` is the record. Pins: routes
 52 (`tests/test_v11_degradation.py`), job kinds 12
@@ -99,7 +100,17 @@ dependencies name earlier boxes), F-140's `tests/test_guide_history.py`
 (GUIDE §11 opens a paragraph for every cycle "Shipped" lists), F-141's
 `tests/test_guide_timeouts.py` (GUIDE §13 quotes the job kinds' reap
 timeouts) and F-142's token rail in `frontend/src/kit/tokens.test.ts`
-(every `--color-*` token `theme.css` defines is read somewhere).
+(every `--color-*` token `theme.css` defines is read somewhere). F-144 to
+F-151 added seven more: F-144's and F-146's rails in `tokens.test.ts`
+(every `kit/` export is read outside its file; every `onClick` has a
+keyboard path), F-145's `tests/test_spec_gates.py` (every spec dated from
+v7b on names its gate), F-147's `tests/test_module_docstrings.py` (every
+module under `src/gaffer/` opens with a docstring, `config.py` allowlisted
+until F-148), F-149's `tests/test_code_cycle_cites.py` (every cycle a code
+comment cites is shipped or named by a spec), F-150's
+`tests/test_ci_versions.py` (CI's Python and Node versions each read one
+pinned file) and F-151's `tests/test_doc_commands.py` (every `gaffer`
+command the docs name exists).
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
