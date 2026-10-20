@@ -30,4 +30,22 @@ describe('PresserGradesSection', () => {
     render(<PresserGradesSection data={{ ...PRESSER, absent_rows: 0 }} />)
     expect(screen.getByTestId('verdict-ruled_out')).toHaveTextContent('—')
   })
+
+  // Holiday F-159: the empty state's hook had no test. A report that is not
+  // available, or one with no graded row, prints the note (or the stock line)
+  // in place of the table.
+  it('prints the server’s note in place of the table when nothing is graded',
+    () => {
+      render(<PresserGradesSection data={{ ...PRESSER, available: false,
+        note: 'no presser verdict graded yet' }} />)
+      expect(screen.getByTestId('presser-grades-empty'))
+        .toHaveTextContent('no presser verdict graded yet')
+      expect(screen.queryByRole('table')).toBeNull()
+    })
+
+  it('falls back to its own line when a zero-row report carries no note', () => {
+    render(<PresserGradesSection data={{ ...PRESSER, rows: 0 }} />)
+    expect(screen.getByTestId('presser-grades-empty'))
+      .toHaveTextContent('No verdict has been graded yet.')
+  })
 })

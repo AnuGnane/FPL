@@ -30,6 +30,24 @@ describe('ConfidenceLine', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
+  // Holiday F-159: the hook had no reader. The line is the server's sentence
+  // and nothing else, so an answer with no sentence draws no line at all.
+  it('marks the line it draws from the sentence', async () => {
+    mock({ captain: { tier: 'early', reviewed: 0, graded: 0, wins: 0,
+                      losses: 0, aligned: 0, text: 'Nothing graded yet.' } })
+    render(<ConfidenceLine />)
+    expect(await screen.findByTestId('captain-confidence'))
+      .toHaveTextContent('Nothing graded yet.')
+  })
+
+  it('draws no line when the answer carries no sentence', async () => {
+    mock({ captain: null })
+    const { container } = render(<ConfidenceLine />)
+    await waitFor(() => expect(client.apiGet).toHaveBeenCalled())
+    expect(screen.queryByTestId('captain-confidence')).toBeNull()
+    expect(container).toBeEmptyDOMElement()
+  })
+
   it('renders nothing at all when the endpoint cannot answer', async () => {
     vi.spyOn(client, 'apiGet').mockRejectedValue(new Error('down'))
     const { container } = render(<ConfidenceLine />)
