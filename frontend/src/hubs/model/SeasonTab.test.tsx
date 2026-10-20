@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SeasonTab from './SeasonTab'
+import { SERIES_COLOURS } from '../../kit/series'
 
 const { apiGet, ApiError } = vi.hoisted(() => ({
   apiGet: vi.fn(),
@@ -309,5 +310,70 @@ describe('SeasonTab, filled', () => {
     expect(within(card.parentElement!.parentElement!)
       .getByText(/Bench points this season: 7 over 3 GW/))
       .toBeInTheDocument()
+  })
+})
+
+describe('SeasonTab, one gameweek old', () => {
+  // ROADMAP v11's residual, closed by holiday F-158: a one-point series is
+  // no path at all. recharts 2.15 does draw the lone point on its own, but as
+  // its default white ring, a colour no token names and a white disc
+  // on the light page; the dot is drawn in the series' own stroke instead.
+  // Two points are a line and need none.
+  const CHARTS = ['Calibration trend by gameweek', 'Cumulative bench points',
+                  'Accuracy by gameweek', 'Overall rank by gameweek']
+
+  function season(n: number) {
+    const weeks = Array.from({ length: n }, (_, i) => i + 1)
+    return {
+      gws: weeks.map((w) => gw({ gw: w, accuracy: 7, overall_rank: 400000 })),
+      summary: summary({
+        gws: weeks,
+        lanes: { ...Object.fromEntries(LANES.map((l) => [l, lane()])),
+                 transfers: lane({ pts: 2, graded: n, wins: 1 }) },
+        accuracy: weeks.map((w) => ({ gw: w, accuracy: 7 })),
+        points_on_bench_gws: n,
+      }),
+    }
+  }
+
+  const calibration = (n: number) => ({
+    ...CALIBRATION, gameweeks: CALIBRATION.gameweeks.slice(0, n) })
+
+  async function charts(n: number) {
+    wire(season(n), calibration(n))
+    const { container } = render(<SeasonTab />)
+    await screen.findByTestId('season-lane-transfers')
+    await screen.findByText(/Brier score per head/)
+    return CHARTS.map((label) => {
+      const chart = container.querySelector(`[aria-label="${label}"]`)
+      expect(chart, label).not.toBeNull()
+      return chart!
+    })
+  }
+
+  it('draws a dot for every series on each of the four charts', async () => {
+    for (const chart of await charts(1)) {
+      const lines = chart.querySelectorAll('.recharts-line').length
+      expect(lines).toBeGreaterThan(0)
+      expect(chart.querySelectorAll('.recharts-line-dot').length)
+        .toBeGreaterThanOrEqual(lines)
+    }
+  })
+
+  it('fills each lone dot with its series colour, never white', async () => {
+    for (const chart of await charts(1)) {
+      for (const dot of chart.querySelectorAll('.recharts-line-dot')) {
+        expect(SERIES_COLOURS).toContain(dot.getAttribute('fill'))
+        expect(dot.getAttribute('fill')).toBe(dot.getAttribute('stroke'))
+      }
+    }
+  })
+
+  it('draws no dots once the season is two gameweeks old', async () => {
+    for (const chart of await charts(2)) {
+      expect(chart.querySelectorAll('.recharts-line-curve').length)
+        .toBeGreaterThan(0)
+      expect(chart.querySelectorAll('.recharts-line-dot')).toHaveLength(0)
+    }
   })
 })
