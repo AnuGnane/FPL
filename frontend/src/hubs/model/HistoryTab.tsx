@@ -5,11 +5,10 @@ import {
 import { useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
-  Callout, Card, EmptyState, INPUT_CLASS, Loading, SERIES_COLOURS, SERIES_DASH,
+  AdviceDiffRows, Callout, Card, EmptyState, INPUT_CLASS, Loading, SERIES_COLOURS, SERIES_DASH,
   TABLE_CLASS, THEAD_CLASS, TR_CLASS, fmtNum, tdClass, thClass,
 } from '../../kit'
 import type { AdviceDiff, HistoryData } from '../../types'
-import AdviceDiffRows from '../this-week/AdviceDiffRows'
 
 /** Recharts wants one row per x with a column per series. */
 function priceRows(prices: HistoryData['prices']): Array<Record<string, number>> {

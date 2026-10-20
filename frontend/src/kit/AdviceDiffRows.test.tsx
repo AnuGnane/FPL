@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import type { AdviceDiff } from '../../types'
+import type { AdviceDiff } from '../types'
 import AdviceDiffRows from './AdviceDiffRows'
 
-// Holiday F-154: the sentence lifted out of `WhyPanel` in v19e §2.2.
+// Holiday F-154: the sentence lifted out of `WhyPanel` in v19e §2.2; moved
+// into `kit/` beside its module in F-156.
 
 const EMPTY = {
   available: false, changed: false,

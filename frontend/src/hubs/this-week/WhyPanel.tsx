@@ -1,13 +1,12 @@
 import { Fragment, useState } from 'react'
 import { usePageData } from '../../api/pageData'
 import {
-  Callout, Card, PosBadge, TABLE_CLASS, THEAD_CLASS, fmtNum, fmtPct, tdClass,
+  AdviceDiffRows, Callout, Card, PosBadge, TABLE_CLASS, THEAD_CLASS, fmtNum, fmtPct, tdClass,
   thClass,
 } from '../../kit'
 import type {
   AdviceDiff, ComponentPlayer, ComponentsBreakdown, OverridesPanel,
 } from '../../types'
-import AdviceDiffRows from './AdviceDiffRows'
 import { componentsPath } from './squadRows'
 
 function DiffStrip({ diff }: { diff: AdviceDiff }) {

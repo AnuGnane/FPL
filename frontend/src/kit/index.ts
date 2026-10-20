@@ -1,3 +1,4 @@
+export { default as AdviceDiffRows } from './AdviceDiffRows'
 export { default as AppShell } from './AppShell'
 export { default as Card } from './Card'
 export type { CardProps } from './Card'

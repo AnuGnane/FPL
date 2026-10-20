@@ -1,5 +1,5 @@
-import { TONE_CLASS, fmtDelta, toneOf } from '../../kit'
-import type { AdviceDiff } from '../../types'
+import type { AdviceDiff } from '../types'
+import { TONE_CLASS, fmtDelta, toneOf } from './format'
 
 /**
  * What one served plan says that another did not, as a sentence.
@@ -10,6 +10,9 @@ import type { AdviceDiff } from '../../types'
  * wording of "buying X instead of Y" would be the one diff told two ways.
  * The strip keeps its own Callout and its own heading; only the sentence is
  * shared, since that is the only part both surfaces mean identically.
+ *
+ * In `kit/` since holiday F-156: the History tab lives in another hub, and a
+ * hub reading another hub's file is the crossing F-156's rail forbids.
  */
 
 /**
