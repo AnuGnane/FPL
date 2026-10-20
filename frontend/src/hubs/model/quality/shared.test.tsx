@@ -8,23 +8,7 @@ import { Reliability } from './shared'
 // is printed rather than drawn — the log loss and the observation count.
 
 // The neighbours' shim (`HoldoutSection.test.tsx`), until F-161 makes it one.
-vi.mock('recharts', async () => {
-  const actual = await vi.importActual<typeof import('recharts')>('recharts')
-  const { cloneElement, isValidElement } = await import('react')
-  return {
-    ...actual,
-    // The chart itself needs the measured box: cloning it with a fixed one is
-    // what the real container does once it has measured.
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div style={{ width: 400, height: 200 }}>
-        {isValidElement(children)
-          ? cloneElement(children as React.ReactElement<Record<string, unknown>>,
-                         { width: 400, height: 200 })
-          : children}
-      </div>
-    ),
-  }
-})
+vi.mock('recharts', () => import('../../../kit/rechartsShim').then((m) => m.mockRecharts()))
 
 const HEAD = {
   log_loss: 0.31,
