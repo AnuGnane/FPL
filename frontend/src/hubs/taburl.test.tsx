@@ -43,21 +43,7 @@ vi.mock('../api/client', () => ({
 // League's Race tab is the one that draws, and `ResponsiveContainer` reaches
 // for a `ResizeObserver` jsdom does not have. The same clone-with-a-fixed-box
 // stand-in `League.test.tsx:15-30` already uses.
-vi.mock('recharts', async () => {
-  const actual = await vi.importActual<typeof import('recharts')>('recharts')
-  const { cloneElement, isValidElement } = await import('react')
-  return {
-    ...actual,
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div style={{ width: 400, height: 200 }}>
-        {isValidElement(children)
-          ? cloneElement(children as React.ReactElement<Record<string, unknown>>,
-                         { width: 400, height: 200 })
-          : children}
-      </div>
-    ),
-  }
-})
+vi.mock('recharts', () => import('../kit/rechartsShim').then((m) => m.mockRecharts()))
 
 // One hook, both transports (v17h §6). `resetJobSlots` is stubbed alongside it
 // because the shared setup clears the real hook's slots before every test and a
