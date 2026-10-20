@@ -3,7 +3,7 @@
 // sources rather than rendering anything, so a class that drifts back in is
 // caught wherever it lands.
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, posix, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -375,5 +375,65 @@ describe('the click targets', () => {
       '<button type="button" onClick={go}>go</button>',
       '<Button onClick={go}>go</Button>',
     ].join('\n'))).toEqual([])
+  })
+})
+
+// Holiday F-156: no hub reads another hub's files. `CLAUDE.md`'s layout puts
+// the shared pieces in `kit/` and `api/`, the Python side has its acyclic
+// rail (`tests/test_layering.py`, v18d), and `ladderText.ts` exists so that
+// "neither card should have to import the other" (v17h §3). The hub entries
+// at `hubs/*.tsx` import their own directory and are not read; tests are not
+// read. `ALLOWED` holds the crossings still standing, each with its reason,
+// and can only shrink: an entry that no longer crosses fails too.
+const ALLOWED_CROSSINGS: Record<string, string> = {
+  'hubs/planning/WhatIfTab.tsx -> hubs/this-week/LadderCard':
+    'LadderCard moves with RungRow and ladderText, in a package of its own',
+}
+
+function hubCrossings(sources: Record<string, string>): string[] {
+  return Object.entries(sources).flatMap(([file, text]) => {
+    const own = /^hubs\/([^/]+)\/.+\.tsx?$/.exec(file)
+    if (!own || /\.test\.tsx?$/.test(file)) return []
+    return text.split('\n').flatMap((line, i) => [
+      ...line.matchAll(/(?:from\s+|import\s*\(\s*)'(\.{1,2}\/[^']*)'/g),
+    ].flatMap((m) => {
+      const target = posix.normalize(posix.join(posix.dirname(file), m[1]))
+      const theirs = /^hubs\/([^/]+)\//.exec(target)
+      return theirs && theirs[1] !== own[1]
+        ? [`${file}:${i + 1} -> ${target}`] : []
+    }))
+  })
+}
+
+function unallowed(crossings: string[]): string[] {
+  return crossings.filter((c) => !(c.replace(/:\d+ -> /, ' -> ')
+    in ALLOWED_CROSSINGS))
+}
+
+describe('the hub boundaries', () => {
+  const sources = () => Object.fromEntries(allSources(SRC)
+    .map((path) => [rel(path).split(sep).join('/'),
+                    readFileSync(path, 'utf8')]))
+
+  it('lets no hub import another hub’s files', () => {
+    expect(unallowed(hubCrossings(sources())),
+           'file:line -> target crossing into another hub').toEqual([])
+  })
+
+  it('holds only crossings that still stand', () => {
+    const standing = new Set(hubCrossings(sources())
+      .map((c) => c.replace(/:\d+ -> /, ' -> ')))
+    expect(Object.keys(ALLOWED_CROSSINGS).filter((k) => !standing.has(k)))
+      .toEqual([])
+  })
+
+  it('names a crossing on a fake pair and passes its own directory and the entries', () => {
+    expect(hubCrossings({
+      'hubs/model/Fake.tsx': "import X from '../this-week/X'\n"
+        + "import Y from './Y'\nimport { Card } from '../../kit'\n",
+      'hubs/model/Fake.test.tsx': "import X from '../this-week/X'\n",
+      'hubs/Model.tsx': "import Z from './this-week/Z'\n",
+      'kit/Fake.tsx': "import X from '../hubs/this-week/X'\n",
+    })).toEqual(['hubs/model/Fake.tsx:1 -> hubs/this-week/X'])
   })
 })
