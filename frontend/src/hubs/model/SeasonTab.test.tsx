@@ -316,7 +316,7 @@ describe('SeasonTab, filled', () => {
 describe('SeasonTab, one gameweek old', () => {
   // ROADMAP v11's residual, closed by holiday F-158: a one-point series is
   // no path at all. recharts 2.15 does draw the lone point on its own, but as
-  // its default white ring, a colour no token names and a white disc
+  // its default white-filled dot, a colour no token names and a white disc
   // on the light page; the dot is drawn in the series' own stroke instead.
   // Two points are a line and need none.
   const CHARTS = ['Calibration trend by gameweek', 'Cumulative bench points',
@@ -362,7 +362,9 @@ describe('SeasonTab, one gameweek old', () => {
 
   it('fills each lone dot with its series colour, never white', async () => {
     for (const chart of await charts(1)) {
-      for (const dot of chart.querySelectorAll('.recharts-line-dot')) {
+      const dots = chart.querySelectorAll('.recharts-line-dot')
+      expect(dots.length).toBeGreaterThan(0)
+      for (const dot of dots) {
         expect(SERIES_COLOURS).toContain(dot.getAttribute('fill'))
         expect(dot.getAttribute('fill')).toBe(dot.getAttribute('stroke'))
       }
