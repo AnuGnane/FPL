@@ -1,3 +1,9 @@
+"""Price-change alerts for the players the manager owns or plans to buy.
+
+Read from FPL's own predictor fields, which reach +/-100 at the nightly
+00:00 UK change. This only warns; the nightly reading is banked by
+``price_log.py`` (v10b) and priced into the objective by ``price_timing.py``.
+"""
 from __future__ import annotations
 
 import pandas as pd

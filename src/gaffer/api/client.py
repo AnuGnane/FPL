@@ -1,3 +1,10 @@
+"""The read-only FPL HTTP client: every request gaffer makes to the game.
+
+It only ever GETs (gaffer never logs in or makes a transfer). A transport
+error, a 5xx or a 429 is retried with backoff and any other 4xx fails at once;
+a snapshotting fetch keeps a pruned, timestamped dump under ``raw_dir``
+(``KEEP_DUMPS``) for diffing a suspicious response against its predecessors.
+"""
 from __future__ import annotations
 
 import json

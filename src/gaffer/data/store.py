@@ -1,3 +1,8 @@
+"""The parquet seam: every table under ``data/`` is saved and loaded here.
+
+Paths are relative to ``DATA_DIR``, so a test can point the whole store at a
+temporary directory by patching that one name.
+"""
 from __future__ import annotations
 
 from pathlib import Path
