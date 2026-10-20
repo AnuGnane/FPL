@@ -7,23 +7,7 @@ import HoldoutSection from './HoldoutSection'
 // held for it. The section takes its evaluation by props, so these cases
 // render it directly: nothing here needs the tab's fetch.
 
-vi.mock('recharts', async () => {
-  const actual = await vi.importActual<typeof import('recharts')>('recharts')
-  const { cloneElement, isValidElement } = await import('react')
-  return {
-    ...actual,
-    // The chart itself needs the measured box: cloning it with a fixed one is
-    // what the real container does once it has measured.
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div style={{ width: 400, height: 200 }}>
-        {isValidElement(children)
-          ? cloneElement(children as React.ReactElement<Record<string, unknown>>,
-                         { width: 400, height: 200 })
-          : children}
-      </div>
-    ),
-  }
-})
+vi.mock('recharts', () => import('../../../kit/rechartsShim').then((m) => m.mockRecharts()))
 
 const table = {
   zeros: { rmse: 0.9, mae: 0.4, n: 900 },
