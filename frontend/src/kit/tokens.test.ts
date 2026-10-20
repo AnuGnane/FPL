@@ -395,9 +395,10 @@ function hubCrossings(sources: Record<string, string>): string[] {
     const own = /^hubs\/([^/]+)\/.+\.tsx?$/.exec(file)
     if (!own || /\.test\.tsx?$/.test(file)) return []
     return text.split('\n').flatMap((line, i) => [
-      ...line.matchAll(/(?:from\s+|import\s*\(\s*)'(\.{1,2}\/[^']*)'/g),
+      ...line.matchAll(
+        /(?:from\s+|import\s*\(\s*|^\s*import\s+)(['"])(\.{1,2}\/[^'"]*)\1/g),
     ].flatMap((m) => {
-      const target = posix.normalize(posix.join(posix.dirname(file), m[1]))
+      const target = posix.normalize(posix.join(posix.dirname(file), m[2]))
       const theirs = /^hubs\/([^/]+)\//.exec(target)
       return theirs && theirs[1] !== own[1]
         ? [`${file}:${i + 1} -> ${target}`] : []
@@ -431,9 +432,13 @@ describe('the hub boundaries', () => {
     expect(hubCrossings({
       'hubs/model/Fake.tsx': "import X from '../this-week/X'\n"
         + "import Y from './Y'\nimport { Card } from '../../kit'\n",
+      'hubs/live/Quoted.tsx': 'import X from "../league/X"\n'
+        + "import '../players/side.css'\n",
       'hubs/model/Fake.test.tsx': "import X from '../this-week/X'\n",
       'hubs/Model.tsx': "import Z from './this-week/Z'\n",
       'kit/Fake.tsx': "import X from '../hubs/this-week/X'\n",
-    })).toEqual(['hubs/model/Fake.tsx:1 -> hubs/this-week/X'])
+    })).toEqual(['hubs/model/Fake.tsx:1 -> hubs/this-week/X',
+                 'hubs/live/Quoted.tsx:1 -> hubs/league/X',
+                 'hubs/live/Quoted.tsx:2 -> hubs/players/side.css'])
   })
 })
