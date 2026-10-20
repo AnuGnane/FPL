@@ -1,7 +1,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useNavigate } from 'react-router-dom'
+import { EMPTY_WHATIF } from '../../api/whatifRequest'
 import type { WhatIfRequest } from '../../types'
-import { EMPTY_WHATIF } from '../planning/WhatIfTab'
 
 /**
  * Lock, ban or must-sell the player the reader is looking at (v19e §2.4).
