@@ -15,7 +15,7 @@ import { Countdown, fmtNum } from '../../kit'
  * strip spans exactly the column the cards do, and nothing scrolls past it in
  * the gutters because the gutters are empty.
  */
-export interface ContextStripProps {
+interface ContextStripProps {
   gw: number
   /** The served ISO instant the gameweek locks at. */
   deadline: string

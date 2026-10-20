@@ -8,7 +8,7 @@ const KIND_LABEL: Record<string, string> = {
   tuesday: 'Tuesday debrief',
 }
 
-export interface DigestCardProps {
+interface DigestCardProps {
   /** Rendered in the button row, before the two job buttons. */
   extra?: ReactNode
   /** Shown above the card's content, in the note voice. */

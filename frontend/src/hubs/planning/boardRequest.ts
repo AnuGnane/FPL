@@ -11,7 +11,7 @@ import { CHIP_CODES } from './chips'
 /** The board's state a handoff reads, and nothing else: the week whose button
  *  was pressed, and the gameweek the board is drawn for. Not the component's
  *  props — `onTry` and the fetched plan have no say in the body. */
-export interface BoardRequestState {
+interface BoardRequestState {
   week: PlanGw
   /** The gameweek the board opens on. The lab always solves from *now*, so
    *  this is where the prefilled solve starts. */

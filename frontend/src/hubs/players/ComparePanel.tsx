@@ -95,7 +95,7 @@ function SetPieceFlag({ kind, order }: { kind: string; order: number | null }) {
   )
 }
 
-export interface ComparePanelProps {
+interface ComparePanelProps {
   gw: number
   players: PlayerRow[]
   /** The explorer's currently-filtered rows, so the radar's axes can be

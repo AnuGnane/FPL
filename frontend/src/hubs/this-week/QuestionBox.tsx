@@ -35,7 +35,7 @@ function CheckedAnswer({ answer }: { answer: AskAnswer }) {
   )
 }
 
-export interface QuestionBoxProps {
+interface QuestionBoxProps {
   /** The brief panel's `model_command`. Null is the panel saying no command
    *  is configured — the same field the card's own stamp reads — and with no
    *  command there is nothing to ask, so the box says so instead of offering

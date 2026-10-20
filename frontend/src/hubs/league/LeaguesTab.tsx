@@ -7,10 +7,10 @@ import {
 import type { LeaguesOverview, PrivateLeagueRow } from '../../types'
 
 /** The four words `[league] stance` may be (v15 §3.2). */
-export const STANCES = ['auto', 'chase', 'defend', 'neutral'] as const
+const STANCES = ['auto', 'chase', 'defend', 'neutral'] as const
 export type Stance = typeof STANCES[number]
 
-export interface LeaguesTabProps {
+interface LeaguesTabProps {
   overview: LeaguesOverview
   /** A settings write is in flight: the controls stay put until it lands. */
   busy: boolean

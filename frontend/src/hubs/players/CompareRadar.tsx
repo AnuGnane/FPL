@@ -28,7 +28,7 @@ export const AXES: Array<[string, string]> = [
   ['form', 'Form'],
 ]
 
-export interface AxisValues {
+interface AxisValues {
   attacking: number
   /** Null — never zero — when no fixture in the components payload carries a
    *  minutes model for him. Zero on this axis is "expected not to play",
@@ -112,7 +112,7 @@ export function axisValues(player: PlayerRow,
   }
 }
 
-export interface CompareRadarProps {
+interface CompareRadarProps {
   gw: number
   players: PlayerRow[]
   /** The explorer's currently-filtered rows, for normalization. Empty falls

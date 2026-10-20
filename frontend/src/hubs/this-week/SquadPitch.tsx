@@ -24,7 +24,7 @@ import type { SquadRow } from './SquadTable'
 
 const LINES = ['GKP', 'DEF', 'MID', 'FWD'] as const
 
-export interface SquadPitchProps {
+interface SquadPitchProps {
   xi: SquadRow[]
   bench: SquadRow[]
   captain: number

@@ -48,7 +48,7 @@ export interface SquadBreakdown {
   penTaker: number | null
 }
 
-export interface SquadTableProps {
+interface SquadTableProps {
   rows: SquadRow[]
   breakdown: Record<number, SquadBreakdown>
 }

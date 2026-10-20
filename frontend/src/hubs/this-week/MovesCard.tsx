@@ -18,7 +18,7 @@ export interface Move {
   tag?: string | null
 }
 
-export interface MovesCardProps {
+interface MovesCardProps {
   buys: Move[]
   sells: Move[]
   hits: number
@@ -88,7 +88,7 @@ export function movesText(
  *  Silent when the comparison is unavailable: "nothing changed" and "we have
  *  no plan for last week" are different claims, and only the first is one
  *  this card has the standing to make. */
-export function sinceText(since: AdviceDiff | null | undefined): string | null {
+function sinceText(since: AdviceDiff | null | undefined): string | null {
   if (!since || !since.available) return null
   const from = since.gw_from ?? since.gw - 1
   const changed = since.captain_to

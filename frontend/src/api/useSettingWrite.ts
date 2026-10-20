@@ -41,7 +41,7 @@ export interface SettingWriteOptions {
  * ladder card rebuilds — can tell a refusal from a save without catching the
  * exception the hook has already reported.
  */
-export type SettingWriter = (key: string, value: unknown,
+type SettingWriter = (key: string, value: unknown,
                              what?: string) => Promise<boolean>
 
 export function useSettingWrite(options: SettingWriteOptions = {}):

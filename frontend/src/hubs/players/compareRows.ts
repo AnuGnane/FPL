@@ -20,7 +20,7 @@ import type {
  *  surname, and a series keyed by one of them would silently overwrite the
  *  other's bars. The name rides on the series as its label, which is what the
  *  legend and the tooltip print. */
-export type CompareChartRow = Record<string, string | number>
+type CompareChartRow = Record<string, string | number>
 
 /**
  * One row per component label, one column per player: the shape Recharts
@@ -56,7 +56,7 @@ CompareChartRow[] {
 /** One player's column of the panel: his breakdown rows and the two totals
  *  under them, his set-piece and fixture context, and the requested
  *  gameweek's fixtures. */
-export interface CompareColumn {
+interface CompareColumn {
   /** His entry in the breakdown, or `undefined` when the payload has none for
    *  him — the panel still prints his row from the explorer. */
   comp: ComponentPlayer | undefined

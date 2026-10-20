@@ -4,7 +4,7 @@ import { apiGet, apiPost, errorText } from './client'
 
 export type JobStatus = 'idle' | 'queued' | 'running' | 'done' | 'error'
 
-export interface JobRecord {
+interface JobRecord {
   id: string
   status: 'queued' | 'running' | 'done' | 'error'
   result: unknown
@@ -13,7 +13,7 @@ export interface JobRecord {
 
 /** The terminal event of a streamed run. `failed` is the wire's word for what
  *  this hook calls `error` (v17h §6). */
-export interface JobStreamEnd {
+interface JobStreamEnd {
   status: 'done' | 'failed'
   error: string | null
   summary: string | null
@@ -43,7 +43,7 @@ export const POLL_MS = 1000
  * structured 422 lands next to the input rather than becoming a job error —
  * and only ever call `attach`.
  */
-export type JobSpec =
+type JobSpec =
   | { kind: JobKind; path?: never; slot?: never }
   | {
       kind?: never

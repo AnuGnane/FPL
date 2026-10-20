@@ -26,7 +26,7 @@ const ITEMS: Array<[string, 'lock' | 'ban' | 'force_out']> = [
   ['Lock', 'lock'], ['Ban', 'ban'], ['Must sell', 'force_out'],
 ]
 
-export interface PlayerActionsProps {
+interface PlayerActionsProps {
   code: number
   name: string
   /** Where the trigger sits. The pitch's card is drawn by a closed kit

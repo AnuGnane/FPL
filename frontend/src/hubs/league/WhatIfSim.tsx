@@ -14,12 +14,12 @@ export interface WhatIfSquadPlayer {
   position: string
 }
 
-export interface WhatIfRival {
+interface WhatIfRival {
   entry: number
   name: string
 }
 
-export interface WhatIfSimProps {
+interface WhatIfSimProps {
   squad: WhatIfSquadPlayer[]
   rivals: WhatIfRival[]
   /** The league being played with; `null` is the focus league (v15 §6.1). */
