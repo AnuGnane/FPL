@@ -31,7 +31,7 @@ describe('AdviceDiffRows', () => {
     const { container } = render(<AdviceDiffRows diff={diff} />)
     expect(container.textContent).toContain(
       'buying Wirtz instead of Saka; captain Salah → Haaland.')
-    expect(container.textContent).toMatch(/xPts/)
+    expect(container.textContent).toMatch(/\+1\.5 xPts$/)
   })
 
   it('names the movers past the server threshold', () => {
@@ -43,5 +43,7 @@ describe('AdviceDiffRows', () => {
     const { container } = render(<AdviceDiffRows diff={diff} />)
     expect(container.textContent).toContain(
       '1 player moved 0.5 xPts or more in the retrain — Palmer -0.8.')
+    // The source's rule: a movers-only strip prints no 0.0 xPts delta.
+    expect(container.textContent).not.toMatch(/0\.0 xPts/)
   })
 })
