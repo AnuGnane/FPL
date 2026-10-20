@@ -29,23 +29,7 @@ vi.mock('../../../api/client', () => ({
   apiPost: vi.fn(),
 }))
 
-vi.mock('recharts', async () => {
-  const actual = await vi.importActual<typeof import('recharts')>('recharts')
-  const { cloneElement, isValidElement } = await import('react')
-  return {
-    ...actual,
-    // The chart itself needs the measured box: cloning it with a fixed one is
-    // what the real container does once it has measured.
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div style={{ width: 400, height: 200 }}>
-        {isValidElement(children)
-          ? cloneElement(children as React.ReactElement<Record<string, unknown>>,
-                         { width: 400, height: 200 })
-          : children}
-      </div>
-    ),
-  }
-})
+vi.mock('recharts', () => import('../../../kit/rechartsShim').then((m) => m.mockRecharts()))
 
 // The v9d card. Its own fetch, its own empty state, and a footer that is as
 // much the point as the table: a calibration report whose omissions and
