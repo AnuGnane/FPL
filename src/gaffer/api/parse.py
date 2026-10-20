@@ -1,3 +1,8 @@
+"""Lenient coercions for the FPL API's loosely typed fields.
+
+The API sends numbers as strings, empty strings or ``None`` as it pleases, so
+a reader asks for a default rather than raising on a field it cannot read.
+"""
 from __future__ import annotations
 
 
