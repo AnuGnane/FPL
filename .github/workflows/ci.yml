@@ -31,7 +31,7 @@ jobs:
           python-version-file: .python-version
       - run: uv sync --locked
       - name: ruff
-        run: uvx ruff check src tests
+        run: uvx ruff check src tests scripts
       # Holiday F-57: install_automation.sh is a zsh script, and its --status
       # test skips without zsh, which ubuntu-latest lacks, so F-5's only test
       # ran nowhere but the Mac.
