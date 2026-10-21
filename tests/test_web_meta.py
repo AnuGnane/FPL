@@ -1,3 +1,10 @@
+"""v3 — the chip planner, history, health and fixture ticker routes.
+
+These pages read saved state, so an infeasible or older solve state is a
+readable 422 rather than a crash, history pairs expected with actual only
+once a gameweek resolves, and health reports what is on disk and how far
+the ingested season reaches.
+"""
 import json
 
 import pandas as pd

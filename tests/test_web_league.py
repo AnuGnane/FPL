@@ -1,3 +1,9 @@
+"""v3 — the League hub's API: the race, the rivals and a rival's detail.
+
+The race carries standings, trajectory, the gap and lambda's explanation;
+without a league id or with FPL down it says so, as a readable or retriable
+error, rather than drawing an empty race.
+"""
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient

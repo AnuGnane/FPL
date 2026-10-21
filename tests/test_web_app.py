@@ -1,3 +1,10 @@
+"""v3 — the FastAPI app factory behind ``gaffer ui``.
+
+The SPA and the API share one server, so an unknown API path is a JSON 404
+rather than the SPA, client routes fall back to ``index.html``, domain
+errors map to 422 with their message, and the index is served uncached so
+a rebuild is picked up.
+"""
 import pytest
 from fastapi.testclient import TestClient
 

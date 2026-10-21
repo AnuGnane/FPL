@@ -1,3 +1,9 @@
+"""v1 — the HTML gameweek report.
+
+The report is read away from the app, so it must say what the CLI says (the
+captain note, the served hit cost) and render on a real payload; a panel
+whose data is missing is omitted rather than shown empty or wrong.
+"""
 import json
 from pathlib import Path
 

@@ -1,3 +1,8 @@
+"""v1 — price alerts from the official predictor fields.
+
+An alert names a rise or fall that is imminent and touches a player on
+the watchlist; a NaN never alerts, so missing data cannot cry wolf.
+"""
 import pandas as pd
 
 from gaffer.prices import price_alerts

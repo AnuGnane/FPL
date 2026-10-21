@@ -1,3 +1,10 @@
+"""v4b — Understat's embedded JSON parsed into player and team frames.
+
+Understat names players its own way, so names are normalised the same way
+from both sides and two codes sharing a name are refused rather than
+guessed. Non-penalty xG is derived by dropping penalty shots, and empty or
+zero-count inputs give empty frames or NaN, not errors.
+"""
 import json
 
 import pandas as pd

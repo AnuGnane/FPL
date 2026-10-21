@@ -1,3 +1,10 @@
+"""v4c — the threshold-gated decision policy over move frequencies.
+
+A move is recommended only when enough scenario solves agree on it: a
+transfer at or above the bar, a hit or a chip only at the higher bar for
+an irreversible move. A held decision lists its near misses with their
+frequencies, so restraint shows what it turned down.
+"""
 import pandas as pd
 
 from gaffer.optimize.milp import GwPlan, Plan

@@ -1,3 +1,10 @@
+"""v1 — the live season's per-gameweek ingestion into canonical ``player_gw``.
+
+Live rows must land in the same columns as the history, and a gameweek
+FPL has not finished checking is dropped so a provisional score never
+trains a model. Set-piece orders are snapshotted per gameweek and the ones
+already stored are kept, so the past is not rewritten by today's orders.
+"""
 import pandas as pd
 
 from gaffer.data import store
