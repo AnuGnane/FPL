@@ -20,7 +20,7 @@ uv run gaffer ui --no-open-browser --port 8927
 .venv/bin/pytest -q -rs tests/test_golden_board.py tests/test_pipeline.py
                                          # the golden gate (~18 min); -rs so a stale
                                          # board's skip names the file; 0 skipped is a pass
-uvx ruff check src tests                 # the linter, a gate line since v18g
+uvx ruff check src tests scripts         # the linter, a gate line since v18g (scripts/ since F-167)
 cd frontend && npm run check             # tsc, ~1200 vitest tests, types drift, eslint at
                                          # zero warnings (--max-warnings 0 since v19h)
 cd frontend && npm run dev               # Vite on :5173, proxies /api to :8927
