@@ -3,7 +3,8 @@
 Effective ownership is what makes a pick safe or a differential, so it
 counts captaincy and the bench as FPL scores them. The fetches page through
 the league, leave the manager out, skip entries that cannot be read and
-cache what will not change, so a large league is not re-fetched each week.
+cache what will not change (history per gameweek, picks per season) but
+never an outage, so a gameweek already read is not fetched again.
 """
 import httpx
 
