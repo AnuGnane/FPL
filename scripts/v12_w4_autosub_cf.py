@@ -141,8 +141,7 @@ def main() -> None:
     from gaffer.assets import load_bootstrap_sample
     from gaffer.data.bootstrap import scoring_table
     from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
-    from gaffer.models.train import (load_training_frame,
-                                     predict_components_simple)
+    from gaffer.models.train import load_training_frame, predict_components_simple
 
     print("W4_CF_RULE", arms_mod.ARM_RULE, flush=True)
     df, tg, _ = load_training_frame()

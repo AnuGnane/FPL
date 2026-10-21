@@ -38,16 +38,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import pandas as pd
+from v7b_legacy_minutes import LegacyMinutesModel
 
 import gaffer.features.engineer as eng
 import gaffer.models.train as tr
 from gaffer.config import load_config
-from gaffer.models.train import (load_training_frame,
-                                 predict_components_simple, train_all)
-from gaffer.optimize.scenarios import (NOISE_DENOM, NOISE_FLOOR_XMINS,
-                                       xmins_by_player_gw)
-
-from v7b_legacy_minutes import LegacyMinutesModel
+from gaffer.models.train import load_training_frame, predict_components_simple, train_all
+from gaffer.optimize.scenarios import NOISE_DENOM, NOISE_FLOOR_XMINS, xmins_by_player_gw
 
 SEASON = "2025-26"
 

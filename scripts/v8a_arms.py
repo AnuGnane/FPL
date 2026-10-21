@@ -27,9 +27,11 @@ import json
 from pathlib import Path
 
 import gaffer.evaluation as ev
-from gaffer.features.engineer import (CONGESTION_FEATURES,
-                                      LEAGUE_CONGESTION_FEATURES,
-                                      ROTATION_PRIOR_FEATURES)
+from gaffer.features.engineer import (
+    CONGESTION_FEATURES,
+    LEAGUE_CONGESTION_FEATURES,
+    ROTATION_PRIOR_FEATURES,
+)
 from gaffer.models import train as tr
 
 ZEROS_MIN_GAIN = 0.005

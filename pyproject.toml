@@ -78,6 +78,9 @@ filterwarnings = [
 # v18g §1: E, F, B and I at line 100; the ignores below each carry a reason.
 line-length = 100
 target-version = "py312"
+# F-167: scripts/archive/ is the retired code v18g moved out of the way; it is
+# kept for the record, not run, so the scripts gate skips it.
+extend-exclude = ["scripts/archive"]
 
 [tool.ruff.lint]
 select = ["E", "F", "B", "I"]
@@ -104,6 +107,9 @@ ignore = ["B905"]
 # E501: prose sentences and a recorded board asserted verbatim (v18g §1).
 "tests/test_v16_brief.py" = ["E501"]
 "tests/test_golden_board.py" = ["E501"]
+# I001: s2_replay.py is orchestrator-only (CLAUDE.md), so F-167 leaves its
+# import order as it stands rather than sorting it.
+"scripts/s2_replay.py" = ["I001"]
 
 [tool.ruff.lint.flake8-bugbear]
 # B008: typer's declarative defaults are the CLI's idiom (v18g §2.1).

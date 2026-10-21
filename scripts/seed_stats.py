@@ -21,7 +21,6 @@ import json
 import sys
 from pathlib import Path
 
-
 SEED_FIELDS = ("seed_base", "tag")
 """The only two config fields a multi-seed trio is allowed to differ in.
 
