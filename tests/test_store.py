@@ -1,3 +1,8 @@
+"""v1 — the parquet store every table is saved to and loaded from.
+
+A save must round-trip and ``exists`` must be true only once a file is
+written, since callers branch on it to decide whether to fetch.
+"""
 import pandas as pd
 
 from gaffer.data import store

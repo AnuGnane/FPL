@@ -1,3 +1,9 @@
+"""v4a — ``/api/quality``, the evaluation artifact served to the Model hub.
+
+Evaluation runs offline, so the route serves whatever artifact exists:
+none tells you to run it, a partial or older one is tolerated or asks for
+a re-run, and the news shadow scoreboard is null until a run has happened.
+"""
 import json
 
 import pytest

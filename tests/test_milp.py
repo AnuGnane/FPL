@@ -1,3 +1,10 @@
+"""v1 — the multi-period transfer MILP.
+
+The solver is the advice, so its legality is pinned first: the squad shape,
+three per club, the budget at sell prices, free transfers and hits.
+Behaviour follows from that: it buys a star with a free transfer, takes no
+hit for a marginal gain, and honours the locks, forces and caps it is given.
+"""
 import pandas as pd
 import pytest
 

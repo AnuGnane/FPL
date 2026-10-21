@@ -1,3 +1,10 @@
+"""v1 — the team model behind clean sheets and goals conceded.
+
+Each fixture gives two team rows, rolling features exclude the row they
+describe, and the odds blend is checked against a hand calculation.
+Missing odds, whole columns of them or none at all, still fit, because the
+archive does not cover every match.
+"""
 import numpy as np
 import pandas as pd
 import pytest

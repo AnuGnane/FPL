@@ -1,3 +1,10 @@
+"""v1 — training orchestration and its evaluation against baselines.
+
+The heads are fitted here, so the feature sets in force are pinned, the
+bonus floor reaches back a season when the newest is thin, and calibration
+is fitted out of sample on 60-minute rows. The evaluation must rank a better
+model above a worse one, or it could not grade anything.
+"""
 import random
 
 import pandas as pd

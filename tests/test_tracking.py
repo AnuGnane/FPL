@@ -1,3 +1,10 @@
+"""v2 — model health: predictions joined with what happened.
+
+Health is only meaningful once the actuals exist, so it returns nothing
+before the live refresh and writes the summary once they do. The ledger's
+two points are carried when there is a ledger and left null when not,
+never invented.
+"""
 import pandas as pd
 
 from gaffer.tracking import compute_health

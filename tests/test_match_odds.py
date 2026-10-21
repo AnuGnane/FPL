@@ -1,3 +1,10 @@
+"""v4b — football-data.co.uk closing odds, devigged with Shin, joined to FPL.
+
+Closing odds are the team model's strongest outside signal, so the triple
+and the totals pair are devigged, every alias maps to an FPL team name and
+an unknown name raises rather than dropping a fixture silently. A season
+the archive lacks is survived, not fatal.
+"""
 import pandas as pd
 import pytest
 

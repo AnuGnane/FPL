@@ -1,3 +1,10 @@
+"""v1 — mini-league rivals: their entries, picks, history and effective ownership.
+
+Effective ownership is what makes a pick safe or a differential, so it
+counts captaincy and the bench as FPL scores them. The fetches page through
+the league, leave the manager out, skip entries that cannot be read and
+cache what will not change, so a large league is not re-fetched each week.
+"""
 import httpx
 
 from gaffer.data.league import (

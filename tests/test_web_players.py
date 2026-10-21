@@ -1,3 +1,9 @@
+"""v3 — the player browser and the EP explanation.
+
+The explanation shows components, minutes, odds and the next fixtures, so
+a player with no components or missing from the snapshot is a readable 422,
+and a frame banked before a column existed still explains.
+"""
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient

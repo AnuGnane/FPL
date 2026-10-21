@@ -1,3 +1,10 @@
+"""v1 — the minutes head: three modes, and the availability overrides.
+
+Expected minutes is the mode-weighted average of start, sub and
+did-not-play, not a free regression, so the modes stay coherent by
+construction. Thin frames still fit, and the output columns keep their
+order because every downstream head reads them.
+"""
 import numpy as np
 import pandas as pd
 import pytest

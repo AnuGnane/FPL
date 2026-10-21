@@ -1,3 +1,10 @@
+"""v3 — ``/api/live``, the in-gameweek tracker served to the Live hub.
+
+A player's status follows their own fixture, not the gameweek's, and between
+gameweeks the payload is quiet. The tier ownership sample is optional:
+when it fails, comes back empty or is switched off, the page says so and
+the rest still serves.
+"""
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient

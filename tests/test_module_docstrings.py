@@ -28,35 +28,11 @@ ALLOWED = {"config.py"}
 
 TESTS = ROOT / "tests"
 
-# F-170: the test modules still without a docstring. It only shrinks; the
-# two orchestrator-only files are the orchestrator's to document.
+# F-170 and F-171: the test modules still without a docstring, now only the
+# two orchestrator-only files, which are the orchestrator's to document.
 TESTS_ALLOWED = {
-    "test_league.py",
-    "test_league_mode.py",
-    "test_live.py",
-    "test_live_gw.py",
-    "test_match_odds.py",
-    "test_milp.py",
-    "test_minutes.py",
     "test_odds.py",
-    "test_parse.py",
-    "test_policy.py",
-    "test_prices.py",
-    "test_report.py",
-    "test_scenarios.py",
-    "test_store.py",
-    "test_team_model.py",
-    "test_tracking.py",
-    "test_train.py",
-    "test_understat.py",
-    "test_web_app.py",
     "test_web_jobs.py",
-    "test_web_league.py",
-    "test_web_live.py",
-    "test_web_meta.py",
-    "test_web_players.py",
-    "test_web_quality.py",
-    "test_zeros_diagnostic.py",
 }
 
 

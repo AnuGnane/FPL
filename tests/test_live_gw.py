@@ -1,3 +1,10 @@
+"""v2 — the in-gameweek tracker and its provisional bonus.
+
+Bonus is not awarded until after a fixture, so the tracker derives it from
+live BPS the way FPL does: per fixture, ties sharing a slot and consuming
+the next, nothing before kick-off, and standing down once the real bonus
+is in.
+"""
 import httpx
 import pytest
 

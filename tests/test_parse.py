@@ -1,3 +1,8 @@
+"""v1 — the parse helpers for FPL's string-typed API fields.
+
+The API sends numbers as strings and sometimes as null; these helpers are
+the one place that is turned into floats and ints with a default.
+"""
 from gaffer.api.parse import to_float, to_int
 
 

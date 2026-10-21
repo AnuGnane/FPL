@@ -1,3 +1,10 @@
+"""v2 — the rank-aware dial: lambda from the standings, and the tilt it applies.
+
+A manager chasing a gap should take risk and one defending a lead should
+shed it, so lambda's sign follows the gap; inside a deadband it is exactly
+zero so a small gap does not turn the plan, and with no rivals it is
+neutral. Lambda zero leaves EP untouched, so the dial can only add a stance.
+"""
 import pandas as pd
 import pytest
 

@@ -1,3 +1,10 @@
+"""v7 — the zeros-stratum error decomposed by sub-population.
+
+Most player-gameweeks score nothing, and the error there hides who is being
+missed: the fringe, the cold start, the recently absent. Each stratum is
+scored on the zeros rows only and on the same holdout the harness uses, so
+the diagnostic agrees with the headline numbers.
+"""
 import numpy as np
 import pandas as pd
 
