@@ -34,14 +34,24 @@ import sys
 
 import numpy as np
 
-from gaffer.artifacts import (latest_gw, load_advice, load_components,
-                              load_solve_state, milp_pool, raw_ep_by,
-                              solve_kw_from_state)
+from gaffer.artifacts import (
+    latest_gw,
+    load_advice,
+    load_components,
+    load_solve_state,
+    milp_pool,
+    raw_ep_by,
+    solve_kw_from_state,
+)
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import SolveInput
 from gaffer.optimize.policy import captain_frequency_of
-from gaffer.optimize.scenarios import (availability_draw, move_frequencies,
-                                       run_scenarios, xmins_by_player_gw)
+from gaffer.optimize.scenarios import (
+    availability_draw,
+    move_frequencies,
+    run_scenarios,
+    xmins_by_player_gw,
+)
 
 N = 40
 """The advice path's own sweep size, not sensitivity's twenty. The gate is

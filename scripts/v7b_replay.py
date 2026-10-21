@@ -71,16 +71,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from v7b_legacy_minutes import LegacyMinutesModel
+
 import gaffer.backtest as bt
 import gaffer.features.engineer as eng
 import gaffer.models.train as tr
 import gaffer.optimize.scenarios as sc
 from gaffer.data import store as bt_store
 from gaffer.optimize.policy import Thresholds, coherent_plan, decide
-from gaffer.optimize.scenarios import (move_frequencies, run_scenarios,
-                                       xmins_by_player_gw)
-
-from v7b_legacy_minutes import LegacyMinutesModel
+from gaffer.optimize.scenarios import move_frequencies, run_scenarios, xmins_by_player_gw
 
 SHARED_LOG = "live/backtest_log.parquet"
 TABLE_ARMS = ("estimation", "composite")
@@ -340,8 +339,7 @@ def make_restraint_gate(cfg: ArmConfig, real_solve):
 
     import numpy as np
 
-    from gaffer.ladder import (LADDER_HITS, SEED_OFFSET, collapse,
-                               draw_points, score_plan, walk)
+    from gaffer.ladder import LADDER_HITS, SEED_OFFSET, collapse, draw_points, score_plan, walk
 
     def gate(pool, state, **kw):
         plan = real_solve(pool, state, **kw)

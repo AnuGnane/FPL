@@ -12,8 +12,7 @@ from gaffer.assets import load_bootstrap_sample
 from gaffer.data.bootstrap import scoring_table
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
 from gaffer.models.components import bonus_sees_attack, card_penalty, with_attack
-from gaffer.models.train import (evaluate_predictions, load_training_frame,
-                                 train_all)
+from gaffer.models.train import evaluate_predictions, load_training_frame, train_all
 
 HOLDOUT_SEASON, HOLDOUT_FROM = 3, 30      # season_idx 3 = 2025-26
 

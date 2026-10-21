@@ -120,8 +120,7 @@ def main() -> None:
     from gaffer.assets import load_bootstrap_sample
     from gaffer.data.bootstrap import scoring_table
     from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
-    from gaffer.models.train import (load_training_frame,
-                                     predict_components_simple, train_all)
+    from gaffer.models.train import load_training_frame, predict_components_simple, train_all
 
     df, tg, _ = load_training_frame()
     train_df, test_df = ev.benchmark_split(df, ev.BENCHMARK_TRAIN_MAX_IDX,
