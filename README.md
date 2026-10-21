@@ -510,7 +510,7 @@ and plans the ROADMAP names, the tabs `shots.sh` shoots, the commands and
 markers `CLAUDE.md` names, the tests that skip without local data, the
 secrets rule (no key-shaped value in a tracked file), `HOLIDAY.md`'s own
 shape, the keyboard path every click needs, the docstring every module
-opens with, the wire type every route declares and the hub boundary only
+opens with, the test every module has, the wire type every route declares and the hub boundary only
 one allowlisted import crosses, as the GUIDE, this README, `CLAUDE.md` and `config.example.toml`
 name them, are each checked against the source, so a rename that leaves a
 doc behind fails the gate.
