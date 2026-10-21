@@ -1,8 +1,8 @@
 """v4c — minutes-scaled EP noise for scenario re-solving.
 
 The policy counts how often a move survives noised solves, so the noise
-must be honest about uncertainty: zero for a nailed 90-minute player, the
-full scale for one who never plays, a double gameweek averaged rather than
+must be honest about uncertainty: on the heuristic arm, zero at the
+92-minute ceiling and the full scale for one who never plays, a double gameweek averaged rather than
 summed, and deterministic under a fixed seed so a run can be repeated.
 """
 import numpy as np

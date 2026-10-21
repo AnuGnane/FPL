@@ -2,8 +2,8 @@
 
 A player's status follows their own fixture, not the gameweek's, and between
 gameweeks the payload is quiet. The tier ownership sample is optional:
-when it fails, comes back empty or is switched off, the page says so and
-the rest still serves.
+when it fails or comes back empty the page says so in a notice, switched
+off it is not fetched at all, and either way the rest still serves.
 """
 import pandas as pd
 import pytest
