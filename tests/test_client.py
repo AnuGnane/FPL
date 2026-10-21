@@ -1,8 +1,8 @@
 """v1 — the FPL API client: retries, snapshots and the parse helpers.
 
 The tool reads FPL's public API and never logs in. Transient errors retry
-and a 404 does not, and every response is snapshotted so a run can
-be replayed against exactly what it saw.
+and a 404 does not, and responses are snapshotted (a changed payload once,
+a failed dump tolerated) so a run can be replayed against what it saw.
 """
 import json
 

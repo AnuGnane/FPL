@@ -1,8 +1,9 @@
 """v4c — ``decision_priors.json``, the shipped asset the decision layer reads.
 
-The advice and the backtest price their decisions from these priors, so
-the asset ships in the package with a fixed schema and a flat fallback when
-a key is missing: a malformed asset should cost precision, not the advice.
+The advice prices its decisions from these priors, so the asset ships in
+the package with a fixed schema, a writer that refuses a payload missing a
+required key, and the flat constants when the asset is absent or empty. The
+measurement solves never see it, so the calibration cannot grade itself.
 """
 import json
 

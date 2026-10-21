@@ -1,8 +1,9 @@
-"""v1 — the Typer CLI: every command's help renders and every failure is clean.
+"""v1 — the Typer CLI: every command's help renders and errors are told apart.
 
-The CLI is how the weekly run is driven by hand and by launchd, so a missing
-model directory or league id must end in a readable message and a non-zero
-exit, never a traceback nobody is awake to read.
+The CLI is how the weekly run is driven by hand and by launchd, so an
+expected failure (a ``GafferError``: a missing model directory or league id)
+ends in one readable line and a non-zero exit, while a real bug keeps its
+traceback so the log shows where it broke.
 """
 import json
 import re
