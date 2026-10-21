@@ -1,3 +1,9 @@
+"""v1 — the canonical players, teams and events tables built from bootstrap.
+
+Every downstream module reads these tables rather than FPL's raw JSON, so
+the parse is pinned against the bundled sample: numerics typed, names kept
+whole, set-piece orders carried.
+"""
 from gaffer.assets import load_bootstrap_sample
 from gaffer.data.bootstrap import (
     build_events,

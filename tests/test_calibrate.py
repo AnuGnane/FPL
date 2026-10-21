@@ -1,3 +1,10 @@
+"""v2 — the per-position EP calibration.
+
+The raw heads under-predicted by position, so a per-position delta is
+learned and applied in proportion to the chance of playing: a nailed
+starter gets the whole shift and bench filler none, so the calibration
+cannot promote a player who will not play.
+"""
 import joblib
 import numpy as np
 import pandas as pd

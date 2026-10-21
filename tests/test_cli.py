@@ -1,3 +1,9 @@
+"""v1 — the Typer CLI: every command's help renders and every failure is clean.
+
+The CLI is how the weekly run is driven by hand and by launchd, so a missing
+model directory or league id must end in a readable message and a non-zero
+exit, never a traceback nobody is awake to read.
+"""
 import json
 import re
 from pathlib import Path

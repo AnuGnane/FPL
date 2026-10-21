@@ -1,3 +1,9 @@
+"""v7b — the seed seam on the LightGBM heads.
+
+Replay gates draw K seed bases to measure spread (``CONVENTIONS.md``), and
+that only works if no seed means exactly the shipped model: the seedless
+head carries no ensemble knobs and predicts byte-identically.
+"""
 import numpy as np
 import pandas as pd
 import pytest

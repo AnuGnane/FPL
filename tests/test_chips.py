@@ -1,3 +1,9 @@
+"""v1 — chip scenarios, the wildcard-now assessment among them.
+
+A chip is advised only when re-solving with it beats the base plan, so the
+tests check that the base is the same plan the solver returns and that a
+wildcard is recommended only when the squad is bad enough to pay for it.
+"""
 import pandas as pd
 
 from gaffer.optimize.chips import evaluate_chips, wildcard_now_assessment

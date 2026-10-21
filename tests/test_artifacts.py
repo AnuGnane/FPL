@@ -1,3 +1,9 @@
+"""v3 — the components frame and the solve state, as written to disk.
+
+The UI and the replay read these files rather than re-running the models, so
+a column that goes missing or a key that comes back a string breaks them far
+from where it was lost. The round trips are pinned here, at the seam.
+"""
 import json
 from datetime import datetime, timezone
 

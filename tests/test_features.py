@@ -1,3 +1,9 @@
+"""v1 — leakage-safe rolling features and the prediction frame.
+
+Every rolling window excludes the row it describes, and future rows share
+one as-of-today form vector while still varying by fixture: features that
+peeked at the result would make every backtest a lie.
+"""
 import numpy as np
 import pandas as pd
 

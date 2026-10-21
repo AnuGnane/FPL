@@ -1,3 +1,8 @@
+"""v1 — team Elo ratings from match results.
+
+The rating used for a fixture must be the pre-match one, or the feature
+leaks the result it is meant to predict.
+"""
 import pandas as pd
 
 from gaffer.data.elo import compute_elo

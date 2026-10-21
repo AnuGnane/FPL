@@ -1,3 +1,9 @@
+"""v1 — the config loader and the defaults each cycle added.
+
+A missing key must fall back to the shipped default so an old
+``config.toml`` keeps working after an upgrade. The field count itself is
+pinned in ``tests/test_v13_degradation.py``, not here.
+"""
 from pathlib import Path
 
 from gaffer.config import load_config

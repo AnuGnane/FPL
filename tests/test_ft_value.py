@@ -1,3 +1,9 @@
+"""v4c — lambda(k, t), the free transfer's shadow price, by dynamic programme.
+
+The planner charges a hit against what a banked transfer is worth later, so
+the value is zero with no weeks left, respects the five-transfer cap and is
+floored at zero for a bad draw.
+"""
 import pytest
 
 from gaffer.optimize.ft_value import FT_CAP, LambdaLookup, lambda_table, value_table

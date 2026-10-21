@@ -1,3 +1,11 @@
+"""v1 — the 2025/26 backtest harness: scoring, autosubs and the plan it executes.
+
+The replay is the evidence every gate quotes (``CONVENTIONS.md``), so its
+scoring has to match FPL's: the captain doubles, the vice takes over on a
+blank, autosubs fill from the bench, and only the first gameweek of a
+horizon plan is executed. A harness that scored differently would grade
+every arm on the wrong ruler.
+"""
 import pandas as pd
 import pytest
 

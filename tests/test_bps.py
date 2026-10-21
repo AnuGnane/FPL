@@ -1,3 +1,10 @@
+"""v4a — historical BPS adjusted for the 2026/27 CBI rule.
+
+The bonus head trains on past seasons scored under the old BPS table. The
+adjustment only ever lowers a score and leaves the current season alone, so
+the head learns the rule it will be judged under without inventing bonus a
+player never earned.
+"""
 import pandas as pd
 
 from gaffer.features.bps import (

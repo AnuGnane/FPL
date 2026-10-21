@@ -1,3 +1,10 @@
+"""v1 — the defcon, saves, bonus and cards component heads.
+
+Defensive contributions score by position-specific thresholds, so the
+target applies them per position, and rows from seasons that never counted
+the stats are ignored rather than read as zeros; with none at all the head
+falls back to its prior.
+"""
 import numpy as np
 import pandas as pd
 

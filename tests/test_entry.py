@@ -1,3 +1,9 @@
+"""v1 — the manager's team state: sell prices and free transfers.
+
+FPL sells at half the profit, rounded down (a loss sells at the current
+price), and banks free transfers up to a cap; the planner's budget and
+transfer count rest on both, so both are pinned against the rule.
+"""
 import pandas as pd
 
 from gaffer.data.entry import compute_free_transfers, fetch_my_team, sell_price

@@ -1,3 +1,9 @@
+"""v4b — the Dixon-Coles scoreline distribution with the low-score correction.
+
+Clean sheets and goals conceded are read off this pmf, so it must sum to
+one, reduce to independent Poisson at rho zero and match the published tau
+cases: the correction only touches the low-score corner it was made for.
+"""
 import math
 
 import numpy as np
