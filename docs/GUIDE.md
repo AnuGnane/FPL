@@ -873,7 +873,9 @@ and it is worth knowing because you can read the evidence yourself:
   in the frontend has a keyboard path (F-146's rail in
   `frontend/src/kit/tokens.test.ts`). Every `kit/`, `api/` and `hubs/`
   module has a test of the same stem (`frontend/src/kit/coverage.test.ts`,
-  F-153, scanning `hubs/` since F-155); no hub imports another hub's files
+  F-153, scanning `hubs/` since F-155), as every module under `src/gaffer/`
+  outside `web/routers/` is named by a test (`tests/test_module_coverage.py`,
+  F-165); no hub imports another hub's files
   bar one allowlisted crossing (F-156), no `data-testid` goes unread by a test (F-159) and no `hubs/` or
   `api/` export goes unread outside its file (F-160), each a rail in
   `tokens.test.ts`; every API route declares its wire type
