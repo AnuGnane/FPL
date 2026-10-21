@@ -75,8 +75,12 @@ def _undocumented(tree: Path) -> set[str]:
 def _undocumented_tests(tree: Path) -> set[str]:
     """Names of the ``test_*.py`` files directly under ``tree`` with no
     docstring; conftest and helpers are not test modules."""
-    return {name for name in _undocumented(tree)
-            if "/" not in name and name.startswith("test_")}
+    out = set()
+    for path in sorted(tree.glob("test_*.py")):
+        text = path.read_text(encoding="utf-8")
+        if not ast.get_docstring(ast.parse(text, filename=str(path))):
+            out.add(path.name)
+    return out
 
 
 def test_every_module_outside_the_allowlist_opens_with_a_docstring():
