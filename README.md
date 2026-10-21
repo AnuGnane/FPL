@@ -515,8 +515,9 @@ one allowlisted import crosses, as the GUIDE, this README, `CLAUDE.md` and `conf
 name them, are each checked against the source, so a rename that leaves a
 doc behind fails the gate.
 
-CI (`.github/workflows/ci.yml`, holiday F-1 and F-57) runs on every pull request and on
-`main`: `uvx ruff check src tests`, `zsh -n scripts/install_automation.sh`,
+CI (`.github/workflows/ci.yml`, holiday F-1, F-57, F-167 and F-168) runs on every pull
+request and on `main`: `uvx ruff check src tests scripts`,
+`zsh -n scripts/install_automation.sh`, `bash -n scripts/replay_pair.sh`,
 the inner loop as `uv run --locked pytest -q -rs -m "not slow and not golden"`
 (deselecting `tests/test_odds.py::test_config_toml_loads`, which reads the
 untracked `config.toml`), and `npm run check` in `frontend/`. The golden gate,

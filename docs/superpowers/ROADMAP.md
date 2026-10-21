@@ -28,7 +28,7 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-165
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-169
 except F-92, which is open as `needs-mac` PR #166, and F-148, the Mac's
 `config.py` docstring, which is still queued; F-77 and F-81 (#134,
 #107 relanded linear), the other `needs-mac` packages, have merged.
