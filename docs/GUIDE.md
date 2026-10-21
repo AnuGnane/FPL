@@ -871,7 +871,14 @@ and it is worth knowing because you can read the evidence yourself:
   Every module under `src/gaffer/` opens with a docstring
   (`tests/test_module_docstrings.py`, holiday F-147), and every `onClick`
   in the frontend has a keyboard path (F-146's rail in
-  `frontend/src/kit/tokens.test.ts`).
+  `frontend/src/kit/tokens.test.ts`). Every `kit/`, `api/` and `hubs/`
+  module has a test of the same stem (`frontend/src/kit/coverage.test.ts`,
+  F-153, scanning `hubs/` since F-155); no hub imports another hub's files
+  (F-156), no `data-testid` goes unread by a test (F-159) and no `hubs/` or
+  `api/` export goes unread outside its file (F-160), each a rail in
+  `tokens.test.ts`; every API route declares its wire type
+  (`tests/test_route_models.py`, F-157); and every npm script is named by
+  a doc, CI or another script (`tests/test_npm_scripts.py`, F-162).
 
 **The drivers in `scripts/`.** `scripts/v7b_replay.py` and
 `scripts/replay_pair.sh` run the replays; `scripts/seed_stats.py` reads

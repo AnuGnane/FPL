@@ -8,7 +8,7 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-10-19)
+## Where things stand (2026-10-21)
 
 **The model cycle, v20, is open.** v20a closed on 2026-10-13: `role`
 stays, because Δ = mean(off − on) = +9.2 is inside 2·SE = 41.1 at K = 5. No
@@ -28,7 +28,7 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-151
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-162
 except F-92, which is open as `needs-mac` PR #166, and F-148, the Mac's
 `config.py` docstring, which is still queued; F-77 and F-81 (#134,
 #107 relanded linear), the other `needs-mac` packages, have merged.
@@ -110,7 +110,18 @@ until F-148), F-149's `tests/test_code_cycle_cites.py` (every cycle a code
 comment cites is shipped or named by a spec), F-150's
 `tests/test_ci_versions.py` (CI's Python and Node versions each read one
 pinned file) and F-151's `tests/test_doc_commands.py` (every `gaffer`
-command the docs name exists).
+command the docs name exists). F-153 to F-162 added six more: F-153's
+`frontend/src/kit/coverage.test.ts` (every `kit/`, `api/` and, since
+F-155, `hubs/` module has a test of the same stem), F-156's, F-159's and
+F-160's rails in `tokens.test.ts` (no hub imports another hub's files,
+the crossings down from three to one allowlisted, `WhatIfTab` to
+`LadderCard`; every `data-testid` is read by a test; every `hubs/` and
+`api/` export is read outside its file), F-157's
+`tests/test_route_models.py` (every API route declares its wire type, one
+route allowlisted) and F-162's `tests/test_npm_scripts.py` (every npm
+script is named by a doc, CI or another script). F-158 closed v11's
+one-gameweek blank chart with a dot, and F-161 folded sixteen recharts
+mocks into one shim, `frontend/src/kit/rechartsShim.ts`.
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
