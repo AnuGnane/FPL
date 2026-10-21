@@ -1,9 +1,9 @@
 """v4a — historical BPS adjusted for the 2026/27 CBI rule.
 
 The bonus head trains on past seasons scored under the old BPS table. The
-adjustment only ever lowers a score and leaves the current season alone, so
-the head learns the rule it will be judged under without inventing bonus a
-player never earned.
+adjustment only ever lowers a BPS score, and the old seasons' 3/2/1 bonus is
+re-ranked under the new table while the current season's stored bonus is
+kept, so the head learns the rule it will be judged under.
 """
 import pandas as pd
 
