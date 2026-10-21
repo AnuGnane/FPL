@@ -1,3 +1,9 @@
+"""v1 — the captain table, differential alternatives and the threat board.
+
+A differential is a near-equal pick with low effective ownership, and the
+threat board lists the high-ownership players the squad lacks: the picks
+that move rank, not only points. An unknown buy code yields nothing rather than a guess.
+"""
 import pandas as pd
 
 from gaffer.optimize.differentials import captain_table, threat_board, transfer_alternatives

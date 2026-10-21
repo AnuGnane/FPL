@@ -1,3 +1,9 @@
+"""v4a — RMSE and MAE stratified by OpenFPL's return categories.
+
+A single RMSE is dominated by the many blanks; splitting the error by what
+the player actually returned shows whether a change helps on the hauls the
+advice is for. A negative score counts as a blank.
+"""
 import numpy as np
 import pandas as pd
 

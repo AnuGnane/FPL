@@ -1,3 +1,10 @@
+"""v7 — the isotonic calibrator for the did-not-play mode.
+
+The minutes head over-forecast playing time; the calibrator pulls it back
+and renormalises the three outcomes so they still sum to one. Too little or
+one-sided data leaves it the identity, because an unfitted correction is
+safer than a wrong one.
+"""
 import numpy as np
 import pandas as pd
 

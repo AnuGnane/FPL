@@ -1,3 +1,9 @@
+"""v1 — the vaastav historical ingestion into the canonical frame.
+
+Past seasons train the heads, so the merged gameweek file must map onto the
+same columns and player codes as the live data, and the assistant-manager
+rows, which are not players, are dropped.
+"""
 import pandas as pd
 
 from gaffer.data.history import merged_gw_to_canonical

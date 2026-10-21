@@ -1,3 +1,9 @@
+"""v4c — ``decision_priors.json``, the shipped asset the decision layer reads.
+
+The advice and the backtest price their decisions from these priors, so
+the asset ships in the package with a fixed schema and a flat fallback when
+a key is missing: a malformed asset should cost precision, not the advice.
+"""
 import json
 
 import pytest

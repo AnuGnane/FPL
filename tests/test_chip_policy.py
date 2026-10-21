@@ -1,4 +1,10 @@
+"""v4c — the chip stopping thresholds, theta_t, by backward recursion.
 
+Holding a chip is worth what the best later week would pay, so theta falls
+to zero at the window's last week and declines towards expiry. These are
+properties of the recursion, pinned so a change to the surplus inputs
+cannot quietly break the optimal-stopping shape.
+"""
 from gaffer.optimize.chip_policy import (
     DGW_SURPLUS_MULTIPLIER,
     FIRST_HALF_LAST_GW,

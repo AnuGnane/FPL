@@ -1,3 +1,10 @@
+"""v1 — the per-position goal and assist heads.
+
+The heads are fitted per position group because a defender's xG means
+something else from a forward's. An unfitted group predicts zero and an
+all-NaN set-piece column is survived, so a thin training season degrades
+the forecast instead of crashing the solve.
+"""
 import numpy as np
 import pandas as pd
 

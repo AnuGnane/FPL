@@ -1,3 +1,10 @@
+"""v1 — expected points assembled from the component heads.
+
+EP is the sum of each component's expectation under the live scoring table,
+so a hand calculation is the right check: a model change should move the
+inputs, never the arithmetic that adds them up. NaN propagates rather than
+raising, because a missing component is a fact the board must show.
+"""
 import inspect
 import math
 
