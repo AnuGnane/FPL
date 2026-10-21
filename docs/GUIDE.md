@@ -869,7 +869,9 @@ and it is worth knowing because you can read the evidence yourself:
   that `pyproject.toml` does not register fails collection rather than
   letting `-m "not golden"` or `-m "not slow"` deselect nothing silently.
   Every module under `src/gaffer/` opens with a docstring
-  (`tests/test_module_docstrings.py`, holiday F-147), and every `onClick`
+  (`tests/test_module_docstrings.py`, holiday F-147), as does every
+  `tests/test_*.py` save the two orchestrator-only files (the same rail's
+  second tree, F-170 and F-171), and every `onClick`
   in the frontend has a keyboard path (F-146's rail in
   `frontend/src/kit/tokens.test.ts`). Every `kit/`, `api/` and `hubs/`
   module has a test of the same stem (`frontend/src/kit/coverage.test.ts`,
