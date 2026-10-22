@@ -43,6 +43,11 @@ jobs:
       # its control (CLAUDE.md), and nothing parsed it before the Mac ran a replay.
       - name: bash -n replay_pair.sh
         run: bash -n scripts/replay_pair.sh
+      # Holiday F-173: shots.sh is the other live bash script; the gate's
+      # screenshots come from it (CLAUDE.md "Frontend rules"), and nothing parsed
+      # it before the Mac shot a stage.
+      - name: bash -n shots.sh
+        run: bash -n frontend/scripts/shots.sh
       # test_config_toml_loads reads the working tree's config.toml, which is
       # gitignored and never created here (CLAUDE.md "Secrets"). Every other
       # test that needs local data skips on its own and names what it lacks.
