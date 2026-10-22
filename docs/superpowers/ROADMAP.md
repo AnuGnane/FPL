@@ -8,7 +8,7 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-10-21)
+## Where things stand (2026-10-22)
 
 **The model cycle, v20, is open.** v20a closed on 2026-10-13: `role`
 stays, because Δ = mean(off − on) = +9.2 is inside 2·SE = 41.1 at K = 5. No
@@ -28,7 +28,7 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-172
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-181
 except F-92, which is open as `needs-mac` PR #166, and F-148, the Mac's
 `config.py` docstring, which is still queued; F-77 and F-81 (#134,
 #107 relanded linear), the other `needs-mac` packages, have merged.
@@ -127,7 +127,18 @@ mocks into one shim, `frontend/src/kit/rechartsShim.ts`. F-164 gave `models/mode
 and `optimize/formation.py`, the last two modules no test named, tests
 of their own, and F-165's `tests/test_module_coverage.py` keeps it so
 (every module under `src/gaffer/` outside `web/routers/` is named by a
-test, the allowlist empty).
+test, the allowlist empty). F-173 to F-180 added two rails and grew five:
+F-173 put `bash -n frontend/scripts/shots.sh` in CI beside
+`replay_pair.sh`'s, and F-175's `tests/test_shell_syntax.py` parses every
+live bash script in the inner loop too; `tests/test_module_coverage.py`
+gained a second tree, every live script named by a test (F-174, its
+allowlist emptied by F-175's tests for `eval_milestone.py` and
+`v7b_legacy_minutes.py`); `tests/test_roadmap_specs.py` reads the research
+documents too (F-176), `tests/test_holiday_cites.py` every holiday id the
+code cites (F-177) and `tests/test_code_cycle_cites.py` the cycles
+`tests/` and `frontend/src/` cite (F-178); F-179's
+`tests/test_guide_rails.py` holds GUIDE §10 to every doc rail; and
+`tests/test_guide_scripts.py` checks the archive's README both ways (F-180).
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven

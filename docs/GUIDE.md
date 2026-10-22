@@ -877,7 +877,7 @@ and it is worth knowing because you can read the evidence yourself:
   module has a test of the same stem (`frontend/src/kit/coverage.test.ts`,
   F-153, scanning `hubs/` since F-155), as every module under `src/gaffer/`
   outside `web/routers/` is named by a test (`tests/test_module_coverage.py`,
-  F-165); no hub imports another hub's files
+  F-165, and every live script since F-174); no hub imports another hub's files
   bar one allowlisted crossing (F-156), no `data-testid` goes unread by a test (F-159) and no `hubs/` or
   `api/` export goes unread outside its file (F-160), each a rail in
   `tokens.test.ts`; every API route declares its wire type
@@ -908,7 +908,9 @@ the ROADMAP ships, F-140). The docs' cross-references are checked by
 F-151), `tests/test_doc_pins.py` (the pins the docs quote match their rails,
 F-110), `tests/test_data_gated_tables.py` (the ROADMAP's and §12.2's
 data-gated tables hold the same rows, F-124), `tests/test_holiday_cites.py`
-(every holiday id the docs cite is a box in `HOLIDAY.md`, F-123),
+(every holiday id the docs cite is a box in `HOLIDAY.md`, F-123, and every
+one the code under `src/gaffer/`, `tests/`, `scripts/` and `frontend/src/`
+cites since F-177),
 `tests/test_holiday_shape.py` (`HOLIDAY.md`'s ids, dependencies, gates and
 traces, F-139), `tests/test_roadmap_specs.py` (every spec, plan and research
 document is named in the ROADMAP, F-129 and F-176),
@@ -936,7 +938,10 @@ PuLP warning filters fail when PuLP 4 arrives, F-89),
 `tests/test_v12_mcp.py` (v12's `mcp` dependency floor) and
 `tests/test_ci_versions.py` (CI's Python and Node versions each read one
 pinned file, F-150). `tests/test_v7b_driver.py` holds v7b's rule that
-`CONVENTIONS.md` is committed and linked from the ROADMAP.
+`CONVENTIONS.md` is committed and linked from the ROADMAP. Beside them,
+`tests/test_shell_syntax.py` runs `bash -n` on every live bash script in the
+inner loop, as CI does on `replay_pair.sh` and `shots.sh` (F-175, after
+F-168 and F-173).
 
 **The drivers in `scripts/`.** `scripts/v7b_replay.py` and
 `scripts/replay_pair.sh` run the replays; `scripts/seed_stats.py` reads
