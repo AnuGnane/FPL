@@ -1,5 +1,6 @@
-"""Every cycle a comment or docstring under ``src/gaffer/`` or ``scripts/``
-cites is one the ROADMAP ships or a spec names (holiday F-149).
+"""Every cycle a comment or docstring under ``src/gaffer/``, ``scripts/``,
+``tests/`` or ``frontend/src/`` cites is one the ROADMAP ships or a spec
+names (holiday F-149; ``tests/`` and ``frontend/src/`` since F-178).
 
 ``CLAUDE.md`` "Writing style": comments and docstrings cite the cycle and
 section that introduced a rule (``v16 §4``), so a reader can find the
@@ -10,7 +11,9 @@ a cite resolves by its exact cycle or by its bare major (``v4c`` from a
 lettered cycle of it ships (``v4`` from ``v4a``), and v20, open and not yet
 shipped, resolves through the spec filenames under ``docs/superpowers/specs/``
 (``-v20-``). Only COMMENT tokens and ``ast`` docstrings are read, so a string
-literal in code is not.
+literal in code is not. In ``.ts``/``.tsx`` the ``//`` and ``/* */`` comments
+are read, string and template literals skipped (F-178), so a URL's ``//``
+in a string does not open one.
 """
 
 from __future__ import annotations
@@ -60,10 +63,55 @@ def _texts(path: Path):
                     yield first + i, line
 
 
+def _ts_texts(path: Path):
+    """``(line, text)`` for each ``//`` and ``/* */`` comment in ``path``.
+
+    F-178: scanned a line at a time, skipping quoted and template strings,
+    so a ``//`` inside a string is not read as a comment. A quote the scanner
+    cannot see the end of (a regex literal like ``/"/g``, an apostrophe in
+    JSX text) costs the rest of that line only, since TS strings bar a bare
+    newline; a template literal spanning lines is read as code, which errs
+    towards reading more, not less.
+    """
+    in_block = False
+    for no, line in enumerate(path.read_text(encoding="utf-8").splitlines(),
+                              start=1):
+        i, n = 0, len(line)
+        if in_block:
+            end = line.find("*/")
+            if end < 0:
+                yield no, line
+                continue
+            yield no, line[:end]
+            in_block, i = False, end + 2
+        while i < n:
+            c = line[i]
+            if c in "'\"`":
+                i += 1
+                while i < n and line[i] != c:
+                    i += 2 if line[i] == "\\" else 1
+                i += 1
+            elif line.startswith("//", i):
+                yield no, line[i:]
+                break
+            elif line.startswith("/*", i):
+                end = line.find("*/", i + 2)
+                if end < 0:
+                    yield no, line[i:]
+                    in_block = True
+                    break
+                yield no, line[i:end + 2]
+                i = end + 2
+            else:
+                i += 1
+
+
 def unresolved(paths, have: set[str]) -> list[str]:
     out = []
     for path in paths:
-        for line, text in _texts(path):
+        texts = (_ts_texts(path) if path.suffix in (".ts", ".tsx")
+                 else _texts(path))
+        for line, text in texts:
             for m in _CITE.finditer(text):
                 if not resolves(m[1], m[2], have):
                     rel = path.relative_to(_ROOT) if path.is_relative_to(
@@ -73,8 +121,19 @@ def unresolved(paths, have: set[str]) -> list[str]:
 
 
 def _sources():
+    # F-178: the tests and the frontend cite cycles far more than the code.
     return sorted([*(_ROOT / "src/gaffer").rglob("*.py"),
-                   *(_ROOT / "scripts").glob("*.py")])
+                   *(_ROOT / "scripts").glob("*.py"),
+                   *(_ROOT / "tests").glob("test_*.py"),
+                   *(_ROOT / "frontend/src").rglob("*.ts"),
+                   *(_ROOT / "frontend/src").rglob("*.tsx")])
+
+
+def test_the_sources_reach_the_tests_and_the_frontend():
+    roots = {p.relative_to(_ROOT).parts[0] for p in _sources()}
+    assert roots == {"src", "scripts", "tests", "frontend"}, roots
+    tsx = [p for p in _sources() if p.suffix == ".tsx"]
+    assert tsx and sum(1 for p in tsx for _ in _ts_texts(p)) > 100
 
 
 def test_every_cycle_a_comment_cites_is_shipped_or_named_by_a_spec():
@@ -93,3 +152,14 @@ def test_the_rail_bites_on_a_cycle_nobody_ships(tmp_path):
     sample = tmp_path / "sample.py"
     sample.write_text('"""Cites v16 §4."""\n# per v99 §1\nX = "v98 §2"\n')
     assert unresolved([sample], known()) == [f"{sample}:2 v99"]
+
+
+def test_the_rail_bites_on_a_ts_comment_and_skips_a_ts_string(tmp_path):
+    sample = tmp_path / "sample.tsx"
+    sample.write_text('// per v16 §4\nconst u = "http://x/v98";\n'
+                      '/* v97\n   v99 §1 */\nconst t = `// v96`;\n'
+                      "const r = s.replace(/\"/g, '')\n// v95\n")
+    # The regex literal's quote costs its own line, never the comment after.
+    assert unresolved([sample], known()) == [f"{sample}:3 v97",
+                                             f"{sample}:4 v99",
+                                             f"{sample}:7 v95"]
