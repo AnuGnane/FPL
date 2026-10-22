@@ -73,7 +73,7 @@ def test_the_rail_names_a_doc_rail_the_section_misses() -> None:
         "tests/test_a.py": 'Path("docs/GUIDE.md").read_text()\n',
         "tests/test_b.py": 'open("pyproject.toml")\n',
         "tests/test_c.py": "def test_c(): ...\n",
-        "tests/test_d.py": 'url = "https://x.github.com/y"\n',
+        "tests/test_d.py": 'url = "https://x.github/y"\n',
     }
     section = HEADING + "\n\n`tests/test_b.py` pins the floor.\n"
     assert _doc_rails(texts) == ["tests/test_a.py", "tests/test_b.py"]

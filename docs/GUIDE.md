@@ -921,7 +921,7 @@ by `tests/test_readme_config.py` (`Config`'s defaults, F-104),
 F-118). `CLAUDE.md`'s rules are held by `tests/test_claude_commands.py` (its
 Commands block names real commands and npm scripts, F-131),
 `tests/test_ci_gates.py` (CI runs every gate line it names, F-119),
-`tests/test_noqa_reasons.py` (every noqa mark carries a reason, F-69),
+`tests/test_noqa_reasons.py` (every broad `except` and noqa mark gives its reason, F-69 and F-78),
 `tests/test_test_names.py` (test names are sentences, F-73) and
 `tests/test_tracked_secrets.py` (the secrets rule, F-138). The config files
 are held by `tests/test_config_example.py` (`config.example.toml` names every
