@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -84,7 +84,8 @@ describe('OverridesCard', () => {
     apiGet.mockRejectedValue(new Error('nope'))
     const { container } = render(
       <MemoryRouter><OverridesCard /></MemoryRouter>)
-    await new Promise((r) => setTimeout(r, 0))
+    // Holiday F-186: the failed read settles inside act, not after the test.
+    await act(async () => { await new Promise((r) => { setTimeout(r, 0) }) })
     expect(container.textContent).toBe('')
   })
 

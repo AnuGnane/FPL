@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetPageData } from '../api/pageData'
@@ -205,9 +205,14 @@ describe('a failed read is an error, and an absent one is the empty state',
         // Settled, not merely unrendered: without waiting for the rejection
         // to land this passes on the first frame, when nothing is on the page
         // for any reason at all.
-        await vi.waitFor(() => { expect(apiGet).toHaveBeenCalledWith(row.url) })
+        // Testing Library's waitFor, not vi.waitFor: it polls inside act, so
+        // the sections' reads landing meanwhile are not act warnings (F-186).
+        await waitFor(() => { expect(apiGet).toHaveBeenCalledWith(row.url) })
         expect(screen.queryByText(row.absent!)).toBeNull()
       }
+      // Holiday F-186: the page's other reads (QualityTab's other sections,
+      // the strip's rejection itself) settle inside act before the last look.
+      await act(async () => { await new Promise((r) => { setTimeout(r, 0) }) })
       expect(document.querySelector('[data-tone="error"]')).toBeNull()
     })
   }

@@ -5,7 +5,9 @@ import ToastOutlet, {
 } from './Toast'
 
 beforeEach(() => { resetToasts(); vi.useFakeTimers() })
-afterEach(() => { vi.useRealTimers(); resetToasts() })
+// Holiday F-186: the outlet is still mounted when this runs (cleanup unmounts
+// it later), so the reset's re-render goes through act.
+afterEach(() => { vi.useRealTimers(); act(() => { resetToasts() }) })
 
 describe('Toast', () => {
   it('announces politely rather than interrupting', () => {
