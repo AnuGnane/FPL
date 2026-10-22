@@ -2,7 +2,8 @@
 // unless the message belongs to a family listed here. On 2026-10-22 vitest
 // passed 1,295 tests and printed 57 stderr blocks nobody read; the guard makes
 // a new one a failure instead of noise. Each entry names the package that
-// empties it, so the list only ever shrinks (F-186, F-187).
+// empties it, so the list only ever shrinks: F-186 closed the act warnings at
+// source and removed theirs, and F-187 removes the router's.
 
 interface ExpectedMessage {
   pattern: RegExp
@@ -14,11 +15,6 @@ export const EXPECTED: readonly ExpectedMessage[] = [
     pattern: /React Router Future Flag Warning/,
     reason: 'react-router-dom 6.26 warns once per router mount until the v7 '
       + 'future flags are set; F-187 sets them and removes this entry.',
-  },
-  {
-    pattern: /not wrapped in act\(/,
-    reason: 'sixteen state updates across nine test files land outside act(); '
-      + 'F-186 closes them at source and removes this entry.',
   },
 ]
 

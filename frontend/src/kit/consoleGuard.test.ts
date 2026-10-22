@@ -3,18 +3,23 @@ import {
   EXPECTED, assertExpected, isExpected, startConsoleGuard, stopConsoleGuard,
 } from './consoleGuard'
 
-// Holiday F-185: the two families recorded on 2026-10-22, quoted as the
-// libraries print them (the act text is React 18's format string).
+// Holiday F-185: the families recorded on 2026-10-22, quoted as the libraries
+// print them (the act text is React 18's format string). F-186 closed the act
+// warnings at source, so that family is no longer expected.
 const ROUTER = '⚠️ React Router Future Flag Warning: React Router will begin '
   + 'wrapping state updates in `React.startTransition` in v7.'
 const ACT = 'Warning: An update to %s inside a test was not wrapped in act(...).'
 
 describe('consoleGuard', () => {
-  it('holds exactly the two families recorded when it landed', () => {
-    expect(EXPECTED).toHaveLength(2)
+  it('holds only the router family once the act warnings are closed', () => {
+    expect(EXPECTED).toHaveLength(1)
     expect(isExpected(ROUTER)).toBe(true)
-    expect(isExpected(ACT)).toBe(true)
-    expect(() => assertExpected([ROUTER, ACT])).not.toThrow()
+    expect(() => assertExpected([ROUTER])).not.toThrow()
+  })
+
+  it('fails a test that prints an act warning again', () => {
+    expect(isExpected(ACT)).toBe(false)
+    expect(() => assertExpected([ACT])).toThrow(/not wrapped in act/)
   })
 
   it('does not expect a message outside those families', () => {
