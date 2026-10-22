@@ -368,11 +368,11 @@ def _offences(path: pathlib.Path) -> list[str]:
     tree = ast.parse(path.read_text())
     docstrings = set()
     for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            if (node.body and isinstance(node.body[0], ast.Expr)
-                    and isinstance(node.body[0].value, ast.Constant)
-                    and isinstance(node.body[0].value.value, str)):
-                docstrings.add(id(node.body[0].value))
+        if (isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+                and node.body and isinstance(node.body[0], ast.Expr)
+                and isinstance(node.body[0].value, ast.Constant)
+                and isinstance(node.body[0].value.value, str)):
+            docstrings.add(id(node.body[0].value))
     out = []
     for node in ast.walk(tree):
         if (isinstance(node, ast.Constant) and isinstance(node.value, str)
@@ -383,9 +383,9 @@ def _offences(path: pathlib.Path) -> list[str]:
             for alias in node.names:
                 if alias.name == "tomli_w" or (alias.name == "tomllib" and "web" in path.parts):
                     out.append(f"{node.lineno}: import {alias.name}")
-        if isinstance(node, ast.ImportFrom) and node.module in ("tomli_w", "tomllib"):
-            if node.module == "tomli_w" or "web" in path.parts:
-                out.append(f"{node.lineno}: from {node.module}")
+        if (isinstance(node, ast.ImportFrom) and node.module in ("tomli_w", "tomllib")
+                and (node.module == "tomli_w" or "web" in path.parts)):
+            out.append(f"{node.lineno}: from {node.module}")
     return out
 
 

@@ -57,9 +57,9 @@ def _reasonless(path: Path) -> list[int]:
     lines = text.splitlines()
     out = []
     for node in ast.walk(ast.parse(text, filename=str(path))):
-        if isinstance(node, ast.ExceptHandler) and _names(node.type) & BROAD:
-            if not REASONED.search(lines[node.lineno - 1]):
-                out.append(node.lineno)
+        if (isinstance(node, ast.ExceptHandler) and _names(node.type) & BROAD
+                and not REASONED.search(lines[node.lineno - 1])):
+            out.append(node.lineno)
     return out
 
 

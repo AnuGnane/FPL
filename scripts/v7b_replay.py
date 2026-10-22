@@ -384,7 +384,7 @@ def make_restraint_gate(cfg: ArmConfig, real_solve):
         gate.steps_taken += sum(1 for s in steps if s["taken"])
         gate.steps_refused += sum(1 for s in steps if not s["taken"])
         by = dict(solved)
-        return by[chosen] if chosen in by else plan
+        return by.get(chosen, plan)
 
     gate.gated_weeks = 0
     gate.steps_taken = 0

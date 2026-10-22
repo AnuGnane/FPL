@@ -65,10 +65,9 @@ def test_no_temp_file_survives_a_successful_write(tmp_path):
 
 def test_no_temp_file_survives_a_failed_write(tmp_path):
     """The ``finally`` two of the twenty sites never had."""
-    with pytest.raises(ValueError):
-        with gio.atomic_path(tmp_path / "out.json") as tmp:
-            tmp.write_text("half")
-            raise ValueError("boom")
+    with pytest.raises(ValueError), gio.atomic_path(tmp_path / "out.json") as tmp:
+        tmp.write_text("half")
+        raise ValueError("boom")
     assert list(tmp_path.iterdir()) == []
 
 
@@ -77,10 +76,9 @@ def test_a_failed_write_leaves_the_previous_file_exactly_as_it_was(tmp_path):
     not each have to."""
     path = tmp_path / "out.json"
     path.write_text("the old one")
-    with pytest.raises(ValueError):
-        with gio.atomic_path(path) as tmp:
-            tmp.write_text("the new one")
-            raise ValueError("boom")
+    with pytest.raises(ValueError), gio.atomic_path(path) as tmp:
+        tmp.write_text("the new one")
+        raise ValueError("boom")
     assert path.read_text() == "the old one"
 
 

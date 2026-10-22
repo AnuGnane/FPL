@@ -248,8 +248,8 @@ def test_an_unreadable_installed_copy_is_the_unreadable_row(
 
 
 def test_the_default_installed_directory_is_launch_agents():
-    assert INSTALLED_DEFAULT == (
-        Path.home() / "Library" / "LaunchAgents")
+    assert (
+        Path.home() / "Library" / "LaunchAgents") == INSTALLED_DEFAULT
 
 
 # --- the shipped plists, and the route --------------------------------

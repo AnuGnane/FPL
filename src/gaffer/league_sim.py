@@ -580,14 +580,12 @@ def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
     rank = better + 1
     rivals = [i for i in range(len(entries)) if i != me]
     live_rivals = [i for i in live if i != me]
-    if live_rivals:
-        # The same ``scored`` matrix the table and the rival rows are counted
-        # off, so the fan cannot disagree with the headline about who is
-        # ahead: the median margin is negative exactly when the median rank
-        # is worse than first.
-        margin = mine[:, 0] - scored[:, live_rivals].max(axis=1)
-    else:
-        margin = np.zeros(int(n))
+    # The same ``scored`` matrix the table and the rival rows are counted
+    # off, so the fan cannot disagree with the headline about who is
+    # ahead: the median margin is negative exactly when the median rank
+    # is worse than first.
+    margin = (mine[:, 0] - scored[:, live_rivals].max(axis=1) if live_rivals
+              else np.zeros(int(n)))
     per_rival = [{"entry": int(entries[i].entry), "name": str(entries[i].name),
                   "p_beat": (round(float((mine[:, 0] > scored[:, i]).mean()), 4)
                              if i in set(live) else None)}

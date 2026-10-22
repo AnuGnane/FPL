@@ -34,9 +34,7 @@ def _matches_date(entry: dict, day: datetime) -> bool:
     if "Day" in entry and entry["Day"] != day.day:
         return False
     # isoweekday is Monday=1..Sunday=7; launchd counts Sunday as 0 or 7.
-    if "Weekday" in entry and entry["Weekday"] % 7 != day.isoweekday() % 7:
-        return False
-    return True
+    return not ("Weekday" in entry and entry["Weekday"] % 7 != day.isoweekday() % 7)
 
 
 def next_calendar_fire(entries: list[dict], now: datetime) -> datetime | None:

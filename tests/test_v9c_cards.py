@@ -130,7 +130,7 @@ def test_a_debut_red_card_no_longer_costs_three_whole_points():
 
     # Unshrunk, the rolling mean of his one red card over ten matches would
     # still read 0.1 and cost -0.30; the raw *debut* reading was 1.0 and -3.00.
-    assert sent_off["rc_r38"] if "rc_r38" in sent_off else True
+    assert sent_off.get("rc_r38", True)
     assert card_penalty(sent_off) > -0.5
     assert card_penalty(sent_off) < 0.0     # still a penalty, just an honest one
 

@@ -318,7 +318,7 @@ def test_the_paths_agree_with_the_writer_and_the_ledger():
     from gaffer import artifacts, review
 
     assert tidy.PROJECTIONS == artifacts.PROJECTIONS
-    assert tidy.LEDGER == review.ledger_path()
+    assert review.ledger_path() == tidy.LEDGER
     name = artifacts.projection_path(S, 12, "20261003T090000Z").name
     match = tidy.SNAPSHOT_NAME.match(name)
     assert (match["season"], int(match["gw"]), match["stamp"]) == \
