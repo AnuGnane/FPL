@@ -93,7 +93,7 @@ describe('NewsPanel', () => {
     apiGet.mockResolvedValue({ gw: 5, moved: 0, rows: [] })
     const { container } = render(
       <MemoryRouter><NewsPanel gw={5} /></MemoryRouter>)
-    // Holiday F-186: the failed read settles inside act, not after the test.
+    // Holiday F-186: the empty read settles inside act, not after the test.
     await act(async () => { await new Promise((r) => { setTimeout(r, 0) }) })
     expect(container.textContent).toBe('')
   })
