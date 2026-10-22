@@ -1,5 +1,11 @@
 import '@testing-library/jest-dom/vitest'
-import { beforeEach } from 'vitest'
+import { afterEach, beforeEach } from 'vitest'
+import { startConsoleGuard, stopConsoleGuard } from './src/kit/consoleGuard'
+
+// Holiday F-185: a console error or warning outside the families in
+// consoleGuard's EXPECTED fails the test that printed it.
+beforeEach(() => { startConsoleGuard() })
+afterEach(() => { stopConsoleGuard() })
 
 // useJob remembers a running job id in module state so a remounted tab can
 // re-attach to it (see the comment there). Module state survives a test case,
