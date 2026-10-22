@@ -16,7 +16,6 @@ shows a retry button, never a stack trace.
 
 from __future__ import annotations
 
-import contextlib
 import threading
 from datetime import UTC, datetime
 
@@ -401,9 +400,10 @@ def sim(league_id: int | None = None) -> LeagueSimData:
     result, inputs = _run(cfg, gw, league_id=league_id)
     run_at = datetime.now(UTC).isoformat()
     if _take_fresh(key):
-        # Broad on purpose: a failed history write never blocks the page.
-        with contextlib.suppress(Exception):
+        try:  # noqa: SIM105 — the except keeps BLE001's reason under the rail
             append_sim_history(result, int(gw), run_at)
+        except Exception:  # noqa: BLE001 — never blocks the page
+            pass
     me = next((e for e in inputs.entries if e.is_me), None)
     my_total = int(me.total) if me else 0
     legacy = [WinProb(name=e.name, total=int(e.total),
