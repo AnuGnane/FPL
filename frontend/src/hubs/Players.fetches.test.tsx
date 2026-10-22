@@ -1,5 +1,6 @@
 import { render, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetPageData } from '../api/pageData'
 import Players from './Players'
@@ -114,7 +115,7 @@ beforeEach(() => {
 
 describe('Players, one tab at a time', () => {
   it('asks for these paths on the default (Explorer) tab', async () => {
-    render(<MemoryRouter initialEntries={['/players']}><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={['/players']}><Players /></MemoryRouter>)
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/watchlist'))
     expect(counted()).toEqual({ ...BASE })
     expect(apiPost).not.toHaveBeenCalled()
@@ -122,7 +123,7 @@ describe('Players, one tab at a time', () => {
   })
 
   it('asks for these paths on the Compare tab', async () => {
-    render(<MemoryRouter initialEntries={['/players?tab=compare']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/players?tab=compare']}>
       <Players />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet)
@@ -139,7 +140,7 @@ describe('Players, one tab at a time', () => {
   })
 
   it('asks for these paths on the Fixture matrix tab', async () => {
-    render(<MemoryRouter initialEntries={['/players?tab=matrix']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/players?tab=matrix']}>
       <Players />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet)
@@ -157,7 +158,7 @@ describe('Players, one tab at a time', () => {
   })
 
   it('asks for these paths on the Watchlist tab', async () => {
-    render(<MemoryRouter initialEntries={['/players?tab=watchlist']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/players?tab=watchlist']}>
       <Players />
     </MemoryRouter>)
     // One, where the control arm recorded two: the hub's own star column and

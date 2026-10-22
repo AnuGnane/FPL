@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePageData } from '../api/pageData'
 import Model from './Model'
@@ -74,25 +75,25 @@ beforeEach(() => {
 
 describe('Model hub', () => {
   it('opens on the quality tab', async () => {
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     expect(await screen.findByText('quality panel')).toBeInTheDocument()
   })
 
   it('lists all four tabs', () => {
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     for (const name of ['Quality', 'Journal', 'History', 'Health']) {
       expect(screen.getByRole('tab', { name })).toBeInTheDocument()
     }
   })
 
   it('switches to the journal tab', async () => {
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     await userEvent.click(screen.getByRole('tab', { name: 'Journal' }))
     expect(await screen.findByText('journal panel')).toBeInTheDocument()
   })
 
   it('offers the evaluate and refresh-data jobs', () => {
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     expect(screen.getByRole('button', { name: 'Evaluate' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Refresh data' }))
       .toBeInTheDocument()
@@ -101,7 +102,7 @@ describe('Model hub', () => {
   // A job that has just rewritten reports/ leaves the tab underneath showing
   // the numbers from before it ran, with nothing to say they are stale.
   it('re-reads the quality report after an evaluate run', async () => {
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     await screen.findByText('quality panel')
     expect(asked('/api/quality')).toBe(1)
     await act(async () => { jobs.evaluate?.() })
@@ -110,7 +111,7 @@ describe('Model hub', () => {
 
   it('re-reads health and the freshness strip after a refresh-data run',
      async () => {
-       render(<MemoryRouter><Model /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
        await userEvent.click(screen.getByRole('tab', { name: 'Health' }))
        await screen.findByText('health panel')
        expect(asked('/api/health')).toBe(1)
@@ -119,7 +120,7 @@ describe('Model hub', () => {
      })
 
   it('leaves the other tab alone', async () => {
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     await screen.findByText('quality panel')
     expect(asked('/api/quality')).toBe(1)
     await act(async () => { jobs['refresh-data']?.() })
@@ -127,7 +128,7 @@ describe('Model hub', () => {
   })
 
   it('offers the track-pens and snapshot jobs too', () => {
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     expect(screen.getByRole('button', { name: 'Track pens' }))
       .toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Snapshot news' }))
@@ -137,7 +138,7 @@ describe('Model hub', () => {
   // Track pens writes the tracker, not the evaluation, and the nonce could
   // not tell them apart — it remounted the whole Quality tab for either.
   it('re-reads the penalty tracker after a track-pens run', async () => {
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     await screen.findByText('quality panel')
     expect(asked('/api/quality')).toBe(1)
     await act(async () => { jobs['track-pens']?.() })
@@ -148,7 +149,7 @@ describe('Model hub', () => {
   })
 
   it('re-reads health after a snapshot run', async () => {
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     await userEvent.click(screen.getByRole('tab', { name: 'Health' }))
     await screen.findByText('health panel')
     expect(asked('/api/health')).toBe(1)
@@ -159,7 +160,7 @@ describe('Model hub', () => {
   // The nonce keyed Review and Season and stopped there; the journal is built
   // from the same ledger and was left showing the season before the grade.
   it('re-reads the review and the journal after a review run', async () => {
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     await userEvent.click(screen.getByRole('tab', { name: 'Journal' }))
     await screen.findByText('journal panel')
     // The stand-in journal tab reads nothing, so mount a reader on the URL

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Planning from './Planning'
 
@@ -77,12 +78,12 @@ beforeEach(() => {
 
 describe('Planning hub', () => {
   it('opens on the timeline tab', async () => {
-    render(<MemoryRouter><Planning /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Planning /></MemoryRouter>)
     expect(await screen.findByText('timeline panel')).toBeInTheDocument()
   })
 
   it('lists all six tabs', async () => {
-    render(<MemoryRouter><Planning /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Planning /></MemoryRouter>)
     for (const name of ['Timeline', 'Board', 'What-If', 'Drafts', 'Chips',
       'Ticker']) {
       expect(await screen.findByRole('tab', { name })).toBeInTheDocument()
@@ -100,14 +101,14 @@ describe('Planning hub', () => {
     ['Chips', 'chips panel'],
     ['Ticker', 'ticker panel'],
   ])('still switches to %s by click', async (name, panel) => {
-    render(<MemoryRouter><Planning /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Planning /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('tab', { name }))
     expect(await screen.findByText(panel)).toBeInTheDocument()
   })
 
   it('lands the board\'s week on What-If with the constraints prefilled',
     async () => {
-      render(<MemoryRouter><Planning /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Planning /></MemoryRouter>)
       await userEvent.click(await screen.findByRole('tab', { name: 'Board' }))
       await userEvent.click(await screen.findByText('try week'))
       expect(await screen.findByText('whatif panel')).toBeInTheDocument()
@@ -116,13 +117,13 @@ describe('Planning hub', () => {
     })
 
   it('switches to the drafts tab on click', async () => {
-    render(<MemoryRouter><Planning /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Planning /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('tab', { name: 'Drafts' }))
     expect(await screen.findByText('drafts panel')).toBeInTheDocument()
   })
 
   it('switches to the what-if tab on click', async () => {
-    render(<MemoryRouter><Planning /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Planning /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('tab', { name: 'What-If' }))
     expect(await screen.findByText('whatif panel')).toBeInTheDocument()
   })
@@ -131,7 +132,7 @@ describe('Planning hub', () => {
     apiGet.mockRejectedValue(Object.assign(
       new Error('no advice on disk yet — run `gaffer advise` first'),
       { status: 422 }))
-    render(<MemoryRouter><Planning /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Planning /></MemoryRouter>)
     expect(await screen.findByText(/nothing planned yet/i)).toBeInTheDocument()
     expect(screen.getByText('Run advise')).toBeInTheDocument()
   })
@@ -141,7 +142,7 @@ describe('Planning hub', () => {
   it('opens carrying the constraint the squad menu navigated with',
     async () => {
       render(
-        <MemoryRouter initialEntries={[{
+        <MemoryRouter {...routerFuture} initialEntries={[{
           pathname: '/planning', search: '?tab=whatif',
           state: { whatif: { lock: [], ban: [7], force_in: [],
                              force_out: [], max_hits: 0,
@@ -159,7 +160,7 @@ describe('Planning hub', () => {
     async () => {
       // No extra request: the enrichment rides on /api/advice/latest, and a
       // player the payload never named is absent rather than guessed (A11).
-      render(<MemoryRouter><Planning /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Planning /></MemoryRouter>)
       expect(await screen.findByText(/teams:1/)).toBeInTheDocument()
     })
 })

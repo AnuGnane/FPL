@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import WhatIfTab from './WhatIfTab'
 
@@ -87,7 +88,7 @@ beforeEach(() => {
 
 describe('what-if tab', () => {
   it('carries the robustness and pins cards beside the solve', async () => {
-    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhatIfTab /></MemoryRouter>)
     expect(await screen.findByText('sensitivity card')).toBeInTheDocument()
     expect(screen.getByText('pins card')).toBeInTheDocument()
   })
@@ -97,7 +98,7 @@ describe('what-if tab', () => {
     // an unselected tab and the Drafts tab would otherwise save a default.
     const onChange = vi.fn()
     render(
-      <MemoryRouter>
+      <MemoryRouter {...routerFuture}>
         <WhatIfTab
           value={{ lock: [], ban: [], force_in: [], force_out: [],
                    max_hits: 2, max_transfers: null, chip: 'none',
@@ -114,7 +115,7 @@ describe('what-if tab', () => {
 
   it('sends the constraints and renders the diff and verdict', async () => {
     apiPost.mockResolvedValue({ job_id: 'j1' })
-    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhatIfTab /></MemoryRouter>)
 
     await userEvent.type(screen.getByLabelText('Ban'), 'Sal')
     await userEvent.click(await screen.findByRole('button',
@@ -140,7 +141,7 @@ describe('what-if tab', () => {
 
   it('labels the points rows as captain-inclusive and net of hits', async () => {
     apiPost.mockResolvedValue({ job_id: 'j1' })
-    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhatIfTab /></MemoryRouter>)
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
     expect(await screen.findByText(
       /xPts this GW \(incl\. captain, after hits\)/)).toBeInTheDocument()
@@ -149,7 +150,7 @@ describe('what-if tab', () => {
   })
 
   it('starts with max hits pinned to zero, not empty', async () => {
-    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhatIfTab /></MemoryRouter>)
     const select = screen.getByLabelText('Max hits') as HTMLSelectElement
     expect(select.value).toBe('0')
     // Holiday F-186: the fixture ticker's read settles inside act, not after
@@ -163,7 +164,7 @@ describe('what-if tab', () => {
       error: 'player 100 cannot be both locked in and banned',
       players: [100],
     }))
-    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhatIfTab /></MemoryRouter>)
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
     expect(await screen.findByText(/cannot be both locked in and banned/))
       .toBeInTheDocument()
@@ -178,7 +179,7 @@ describe('what-if tab', () => {
       return { id: 'j2', status: 'error', result: null,
                error: 'no legal squad satisfies those constraints' }
     })
-    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhatIfTab /></MemoryRouter>)
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
     expect(await screen.findByText(/no legal squad/)).toBeInTheDocument()
   })
@@ -193,7 +194,7 @@ describe('what-if tab', () => {
       }
       throw new Error(`unexpected GET ${path}`)
     })
-    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhatIfTab /></MemoryRouter>)
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
     // The panel sat blank for the whole solve before this: the button said
     // "Solving…" and the frame the answer lands in said nothing at all.
@@ -203,7 +204,7 @@ describe('what-if tab', () => {
   it('shows no skeleton once the job is done, and none when it failed',
     async () => {
       apiPost.mockResolvedValue({ job_id: 'j1' })
-      render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><WhatIfTab /></MemoryRouter>)
       await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
       expect(await screen.findByText('your version costs 2.8 expected points'))
         .toBeInTheDocument()
@@ -223,14 +224,14 @@ describe('what-if tab', () => {
         }
         throw new Error(`unexpected GET ${path}`)
       })
-      render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><WhatIfTab /></MemoryRouter>)
       await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
       expect(await screen.findByText('Solver failed')).toBeInTheDocument()
       expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument()
     })
 
   it('mounts the transfer ladder above the sensitivity card', async () => {
-    render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhatIfTab /></MemoryRouter>)
     const ladder = await screen.findByText('ladder card')
     const sensitivity = screen.getByText('sensitivity card')
     expect(ladder.compareDocumentPosition(sensitivity)

@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import HealthTab from './HealthTab'
 
@@ -46,7 +47,7 @@ beforeEach(() => {
 
 describe('Runs & Health', () => {
   it('shows freshness, models, launchd and the odds notice', async () => {
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     expect(await screen.findByText('player_gw')).toBeInTheDocument()
     expect(screen.getByText('4.5h ago')).toBeInTheDocument()
     expect(screen.getByText('missing')).toBeInTheDocument()
@@ -62,7 +63,7 @@ describe('Runs & Health', () => {
        // v19a §2.3. A launchd job that stops is invisible everywhere else: the
        // artifacts it writes simply age, and nothing on any page says which
        // timer stopped writing them.
-       render(<MemoryRouter><HealthTab /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
        expect(await screen.findByText('advise')).toBeInTheDocument()
        expect(screen.getByText('field')).toBeInTheDocument()
        expect(screen.getByText('Thu 18:00')).toBeInTheDocument()
@@ -76,7 +77,7 @@ describe('Runs & Health', () => {
   it('marks a job read from the repo copy and not one that is installed',
      async () => {
        // Holiday F-84: only the field job has no installed copy here.
-       render(<MemoryRouter><HealthTab /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
        expect(await screen.findByText('advise')).toBeInTheDocument()
        const notes = screen.getAllByText('repo copy')
        expect(notes).toHaveLength(1)
@@ -91,7 +92,7 @@ describe('Runs & Health', () => {
          launchd: { log: 'logs/advise.log', present: false, modified_at: null,
                     last_line: null },
        }))
-       render(<MemoryRouter><HealthTab /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
        expect(await screen.findByText(/No launchd jobs were found/))
          .toBeInTheDocument()
      })
@@ -100,7 +101,7 @@ describe('Runs & Health', () => {
     // The Model hub's JobButtons are the single control. This tab carrying a
     // second pair, posting past the single-flight runner to the legacy
     // registry, is what let two advise runs write reports/ at once.
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     await screen.findByText('player_gw')
     expect(screen.queryByRole('button', { name: /refresh data/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /re-run advice/i })).toBeNull()
@@ -133,7 +134,7 @@ describe('Core insights collection', () => {
     // command, not render three zeros that look like a measurement.
     withCoreInsights({ season: '2026-27', collected: false, tables: [],
                        waiting_for: 'gaffer core-insights' })
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     expect(await screen.findByText(/Not collected yet \(2026-27\)/))
       .toBeInTheDocument()
     expect(screen.getByText(/gaffer core-insights/)).toBeInTheDocument()
@@ -142,7 +143,7 @@ describe('Core insights collection', () => {
   it('falls back to a named wait when the field is absent altogether', async () => {
     // An older backend, or a payload built before the field existed.
     withCoreInsights(null)
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     expect(await screen.findByText(/Not collected yet \(—\)/))
       .toBeInTheDocument()
     expect(screen.getByText(/a collector run/)).toBeInTheDocument()
@@ -162,7 +163,7 @@ describe('Core insights collection', () => {
         { table: 'players', rows: 5400, latest: 'GW4' },
       ],
     })
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     expect(await screen.findByText('elo')).toBeInTheDocument()
     expect(screen.getByText(/the archive publishes none yet/))
       .toBeInTheDocument()
@@ -204,7 +205,7 @@ describe('The model’s two free readings', () => {
 
   it('names every position’s calibration delta', async () => {
     withModel(FITTED, null)
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     const line = await screen.findByTestId('calibration-by-pos')
     // Two decimals, and the model's own order rather than the dict's.
     expect(line.textContent).toContain('GKP 0.43')
@@ -222,7 +223,7 @@ describe('The model’s two free readings', () => {
       by_pos: { DEF: 1.06, MID: 1.15, FWD: 0.99 },
       fitted_positions: ['DEF', 'MID', 'FWD'], missing: ['GKP'],
     }, null)
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     const line = await screen.findByTestId('calibration-by-pos')
     expect(line.textContent).toContain('GKP not fitted (n < 200)')
     expect(screen.getByText(/GKP not fitted/)).toHaveClass('text-warn')
@@ -230,7 +231,7 @@ describe('The model’s two free readings', () => {
 
   it('renders nothing at all when no calibration is banked', async () => {
     withModel(null, null)
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     await screen.findByText('Models')
     expect(screen.queryByTestId('calibration-by-pos')).toBeNull()
   })
@@ -238,7 +239,7 @@ describe('The model’s two free readings', () => {
   it('names the week’s goals-conceded band and its zero-odds count',
      async () => {
        withModel(null, BAND)
-       render(<MemoryRouter><HealthTab /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
        const line = await screen.findByTestId('team-model-band')
        expect(line.textContent).toContain('horizon through GW6')
        expect(line.textContent).toContain('min e_gc 0.044')
@@ -249,7 +250,7 @@ describe('The model’s two free readings', () => {
 
   it('leaves the band silent when nothing has been banked', async () => {
     withModel(null, null)
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     await screen.findByText('Models')
     expect(screen.queryByTestId('team-model-band')).toBeNull()
   })
@@ -259,7 +260,7 @@ describe('The model’s two free readings', () => {
        // Doubt is doubt and no doubt is not: a count of nought priced on the
        // model alone is the healthy state and must not read as a warning.
        withModel(null, { ...BAND, zero_odds_fixtures: 0 })
-       render(<MemoryRouter><HealthTab /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
        const line = await screen.findByTestId('team-model-band')
        expect(line.textContent)
          .toContain('0 of 20 fixtures without market odds')
@@ -296,7 +297,7 @@ describe('The v20 arm switches', () => {
 
   it('renders one row per switch with its state and value', async () => {
     withArms(ARMS)
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     const rows = await screen.findAllByTestId('arm-switch')
     expect(rows).toHaveLength(4)
     expect(rows[0].textContent).toContain('models.components.BONUS_SEES_ATTACK')
@@ -314,7 +315,7 @@ describe('The v20 arm switches', () => {
 
   it('renders no switch rows for a server older than the field', async () => {
     withArms(undefined)
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     await screen.findByText('Models')
     expect(screen.queryByTestId('arm-switch')).toBeNull()
   })

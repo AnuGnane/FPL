@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SensitivityCard from './SensitivityCard'
 
@@ -62,7 +63,7 @@ beforeEach(() => {
 
 describe('SensitivityCard', () => {
   it('renders the verdict, the shares and the margin line', async () => {
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByText(/nine of ten re-solves/))
       .toBeInTheDocument()
     expect(apiGet).toHaveBeenCalledWith('/api/sensitivity')
@@ -74,7 +75,7 @@ describe('SensitivityCard', () => {
   })
 
   it('lists only the move kinds it can price, most frequent first', async () => {
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     await screen.findByText('Salah')
     expect(screen.queryByText('no transfer')).not.toBeInTheDocument()
     const names = screen.getAllByRole('row').slice(1)
@@ -87,7 +88,7 @@ describe('SensitivityCard', () => {
     // The counts and the true board disagreeing is the one thing this line
     // must not state backwards.
     apiGet.mockResolvedValue({ ...REPORT, margin: -1.24 })
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByText(/1\.2 expected points ahead/))
       .toBeInTheDocument()
     expect(screen.getByText(/not the highest-scoring one/))
@@ -102,7 +103,7 @@ describe('SensitivityCard', () => {
     // highest-scoring one" clause goes, so the noisiest case was the one
     // where the card stopped saying which plan actually scored more.
     apiGet.mockResolvedValue({ ...REPORT, margin: -0.4, decision_sigma: 1.2 })
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByText(/0\.4 expected points ahead/))
       .toBeInTheDocument()
     expect(screen.getByText(/not the highest-scoring one/))
@@ -113,14 +114,14 @@ describe('SensitivityCard', () => {
   it('says how wrong the forecast might be, not how much football varies',
      async () => {
     apiGet.mockResolvedValue({ ...REPORT, margin: 0.4, decision_sigma: 1.2 })
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByText(/how wrong the forecast/))
       .toBeInTheDocument()
   })
 
   it('says every re-solve agreed when there is no margin', async () => {
     apiGet.mockResolvedValue({ ...REPORT, margin: null })
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByText(/reached the same decision/))
       .toBeInTheDocument()
   })
@@ -133,7 +134,7 @@ describe('SensitivityCard', () => {
       frequencies: [], modal: null, runner_up: null, margin: null,
       verdict: null,
     })
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByText(/no sensitivity report for GW5/))
       .toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
@@ -144,7 +145,7 @@ describe('SensitivityCard', () => {
   it('says the fetch failed rather than that nothing has been swept',
     async () => {
       apiGet.mockRejectedValue(new ApiError(500, 'boom'))
-      render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
       const callout = await screen.findByText('boom')
       expect(callout.closest('[data-tone="error"]')).toBeInTheDocument()
       expect(screen.queryByText(/No sensitivity report yet/))
@@ -152,7 +153,7 @@ describe('SensitivityCard', () => {
     })
 
   it('stamps the report with when it was swept', async () => {
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByText(/2026-08-31 09:00/)).toBeInTheDocument()
   })
 
@@ -160,26 +161,26 @@ describe('SensitivityCard', () => {
     // A report of twelve completed solves out of twenty is a different
     // report from one of twenty, and the shares below are out of twelve.
     apiGet.mockResolvedValue({ ...REPORT, completed: 18, failures: 2 })
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByText(/2 of the 20 re-solves failed/))
       .toBeInTheDocument()
   })
 
   it('counts the re-solves the report says it ran', async () => {
     apiGet.mockResolvedValue({ ...REPORT, k: 40, completed: 40 })
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByText(/re-solved 40 times/)).toBeInTheDocument()
   })
 
   it('leaves out a timing it was not given', async () => {
     apiGet.mockResolvedValue({ ...REPORT, wall_s: null, seed: null })
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     await screen.findByText(/nine of ten re-solves/)
     expect(screen.queryByText(/Swept in/)).not.toBeInTheDocument()
   })
 
   it('offers the sensitivity job as its action', async () => {
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     expect(await screen.findByRole('button', { name: 'run sensitivity' }))
       .toBeInTheDocument()
   })
@@ -188,7 +189,7 @@ describe('SensitivityCard', () => {
     // The one panel of the four with a real stream under it (plan A9): the
     // skeleton and JobButton's own log show together.
     apiGet.mockResolvedValue(REPORT)
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     await screen.findByText(/nine of ten re-solves/)
     fireEvent.click(screen.getByText(/run sensitivity/))
     expect(await screen.findByTestId('skeleton')).toBeInTheDocument()
@@ -200,7 +201,7 @@ describe('SensitivityCard', () => {
     async () => {
       apiGet.mockResolvedValue({ available: false, notice: null,
                                  frequencies: [] })
-      render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
       expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
       expect(screen.getByText(/No sensitivity report yet/))
         .toBeInTheDocument()

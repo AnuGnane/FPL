@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import WhyPanel from './WhyPanel'
 
@@ -102,13 +103,13 @@ beforeEach(() => {
 
 describe('WhyPanel', () => {
   it('asks only for the players the plan actually shows', async () => {
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await screen.findByText('Salah')
     expect(apiGet).toHaveBeenCalledWith('/api/components/5?codes=100')
   })
 
   it('expands a player into his additive terms', async () => {
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /salah/i }))
     expect(screen.getByText('Goals')).toBeInTheDocument()
@@ -120,7 +121,7 @@ describe('WhyPanel', () => {
     // Not a row of its own: the increment was folded into e_goals before the
     // terms were assembled, so listing it beside them would stop the column
     // summing to the xPts above it.
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /salah/i }))
     expect(screen.getByText(/of which penalty duty \+?0\.31/))
@@ -137,7 +138,7 @@ describe('WhyPanel', () => {
                      pen_taker: null }],
       }],
     })
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /salah/i }))
     expect(screen.queryByText(/penalty duty/i)).not.toBeInTheDocument()
@@ -147,13 +148,13 @@ describe('WhyPanel', () => {
     // Not whatever the server last wrote: This Week can be asked for an
     // explicit gameweek, and a strip comparing another week's two runs
     // answers a question nobody asked.
-    render(<MemoryRouter><WhyPanel gw={7} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={7} codes={CODES} /></MemoryRouter>)
     await screen.findByText('Salah')
     expect(apiGet).toHaveBeenCalledWith('/api/advice/diff?gw=7')
   })
 
   it('shows what changed since the previous run', async () => {
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     expect(await screen.findByText(/since last run/i)).toBeInTheDocument()
     expect(screen.getByText(/Wirtz/)).toBeInTheDocument()
     expect(screen.getByText(/Isak/)).toBeInTheDocument()
@@ -163,14 +164,14 @@ describe('WhyPanel', () => {
 
   it('shows no strip at all when there is no previous run', async () => {
     serve(NO_PINS, EMPTY_DIFF)
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await screen.findByText('Salah')
     expect(screen.queryByText(/since last run/i)).not.toBeInTheDocument()
   })
 
   it('says which parts of the plan the manager wrote himself', async () => {
     serve(PINS)
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     expect(await screen.findByText(/your pins are in this plan/i))
       .toBeInTheDocument()
     expect(apiGet).toHaveBeenCalledWith('/api/overrides')
@@ -181,7 +182,7 @@ describe('WhyPanel', () => {
 
   it('says a pin is not being applied when the flag is off', async () => {
     serve({ ...PINS, active: false })
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     expect(await screen.findByText(/not currently applied/))
       .toBeInTheDocument()
   })
@@ -198,7 +199,7 @@ describe('WhyPanel', () => {
           model_e_min: null },
       ],
     })
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     expect(await screen.findByText(/You pinned Salah/)).toBeInTheDocument()
     expect(screen.queryByText(/You pinned Nobody/)).not.toBeInTheDocument()
   })
@@ -210,14 +211,14 @@ describe('WhyPanel', () => {
                set_at: '2026-09-04T09:00:00+00:00', model_p_play: 0.9,
                model_e_min: null }],
     })
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await screen.findByText('Salah')
     expect(screen.queryByText(/your pins are in this plan/i))
       .not.toBeInTheDocument()
   })
 
   it('shows no pin strip when nothing is pinned', async () => {
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await screen.findByText('Salah')
     expect(screen.queryByText(/your pins are in this plan/i))
       .not.toBeInTheDocument()
@@ -227,7 +228,7 @@ describe('WhyPanel', () => {
     serve(PINS, EMPTY_DIFF,
           new FakeApiError(404, 'no component breakdown'))
     const { container } = render(
-      <MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+      <MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     // Holiday F-186: the failed read settles inside act, not after the test.
     await act(async () => { await new Promise((r) => { setTimeout(r, 0) }) })
     expect(container.textContent).toBe('')
@@ -246,7 +247,7 @@ describe('the retrain movers line', () => {
         { code: 5, name: 'Isak', ep_prev: 4.0, ep_now: 4.6, delta: 0.6 },
       ],
     })
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     const line = await screen.findByText(/5 players moved/)
     expect(line.textContent).toContain('Saka')
     expect(line.textContent).toContain('Gvardiol')
@@ -261,7 +262,7 @@ describe('the retrain movers line', () => {
       ep_movers: [
         { code: 1, name: 'Saka', ep_prev: 5.0, ep_now: 6.4, delta: 1.4 }],
     })
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     expect(await screen.findByText(/1 player moved/)).toBeInTheDocument()
     // and none of the ornaments that only make sense against a previous run.
     // Matched on the delta's own shape rather than a bare /xPts$/, which the
@@ -276,7 +277,7 @@ describe('the retrain movers line', () => {
       previous_at: '2026-09-03T09:00:00+00:00',
       ep_movers_count: null, ep_movers: [],
     })
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     expect(await screen.findByText(/Since last run/)).toBeInTheDocument()
     expect(screen.queryByText(/moved/)).not.toBeInTheDocument()
   })
@@ -286,7 +287,7 @@ describe('the retrain movers line', () => {
       ...EMPTY_DIFF, available: true, changed: true,
       ep_movers_count: 0, ep_movers: [],
     })
-    render(<MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
     await screen.findByText('Salah')
     expect(screen.queryByText(/moved/)).not.toBeInTheDocument()
   })
@@ -297,7 +298,7 @@ describe('the retrain movers line', () => {
 describe('WhyPanel with no players', () => {
   it('renders nothing and fetches nothing when asked about no players', () => {
     const { container } = render(
-      <MemoryRouter><WhyPanel gw={5} codes={[]} /></MemoryRouter>)
+      <MemoryRouter {...routerFuture}><WhyPanel gw={5} codes={[]} /></MemoryRouter>)
     expect(container).toBeEmptyDOMElement()
     expect(apiGet).not.toHaveBeenCalled()
   })

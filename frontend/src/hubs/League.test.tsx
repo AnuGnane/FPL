@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LeaguesOverview } from '../types'
 import ToastOutlet, { resetToasts } from '../kit/Toast'
@@ -97,20 +98,20 @@ beforeEach(() => {
 
 describe('League hub', () => {
   it('draws the race chart', async () => {
-    const { container } = render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    const { container } = render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     // Named twice on this tab now: once in standings, once in win probability.
     await screen.findAllByText('Ten Hag Hive')
     expect(container.querySelector('.recharts-wrapper')).not.toBeNull()
   })
 
   it('lists the standings with you marked', async () => {
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByText('Mine')).toBeInTheDocument()
     expect(screen.getByTestId('standing-1')).toHaveAttribute('data-you', 'true')
   })
 
   it('links each rival to their detail route', async () => {
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('tab', { name: 'Rivals' }))
     expect(await screen.findByRole('link', { name: /Ten Hag Hive/ }))
       .toHaveAttribute('href', '/league/rival/2')
@@ -120,7 +121,7 @@ describe('League hub', () => {
     async () => {
       apiGet.mockRejectedValue(Object.assign(
         new Error('set fpl.league_id in config.toml first'), { status: 422 }))
-      render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
       expect(await screen.findByText(/no league configured/i))
         .toBeInTheDocument()
       expect(screen.getByText('config.toml')).toBeInTheDocument()
@@ -147,7 +148,7 @@ describe('two rivals with the same team name', () => {
   })
 
   it('draws a line per entry, not per name', async () => {
-    const { container } = render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    const { container } = render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     await screen.findByText('Cumulative points')
     const paths = [...container.querySelectorAll('.recharts-line-curve')]
       .map((node) => node.getAttribute('d'))
@@ -158,7 +159,7 @@ describe('two rivals with the same team name', () => {
   })
 
   it('keeps both entries distinguishable in the standings', async () => {
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     await screen.findByText('Cumulative points')
     expect(screen.getByTestId('standing-1')).toBeInTheDocument()
     expect(screen.getByTestId('standing-2')).toBeInTheDocument()
@@ -191,19 +192,19 @@ describe('the simulated win-probability card', () => {
   })
 
   it('leads with the simulated title odds, not the pairwise ones', async () => {
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByTestId('sim-p-win')).toHaveTextContent('42%')
     expect(screen.getByTestId('sim-p-top3')).toHaveTextContent('100%')
   })
 
   it('says how many simulations produced the number', async () => {
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByTestId('sim-provenance'))
       .toHaveTextContent('2,000')
   })
 
   it('names the model that produced the fan', async () => {
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByTestId('sim-provenance'))
       .toHaveTextContent('shared-ownership correlated')
   })
@@ -217,7 +218,7 @@ describe('the simulated win-probability card', () => {
       }
       return Promise.reject(new Error(`unexpected ${path}`))
     })
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByTestId('sim-provenance'))
       .toHaveTextContent('independence assumed')
   })
@@ -232,7 +233,7 @@ describe('the simulated win-probability card', () => {
       }
       return Promise.reject(new Error(`unexpected ${path}`))
     })
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByTestId('beat-2')).toHaveTextContent('—')
   })
 
@@ -240,17 +241,17 @@ describe('the simulated win-probability card', () => {
   // that it is drawn at all, from the quantiles this payload carries, is the
   // card's business and stays here.
   it('draws the margin fan on the simulated card', async () => {
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByTestId('sim-margin-fan')).toBeInTheDocument()
   })
 
   it('lists every rival with the odds of beating him', async () => {
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByTestId('beat-2')).toHaveTextContent('58%')
   })
 
   it('draws the sparkline once two gameweeks are banked', async () => {
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByTestId('sim-sparkline')).toBeInTheDocument()
   })
 
@@ -261,7 +262,7 @@ describe('the simulated win-probability card', () => {
          if (path === '/api/league/rivals') return Promise.resolve([])
          return Promise.reject(new Error('422'))
        })
-       render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
        expect(await screen.findByTestId('legacy-win-probability'))
          .toBeInTheDocument()
        expect(screen.queryByTestId('sim-p-win')).not.toBeInTheDocument()
@@ -277,13 +278,13 @@ describe('the simulated win-probability card', () => {
       }
       return Promise.reject(new Error('x'))
     })
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByText(/no field sample banked/))
       .toBeInTheDocument()
   })
 
   it('offers the What if tab', async () => {
-    render(<MemoryRouter initialEntries={RACE_AT}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={RACE_AT}><League /></MemoryRouter>)
     expect(await screen.findByRole('tab', { name: 'What if' }))
       .toBeInTheDocument()
   })
@@ -292,7 +293,7 @@ describe('the simulated win-probability card', () => {
 describe('the Leagues tab, the URL league and the two writes', () => {
   function show(at?: string) {
     render(
-      <MemoryRouter initialEntries={at === undefined ? undefined : [at]}>
+      <MemoryRouter {...routerFuture} initialEntries={at === undefined ? undefined : [at]}>
         <League />
         <ToastOutlet />
       </MemoryRouter>,

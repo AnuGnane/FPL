@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChipOutlook from './ChipOutlook'
 
@@ -65,7 +66,7 @@ function serveOutlook(outlook: unknown = OUTLOOK_EMPTY, plan: unknown = PLAN) {
 }
 
 function openOutlook() {
-  render(<MemoryRouter><ChipOutlook /></MemoryRouter>)
+  render(<MemoryRouter {...routerFuture}><ChipOutlook /></MemoryRouter>)
 }
 
 beforeEach(() => {

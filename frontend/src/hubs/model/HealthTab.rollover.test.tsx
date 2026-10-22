@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import HealthTab from './HealthTab'
 
@@ -42,7 +43,7 @@ describe('the season-rollover banner', () => {
      async () => {
     serve({ season_ok: false, season_config: '2025-26',
             season_ingested: '2026-27' })
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     const banner = await screen.findByTestId('season-mismatch')
     expect(banner).toHaveTextContent('2026-27')
     expect(banner).toHaveTextContent('2025-26')
@@ -53,7 +54,7 @@ describe('the season-rollover banner', () => {
   it('stays away when they agree', async () => {
     serve({ season_ok: true, season_config: '2026-27',
             season_ingested: '2026-27' })
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     expect(await screen.findByText('player_gw')).toBeInTheDocument()
     expect(screen.queryByTestId('season-mismatch')).toBeNull()
   })
@@ -61,14 +62,14 @@ describe('the season-rollover banner', () => {
   it('stays away when the season cannot be told', async () => {
     serve({ season_ok: null, season_config: '2026-27',
             season_ingested: null })
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     expect(await screen.findByText('player_gw')).toBeInTheDocument()
     expect(screen.queryByTestId('season-mismatch')).toBeNull()
   })
 
   it('stays away when an older server sends no such fields', async () => {
     serve({})
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     expect(await screen.findByText('player_gw')).toBeInTheDocument()
     expect(screen.queryByTestId('season-mismatch')).toBeNull()
   })
@@ -82,7 +83,7 @@ describe('the last-backup line', () => {
     serve({ last_backup: { path: '/h/gaffer-backups/gaffer-20260901-2345.tar.gz',
                            modified_at: '2026-09-01T23:45:00+00:00',
                            bytes: 16_400_000 } })
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     const line = await screen.findByTestId('last-backup')
     expect(line).toHaveTextContent('2026-09-01 23:45')
     expect(line).toHaveTextContent('16.4 MB')
@@ -95,14 +96,14 @@ describe('the last-backup line', () => {
     serve({ last_backup: { path: '/h/gaffer-backups/gaffer-20260901-2345.tar.gz',
                            modified_at: '2026-09-01T23:45:00+00:00',
                            bytes: 16_400_000 } })
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     expect(await screen.findByTestId('last-backup'))
       .toHaveTextContent('2026-09-01 23:45 UTC')
   })
 
   it('says never, and says what to run, when there is none', async () => {
     serve({})
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     const line = await screen.findByTestId('last-backup')
     expect(line).toHaveTextContent('never')
     expect(line).toHaveTextContent('gaffer backup')
@@ -114,7 +115,7 @@ describe('the solver pool', () => {
   // all, on the one page a user reads to find out what this install is doing.
   it('prints one position per served entry', async () => {
     serve({ solver_top_n: { GKP: 8, DEF: 22, MID: 26, FWD: 14 } })
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     const pool = await screen.findByTestId('solver-pool')
     expect(pool).toHaveTextContent('GKP 8')
     expect(pool).toHaveTextContent('DEF 22')
@@ -127,7 +128,7 @@ describe('the solver pool', () => {
     // sends no such key at all. Either way there is no number to show, and a
     // "Solver pool" heading over a blank line would read as "zero".
     serve({})
-    render(<MemoryRouter><HealthTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HealthTab /></MemoryRouter>)
     expect(await screen.findByText('player_gw')).toBeInTheDocument()
     expect(screen.queryByTestId('solver-pool')).toBeNull()
   })

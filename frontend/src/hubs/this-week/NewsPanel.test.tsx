@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import NewsPanel from './NewsPanel'
 
@@ -49,20 +50,20 @@ beforeEach(() => {
 
 describe('NewsPanel', () => {
   it('counts the players the layer moved', async () => {
-    render(<MemoryRouter><NewsPanel gw={5} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><NewsPanel gw={5} /></MemoryRouter>)
     expect(await screen.findByText(/news moved 2 players/i))
       .toBeInTheDocument()
   })
 
   it('shows both sides of each prediction', async () => {
-    render(<MemoryRouter><NewsPanel gw={5} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><NewsPanel gw={5} /></MemoryRouter>)
     await screen.findByText('Gibbs-White')
     expect(screen.getByText('0% / 75%')).toBeInTheDocument()
     expect(screen.getByText('0 / 62')).toBeInTheDocument()
   })
 
   it('spells out the sources that fired', async () => {
-    render(<MemoryRouter><NewsPanel gw={5} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><NewsPanel gw={5} /></MemoryRouter>)
     await screen.findByText('Gibbs-White')
     expect(screen.getByText(/official 75%/i)).toBeInTheDocument()
     expect(screen.getByText(/knock, back GW6/i)).toBeInTheDocument()
@@ -73,7 +74,7 @@ describe('NewsPanel', () => {
   // disagreement with the news layer is read, and acting on it used to mean
   // finding the same player again on the Players hub.
   it('opens the pin dialog for the row whose star was clicked', async () => {
-    render(<MemoryRouter><NewsPanel gw={5} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><NewsPanel gw={5} /></MemoryRouter>)
     await screen.findByText('Gibbs-White')
     await userEvent.click(
       screen.getByRole('button', { name: 'pin Gibbs-White' }))
@@ -82,7 +83,7 @@ describe('NewsPanel', () => {
   })
 
   it('offers the pin on every moved row, not just the first', async () => {
-    render(<MemoryRouter><NewsPanel gw={5} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><NewsPanel gw={5} /></MemoryRouter>)
     await screen.findByText('Fit Lad')
     await userEvent.click(screen.getByRole('button', { name: 'pin Fit Lad' }))
     expect(await screen.findByRole('heading', { name: 'Pin Fit Lad' }))
@@ -92,7 +93,7 @@ describe('NewsPanel', () => {
   it('says nothing at all when the layer moved nobody', async () => {
     apiGet.mockResolvedValue({ gw: 5, moved: 0, rows: [] })
     const { container } = render(
-      <MemoryRouter><NewsPanel gw={5} /></MemoryRouter>)
+      <MemoryRouter {...routerFuture}><NewsPanel gw={5} /></MemoryRouter>)
     // Holiday F-186: the empty read settles inside act, not after the test.
     await act(async () => { await new Promise((r) => { setTimeout(r, 0) }) })
     expect(container.textContent).toBe('')
@@ -101,7 +102,7 @@ describe('NewsPanel', () => {
   it('says nothing at all when the endpoint fails', async () => {
     apiGet.mockRejectedValue(new Error('nope'))
     const { container } = render(
-      <MemoryRouter><NewsPanel gw={5} /></MemoryRouter>)
+      <MemoryRouter {...routerFuture}><NewsPanel gw={5} /></MemoryRouter>)
     // Holiday F-186: the failed read settles inside act, not after the test.
     await act(async () => { await new Promise((r) => { setTimeout(r, 0) }) })
     expect(container.textContent).toBe('')

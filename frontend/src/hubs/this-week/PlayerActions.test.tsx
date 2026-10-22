@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { describe, expect, it, vi } from 'vitest'
 import PlayerActions from './PlayerActions'
 
@@ -16,14 +17,14 @@ vi.mock('react-router-dom', async () => ({
 
 async function choose(item: string) {
   navigate.mockReset()
-  render(<MemoryRouter><PlayerActions code={7} name="Saka" /></MemoryRouter>)
+  render(<MemoryRouter {...routerFuture}><PlayerActions code={7} name="Saka" /></MemoryRouter>)
   await userEvent.click(screen.getByRole('button', { name: 'actions for Saka' }))
   await userEvent.click(screen.getByRole('menuitem', { name: item }))
 }
 
 describe('PlayerActions', () => {
   it('offers lock, ban and must sell, in that order', async () => {
-    render(<MemoryRouter><PlayerActions code={7} name="Saka" /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><PlayerActions code={7} name="Saka" /></MemoryRouter>)
     await userEvent.click(screen.getByRole('button', { name: 'actions for Saka' }))
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent))
       .toEqual(['Lock', 'Ban', 'Must sell'])

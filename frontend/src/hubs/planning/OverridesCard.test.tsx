@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OverridesCard from './OverridesCard'
 import { currentToasts } from '../../kit/Toast'
@@ -48,7 +49,7 @@ beforeEach(() => {
 
 describe('OverridesCard', () => {
   it('lists a pin beside what the model had at the time', async () => {
-    render(<MemoryRouter><OverridesCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><OverridesCard /></MemoryRouter>)
     expect(await screen.findByText(/Salah/)).toBeInTheDocument()
     expect(apiGet).toHaveBeenCalledWith('/api/overrides')
     expect(screen.getByText(/p_play 1\.00 \(model had 0\.82\)/))
@@ -60,19 +61,19 @@ describe('OverridesCard', () => {
 
   it('says the pins are stored but inert when the flag is off', async () => {
     apiGet.mockResolvedValue({ ...PANEL, active: false })
-    render(<MemoryRouter><OverridesCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><OverridesCard /></MemoryRouter>)
     expect(await screen.findByText(/saved but not being applied/))
       .toBeInTheDocument()
   })
 
   it('says so when nothing is pinned', async () => {
     apiGet.mockResolvedValue({ active: true, rows: [] })
-    render(<MemoryRouter><OverridesCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><OverridesCard /></MemoryRouter>)
     expect(await screen.findByText('Nothing pinned.')).toBeInTheDocument()
   })
 
   it('unpins through DELETE and repaints from the re-read', async () => {
-    render(<MemoryRouter><OverridesCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><OverridesCard /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: 'unpin Salah' }))
     expect(apiDelete).toHaveBeenCalledWith('/api/overrides/100')
@@ -83,7 +84,7 @@ describe('OverridesCard', () => {
   it('renders nothing at all when the panel cannot be read', async () => {
     apiGet.mockRejectedValue(new Error('nope'))
     const { container } = render(
-      <MemoryRouter><OverridesCard /></MemoryRouter>)
+      <MemoryRouter {...routerFuture}><OverridesCard /></MemoryRouter>)
     // Holiday F-186: the failed read settles inside act, not after the test.
     await act(async () => { await new Promise((r) => { setTimeout(r, 0) }) })
     expect(container.textContent).toBe('')
@@ -92,7 +93,7 @@ describe('OverridesCard', () => {
   it('says what an unpin did, and what it means', async () => {
     // A row that just disappears is indistinguishable from a failed delete
     // followed by a refetch.
-    render(<MemoryRouter><OverridesCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><OverridesCard /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /unpin salah/i }))
     await waitFor(() => expect(currentToasts()).toHaveLength(1))
@@ -102,7 +103,7 @@ describe('OverridesCard', () => {
 
   it('says so when the unpin failed', async () => {
     apiDelete.mockRejectedValue(new Error('the server did not answer'))
-    render(<MemoryRouter><OverridesCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><OverridesCard /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /unpin salah/i }))
     await waitFor(() => expect(currentToasts()).toHaveLength(1))

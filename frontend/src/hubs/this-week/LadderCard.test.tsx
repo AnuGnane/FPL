@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LadderPayload, SettingsPanel } from '../../types'
 import LadderCard from './LadderCard'
@@ -128,7 +129,7 @@ beforeEach(() => {
 })
 
 function mount() {
-  return render(<MemoryRouter><LadderCard /></MemoryRouter>)
+  return render(<MemoryRouter {...routerFuture}><LadderCard /></MemoryRouter>)
 }
 
 // The rung row's own cases moved to `RungRow.test.tsx` in v18f §2.1; what is

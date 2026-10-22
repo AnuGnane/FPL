@@ -1,5 +1,6 @@
 import { render, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetPageData } from '../api/pageData'
 import Planning from './Planning'
@@ -191,7 +192,7 @@ beforeEach(() => {
 
 describe('Planning, one tab at a time', () => {
   it('asks for these paths on the default (Timeline) tab', async () => {
-    render(<MemoryRouter initialEntries={['/planning']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/planning']}>
       <Planning />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet)
@@ -204,7 +205,7 @@ describe('Planning, one tab at a time', () => {
   })
 
   it('asks for these paths on the Board tab', async () => {
-    render(<MemoryRouter initialEntries={['/planning?tab=board']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/planning?tab=board']}>
       <Planning />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet)
@@ -217,7 +218,7 @@ describe('Planning, one tab at a time', () => {
   })
 
   it('asks for these paths on the What-If tab', async () => {
-    render(<MemoryRouter initialEntries={['/planning?tab=whatif']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/planning?tab=whatif']}>
       <Planning />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet)
@@ -237,7 +238,7 @@ describe('Planning, one tab at a time', () => {
   })
 
   it('asks for these paths on the Chips tab', async () => {
-    render(<MemoryRouter initialEntries={['/planning?tab=chips']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/planning?tab=chips']}>
       <Planning />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/chips'))
@@ -248,7 +249,7 @@ describe('Planning, one tab at a time', () => {
   })
 
   it('asks for these paths on the Drafts tab', async () => {
-    render(<MemoryRouter initialEntries={['/planning?tab=drafts']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/planning?tab=drafts']}>
       <Planning />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/drafts'))
@@ -259,7 +260,7 @@ describe('Planning, one tab at a time', () => {
   })
 
   it('asks for these paths on the Ticker tab', async () => {
-    render(<MemoryRouter initialEntries={['/planning?tab=ticker']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/planning?tab=ticker']}>
       <Planning />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet)

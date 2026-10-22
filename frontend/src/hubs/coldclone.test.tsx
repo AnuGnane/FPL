@@ -8,6 +8,7 @@
  */
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import League from './League'
 import Live from './Live'
@@ -66,7 +67,7 @@ describe('a cold clone', () => {
   for (const [name, Hub] of hubs) {
     it(`${name} shows an EmptyState with no console error`, async () => {
       const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      render(<MemoryRouter><Hub /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Hub /></MemoryRouter>)
       expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
       expect(spy).not.toHaveBeenCalled()
       spy.mockRestore()

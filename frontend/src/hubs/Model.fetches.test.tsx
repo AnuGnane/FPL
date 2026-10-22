@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetPageData } from '../api/pageData'
 import Model from './Model'
@@ -175,7 +176,7 @@ beforeEach(() => {
 
 describe('Model, one tab at a time', () => {
   it('asks for these paths on the default (Quality) tab', async () => {
-    render(<MemoryRouter initialEntries={['/model']}><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={['/model']}><Model /></MemoryRouter>)
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/misses'))
     expect(counted()).toEqual({
       '/api/jobs/current': 1,
@@ -190,7 +191,7 @@ describe('Model, one tab at a time', () => {
   })
 
   it('asks for these paths on the Journal tab', async () => {
-    render(<MemoryRouter initialEntries={['/model?tab=journal']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/model?tab=journal']}>
       <Model />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/journal'))
@@ -201,7 +202,7 @@ describe('Model, one tab at a time', () => {
   })
 
   it('asks for these paths on the Review tab', async () => {
-    render(<MemoryRouter initialEntries={['/model?tab=review']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/model?tab=review']}>
       <Model />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/review'))
@@ -212,7 +213,7 @@ describe('Model, one tab at a time', () => {
   })
 
   it('asks for these paths on the Season tab', async () => {
-    render(<MemoryRouter initialEntries={['/model?tab=season']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/model?tab=season']}>
       <Model />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet)
@@ -225,7 +226,7 @@ describe('Model, one tab at a time', () => {
   })
 
   it('asks for these paths on the History tab', async () => {
-    render(<MemoryRouter initialEntries={['/model?tab=history']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/model?tab=history']}>
       <Model />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet)
@@ -238,7 +239,7 @@ describe('Model, one tab at a time', () => {
   })
 
   it('asks for these paths on the Health tab', async () => {
-    render(<MemoryRouter initialEntries={['/model?tab=health']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/model?tab=health']}>
       <Model />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/health'))
@@ -249,7 +250,7 @@ describe('Model, one tab at a time', () => {
   })
 
   it('asks for these paths on the Settings tab', async () => {
-    render(<MemoryRouter initialEntries={['/model?tab=settings']}>
+    render(<MemoryRouter {...routerFuture} initialEntries={['/model?tab=settings']}>
       <Model />
     </MemoryRouter>)
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/settings'))
@@ -263,7 +264,7 @@ describe('Model, one tab at a time', () => {
 describe('Model, walking three tabs in one visit', () => {
   it('asks for /api/review once crossing Quality, Review and Season',
     async () => {
-      render(<MemoryRouter initialEntries={['/model']}><Model /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture} initialEntries={['/model']}><Model /></MemoryRouter>)
       // Quality (the default tab) reads /api/review through ScatterSection.
       await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/misses'))
 

@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from './router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FreshnessStrip, { ageText, tone } from './FreshnessStrip'
 
@@ -71,7 +72,7 @@ describe('the strip', () => {
     // nightly runs and half of one weekly one, and the old absolute
     // thresholds called both of them amber.
     serve([row('advise', 90, null, 168), row('prices', 90, null, 24)])
-    render(<MemoryRouter><FreshnessStrip /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><FreshnessStrip /></MemoryRouter>)
     await screen.findByTestId('freshness-strip')
     expect(screen.getByTestId('freshness-advise'))
       .toHaveClass('text-text-muted')
@@ -83,7 +84,7 @@ describe('the strip', () => {
     // go is half a sentence; Health is where the plists and their last runs
     // are. Six links for six fresh sources would be a nav bar.
     serve([row('refresh', 1), row('prices', 90)])
-    render(<MemoryRouter><FreshnessStrip /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><FreshnessStrip /></MemoryRouter>)
     await screen.findByTestId('freshness-strip')
     const stale = screen.getByTestId('freshness-prices')
     expect(stale.tagName).toBe('A')
