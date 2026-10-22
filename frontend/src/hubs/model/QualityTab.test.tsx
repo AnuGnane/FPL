@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReviewData } from '../../types'
 import QualityTab from './QualityTab'
@@ -117,7 +118,7 @@ beforeEach(() => {
 
 describe('QualityTab', () => {
   it('composes a card per key the evaluation carries', async () => {
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><QualityTab /></MemoryRouter>)
     expect(await screen.findByRole('heading', { name: /holdout/i }))
       .toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /benchmark/i }))
@@ -131,7 +132,7 @@ describe('QualityTab', () => {
   it('shows an empty state when nothing has been evaluated yet', async () => {
     apiGet.mockRejectedValue(new FakeApiError(
       422, 'no evaluation on disk — run `gaffer evaluate` first'))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><QualityTab /></MemoryRouter>)
     expect(await screen.findByText(/run `gaffer evaluate` first/))
       .toBeInTheDocument()
   })
@@ -143,7 +144,7 @@ describe('QualityTab', () => {
         news_shadow: { run_at: 'x', git_sha: 'y', rows: 0, overall: {},
                        by_gw: [] },
       }))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><QualityTab /></MemoryRouter>)
     await screen.findByRole('heading', { name: /holdout/i })
     expect(screen.queryByRole('heading', { name: /news layer/i }))
       .not.toBeInTheDocument()
@@ -165,7 +166,7 @@ describe('QualityTab', () => {
       path === '/api/quality'
         ? Promise.resolve({ flag_latency: FLAG_LATENCY })
         : Promise.reject(new FakeApiError(422, 'nothing'))))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><QualityTab /></MemoryRouter>)
     expect(await screen.findByRole('heading', { name: /availability signal/i }))
       .toBeInTheDocument()
     expect(screen.getByTestId('lead-bucket-1-2d')).toHaveTextContent('1')
@@ -177,7 +178,7 @@ describe('QualityTab', () => {
        // two, which is what every artifact banked before this cycle looks
        // like. Awaited on a heading that fixture definitely renders, so the
        // absence below is checked after the payload has landed.
-       render(<MemoryRouter><QualityTab /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><QualityTab /></MemoryRouter>)
        await screen.findByRole('heading', { name: /holdout/i })
        expect(screen.queryByText('Availability signal')).toBeNull()
      })
@@ -202,7 +203,7 @@ describe('QualityTab penalty card', () => {
   it('shows the failure but keeps the rest of the tab on a 500', async () => {
     apiGet.mockImplementation(routed(
       new FakeApiError(500, 'pen tracker blew up'), true))
-    render(<MemoryRouter><QualityTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><QualityTab /></MemoryRouter>)
     expect(await screen.findByText('pen tracker blew up')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Holdout' })).toBeInTheDocument()
   })
@@ -252,7 +253,7 @@ function renderWithCalibration(calibration: unknown, reject = false) {
     }
     return Promise.resolve(payload)
   })
-  render(<MemoryRouter><QualityTab /></MemoryRouter>)
+  render(<MemoryRouter {...routerFuture}><QualityTab /></MemoryRouter>)
 }
 
 describe('v9d calibration by gameweek', () => {

@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetPageData } from '../../api/pageData'
 import HistoryTab from './HistoryTab'
@@ -49,7 +50,7 @@ beforeEach(() => {
 
 describe('HistoryTab', () => {
   it('pairs expected with actual and charts prices', async () => {
-    render(<MemoryRouter><HistoryTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HistoryTab /></MemoryRouter>)
     expect(await screen.findByText('61.5')).toBeInTheDocument()
     expect(screen.getByText('64')).toBeInTheDocument()
     expect(screen.getByText('not resolved yet')).toBeInTheDocument()
@@ -60,7 +61,7 @@ describe('HistoryTab', () => {
 
 describe('the Compare card (v19e §2.2)', () => {
   it('opens on the two newest gameweeks in the history', async () => {
-    render(<MemoryRouter><HistoryTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><HistoryTab /></MemoryRouter>)
     expect(await screen.findByLabelText('From')).toHaveValue('2')
     expect(screen.getByLabelText('To')).toHaveValue('3')
     await waitFor(() => expect(apiGet)
@@ -71,7 +72,7 @@ describe('the Compare card (v19e §2.2)', () => {
 
   it('asks for the comparison the reader picked, not the one it opened on',
     async () => {
-      render(<MemoryRouter><HistoryTab /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><HistoryTab /></MemoryRouter>)
       await screen.findByLabelText('From')
       await userEvent.selectOptions(screen.getByLabelText('To'), '2')
       await waitFor(() => expect(apiGet)
@@ -83,7 +84,7 @@ describe('the Compare card (v19e §2.2)', () => {
       apiGet.mockImplementation((path: string) => Promise.resolve(
         path.startsWith('/api/advice/diff')
           ? { ...DIFF, available: false } : HISTORY))
-      render(<MemoryRouter><HistoryTab /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><HistoryTab /></MemoryRouter>)
       expect(await screen.findByText(
         'no served plan for one of these gameweeks')).toBeInTheDocument()
     })

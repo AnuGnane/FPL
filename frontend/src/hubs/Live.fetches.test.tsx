@@ -1,5 +1,6 @@
 import { render, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetPageData } from '../api/pageData'
 import Live from './Live'
@@ -83,7 +84,7 @@ beforeEach(() => {
 describe("Live's first render", () => {
   it('asks for exactly these paths, exactly this many times', async () => {
     const { unmount } = render(
-      <MemoryRouter initialEntries={['/live']}><Live /></MemoryRouter>,
+      <MemoryRouter {...routerFuture} initialEntries={['/live']}><Live /></MemoryRouter>,
     )
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/live'))
     expect(counted()).toEqual({ '/api/live': 1 })

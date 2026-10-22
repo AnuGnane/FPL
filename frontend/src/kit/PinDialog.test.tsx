@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from './router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PinDialog from './PinDialog'
 import { currentToasts } from './Toast'
@@ -38,7 +39,7 @@ const PANEL = { active: true, rows: [], warning: null }
 
 function open(onClose = vi.fn(), onSaved?: (panel: unknown) => void) {
   render(
-    <MemoryRouter>
+    <MemoryRouter {...routerFuture}>
       <PinDialog code={100} name="Salah" onClose={onClose}
                  onSaved={onSaved} />
     </MemoryRouter>,
@@ -188,7 +189,7 @@ describe('PinDialog', () => {
     function Harness() {
       const [open, setOpen] = useState(false)
       return (
-        <MemoryRouter>
+        <MemoryRouter {...routerFuture}>
           <button type="button" onClick={() => setOpen(true)}>Pin Salah</button>
           {open && (
             <PinDialog code={100} name="Salah"

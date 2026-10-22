@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from './kit/router'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App'
 
@@ -26,7 +27,7 @@ vi.mock('./api/useJob', () => ({
 
 describe('app shell', () => {
   it('lists every hub in the nav', () => {
-    render(<MemoryRouter><App /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><App /></MemoryRouter>)
     for (const label of ['This Week', 'Planning', 'Players', 'League', 'Live',
       'Model']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument()
@@ -34,7 +35,7 @@ describe('app shell', () => {
   })
 
   it('navigates to Planning', async () => {
-    render(<MemoryRouter><App /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><App /></MemoryRouter>)
     await userEvent.click(screen.getByRole('link', { name: 'Planning' }))
     expect(await screen.findByRole('heading', { name: /planning/i }))
       .toBeInTheDocument()

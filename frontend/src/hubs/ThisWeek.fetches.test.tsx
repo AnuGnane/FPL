@@ -1,5 +1,6 @@
 import { render, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ThisWeek from './ThisWeek'
 
@@ -123,7 +124,7 @@ beforeEach(() => {
 
 describe("This Week's first render", () => {
   it('asks for exactly these paths, exactly this many times', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await waitFor(() =>
       expect(asked()).toContain('/api/confidence'))
     await waitFor(() => expect(asked()).toContain('/api/news/5'))
@@ -154,7 +155,7 @@ describe("This Week's first render", () => {
   })
 
   it('makes fifteen GETs in all', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await waitFor(() => expect(asked()).toContain('/api/confidence'))
     await waitFor(() => expect(asked()).toContain('/api/news/5'))
     expect(asked()).toHaveLength(15)

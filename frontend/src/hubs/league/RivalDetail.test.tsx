@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RivalDetail from './RivalDetail'
 
@@ -51,7 +52,7 @@ const DETAIL = {
 
 function renderDetail(at = '/league/rival/2') {
   render(
-    <MemoryRouter initialEntries={[at]}>
+    <MemoryRouter {...routerFuture} initialEntries={[at]}>
       <Routes>
         <Route path="/league/rival/:id" element={<RivalDetail />} />
       </Routes>

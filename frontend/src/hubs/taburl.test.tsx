@@ -18,6 +18,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import League from './League'
 import Model from './Model'
@@ -84,7 +85,7 @@ function Search() {
 
 function show(node: React.ReactNode, at: string) {
   render(
-    <MemoryRouter initialEntries={[at]}>
+    <MemoryRouter {...routerFuture} initialEntries={[at]}>
       <Routes>
         <Route path="*" element={<>{node}<Search /></>} />
       </Routes>

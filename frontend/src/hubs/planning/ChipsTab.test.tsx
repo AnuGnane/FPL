@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetPageData } from '../../api/pageData'
 import ChipsTab from './ChipsTab'
@@ -71,7 +72,7 @@ beforeEach(() => {
 
 describe('chips tab', () => {
   it('shows every chip week against its own threshold', async () => {
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     // The hub's tab label names the panel now, so the only heading left is
     // the chip table's own card title.
     expect(await screen.findByRole('heading',
@@ -101,7 +102,7 @@ describe('chips tab', () => {
       if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
       return Promise.resolve({})
     })
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     const sources = await screen.findAllByTestId('bar-source')
     expect(sources.map((n) => n.textContent)).toEqual(['θ', 'flat'])
   })
@@ -121,7 +122,7 @@ describe('chips tab', () => {
       if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
       return Promise.resolve({})
     })
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     expect(await screen.findByText('Wildcard + Bench Boost'))
       .toBeInTheDocument()
     expect(screen.getByText('GW4 + GW7')).toBeInTheDocument()
@@ -145,7 +146,7 @@ describe('chips tab', () => {
       if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
       return Promise.resolve({})
     })
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: 'Wildcard + Bench Boost' }))
     expect(screen.getByRole('button', { name: /re-solve/i })).toBeDisabled()
@@ -180,7 +181,7 @@ describe('chips tab', () => {
       if (path.startsWith('/api/players')) return Promise.resolve(PLAYERS)
       return Promise.resolve({})
     })
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     const sources = await screen.findAllByTestId('bar-source')
     expect(sources.map((n) => n.textContent)).toEqual(['θ'])
     expect(sources[0]).toHaveAttribute(
@@ -188,7 +189,7 @@ describe('chips tab', () => {
   })
 
   it('marks the weeks worth playing now', async () => {
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await screen.findAllByText(/wildcard/i)
     const rows = screen.getAllByRole('row')
     // The dead `.changed` class is gone; the row states it as data instead.
@@ -198,7 +199,7 @@ describe('chips tab', () => {
   })
 
   it('lays the wildcard squad out as kept, out and in', async () => {
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await userEvent.click((await screen.findAllByRole('button',
       { name: /wildcard/i }))[0])
     expect(screen.getByText('Salah')).toBeInTheDocument()
@@ -212,7 +213,7 @@ describe('chips tab', () => {
   })
 
   it('submits the constrained re-solve with the chip prefilled', async () => {
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /re-solve/i }))
     await waitFor(() => expect(apiPost).toHaveBeenCalled())
@@ -225,7 +226,7 @@ describe('chips tab', () => {
     // The page opened on the wildcard; picking Bench Boost has to reach the
     // solver, or "Try it" answers a question about a different chip than the
     // one the reader is looking at.
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /bench boost/i }))
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
@@ -234,7 +235,7 @@ describe('chips tab', () => {
   })
 
   it('maps every chip the table can name onto its request code', async () => {
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /free hit/i }))
     await userEvent.click(screen.getByRole('button', { name: /re-solve/i }))
@@ -245,7 +246,7 @@ describe('chips tab', () => {
   it('shows an empty state when no advice has been run', async () => {
     apiGet.mockRejectedValue(new FakeApiError(
       404, 'no advice on disk yet — run `gaffer advise` first'))
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     expect(await screen.findByText(/run `gaffer advise` first/))
       .toBeInTheDocument()
   })
@@ -256,7 +257,7 @@ describe('chips tab', () => {
     // 422 (app.py:67-69), and both mean "run the job" (v18e ruling 7).
     apiGet.mockRejectedValue(new FakeApiError(
       422, 'no advice on disk yet — run `gaffer advise` first'))
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
     expect(screen.queryByText('Chips unavailable')).not.toBeInTheDocument()
   })
@@ -264,7 +265,7 @@ describe('chips tab', () => {
   it('says the server broke rather than that no chips can be weighed',
     async () => {
       apiGet.mockRejectedValue(new FakeApiError(500, 'boom'))
-      render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
       const callout = await screen.findByText('boom')
       expect(callout.closest('[data-tone="error"]')).toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
@@ -273,7 +274,7 @@ describe('chips tab', () => {
   it('names the wildcard’s own bar and where it came from', async () => {
     // Minor 9: the fixture had no threshold, so this caption never rendered
     // in any test and its wording was unasserted.
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await userEvent.click((await screen.findAllByRole('button',
       { name: /wildcard/i }))[0])
     expect(await screen.findByTestId('wildcard-bar')).toHaveTextContent(
@@ -296,7 +297,7 @@ describe('chips tab', () => {
                                 wildcard: { ...CHIPS.wildcard,
                                             threshold_source: source } })
             : Promise.resolve(PLAYERS)))
-        const view = render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+        const view = render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
         await userEvent.click((await screen.findAllByRole('button',
           { name: /wildcard/i }))[0])
         const text = (await screen.findByTestId('wildcard-bar')).textContent
@@ -314,7 +315,7 @@ describe('chips tab', () => {
       path.startsWith('/api/chips')
         ? Promise.resolve({ ...CHIPS, wildcard: null })
         : Promise.resolve(PLAYERS)))
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await userEvent.click((await screen.findAllByRole('button',
       { name: /wildcard/i }))[0])
     expect(screen.getByText(/no wildcard available/i)).toBeInTheDocument()
@@ -327,7 +328,7 @@ describe('chips tab', () => {
       return Promise.resolve({ id: 'j1', status: 'running', result: null,
                                error: null })
     })
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /re-solve/i }))
     expect(await screen.findByTestId('skeleton')).toBeInTheDocument()
@@ -342,7 +343,7 @@ describe('chips tab', () => {
       return Promise.resolve({ id: 'j1', status: 'error', result: null,
                                error: 'solver died' })
     })
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: /re-solve/i }))
     expect(await screen.findByText('solver died')).toBeInTheDocument()
@@ -383,7 +384,7 @@ function serveOutlook(outlook: unknown = OUTLOOK_EMPTY, plan: unknown = PLAN) {
 }
 
 async function openOutlook() {
-  render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+  render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
   await userEvent.click(await screen.findByRole('button',
     { name: 'Season outlook' }))
 }
@@ -399,7 +400,7 @@ describe('the season outlook segment (v10b §F2c)', () => {
 
   it('leaves the chip table and the wildcard panel as they were', async () => {
     serveOutlook()
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     expect(await screen.findByRole('heading',
       { name: /gain against the bar/i })).toBeInTheDocument()
     // Scoped to the segment strip: the chip table's own rows carry a
@@ -438,7 +439,7 @@ describe('Where a chip’s bar came from', () => {
       'flat: no calibrated surplus for this chip',
       'flat: gameweek outside the calibrated window',
     ])
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     const why = await screen.findAllByTestId('bar-source-why')
     expect(why.map((n) => n.textContent)).toEqual([
       '(no calibrated priors asset)',
@@ -450,7 +451,7 @@ describe('Where a chip’s bar came from', () => {
 
   it('explains each source in a sentence on the title', async () => {
     serveSources(['flat: gameweek outside the calibrated window'])
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     const why = await screen.findByTestId('bar-source-why')
     expect(why.getAttribute('title'))
       .toMatch(/outside the window calibration covered/)
@@ -464,14 +465,14 @@ describe('Where a chip’s bar came from', () => {
     // θ already says where the bar came from; "(theta)" beside it would be
     // the same word twice.
     serveSources(['theta'])
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     expect(await screen.findByTestId('bar-source')).toHaveTextContent('θ')
     expect(screen.queryByTestId('bar-source-why')).toBeNull()
   })
 
   it('says nothing at all for a payload with no source', async () => {
     serveSources([null])
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await screen.findAllByText(/bench boost/i)
     expect(screen.queryByTestId('bar-source')).toBeNull()
     expect(screen.queryByTestId('bar-source-why')).toBeNull()
@@ -481,7 +482,7 @@ describe('Where a chip’s bar came from', () => {
     // The reason is written server-side; a build that has not caught up with
     // a new one renders it verbatim rather than dropping it.
     serveSources(['flat: some reason invented after this build'])
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     const why = await screen.findByTestId('bar-source-why')
     expect(why).toHaveTextContent('(some reason invented after this build)')
     expect(why.getAttribute('title'))

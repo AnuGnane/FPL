@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from './router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetPageData } from '../api/pageData'
 import Live from '../hubs/Live'
@@ -140,13 +141,13 @@ const TABLE: Row[] = [
   {
     name: "QualityTab's review section",
     url: '/api/review',
-    render: () => { render(<MemoryRouter><QualityTab /></MemoryRouter>) },
+    render: () => { render(<MemoryRouter {...routerFuture}><QualityTab /></MemoryRouter>) },
     empty: /No graded gameweek yet/,
   },
   {
     name: "QualityTab's misses section",
     url: '/api/misses',
-    render: () => { render(<MemoryRouter><QualityTab /></MemoryRouter>) },
+    render: () => { render(<MemoryRouter {...routerFuture}><QualityTab /></MemoryRouter>) },
     // No scored gameweek is an absent card, which is why the failure was
     // invisible: the card was not there either way.
     empty: null,
@@ -156,14 +157,14 @@ const TABLE: Row[] = [
     name: 'DraftsTab',
     url: '/api/drafts',
     render: () => {
-      render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     },
     empty: /No drafts yet/,
   },
   {
     name: 'Live',
     url: '/api/live',
-    render: () => { render(<MemoryRouter><Live /></MemoryRouter>) },
+    render: () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) },
     empty: /No live data yet/,
   },
 ]

@@ -1,6 +1,7 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import AppShell from '../kit/AppShell'
 import League from './League'
@@ -105,7 +106,7 @@ describe('hubs on a phone', () => {
   for (const [name, Hub] of hubs) {
     it(`${name} renders an empty state and no console error`, async () => {
       const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      render(<MemoryRouter><Hub /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Hub /></MemoryRouter>)
       expect(await screen.findByRole('heading', { level: 1 }))
         .toBeInTheDocument()
       expect(spy).not.toHaveBeenCalled()
@@ -128,7 +129,7 @@ describe('the freshness strip on a phone', () => {
         { source: 'backup', age_hours: null, modified_at: null, path: null },
       ] })
       render(
-        <MemoryRouter>
+        <MemoryRouter {...routerFuture}>
           <AppShell><h1>This Week</h1></AppShell>
         </MemoryRouter>)
       const strip = await screen.findByTestId('freshness-strip')
@@ -217,7 +218,7 @@ describe('a phone screen scrolls nothing sideways', () => {
   for (const [name, Hub] of [['Model', Model], ['Players', Players]] as
     Array<[string, () => JSX.Element]>) {
     it(`lets ${name}'s tab strip scroll within its own bounds`, async () => {
-      render(<MemoryRouter><Hub /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Hub /></MemoryRouter>)
       const strip = await screen.findByRole('tablist')
       // Five tabs do not fit in 390px, and Model has carried six since v11
       // added Season. The strip may scroll or wrap; what it may not do is
@@ -237,7 +238,7 @@ describe('a phone screen scrolls nothing sideways', () => {
                    stale: false, reason: 'current for GW5',
                    data_through_gw: 4, data_warning: null },
     })
-    render(<MemoryRouter><Planning /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Planning /></MemoryRouter>)
     const strip = await screen.findByRole('tablist')
     expect(strip.className).toMatch(/overflow-x-auto|flex-wrap/)
   })
@@ -253,7 +254,7 @@ describe('a phone screen scrolls nothing sideways', () => {
 
   it("lets League's tab strip scroll within its own bounds", async () => {
     serveLeague()
-    render(<MemoryRouter><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><League /></MemoryRouter>)
     const strip = await screen.findByRole('tablist')
     expect(strip.className).toMatch(/overflow-x-auto|flex-wrap/)
   })
@@ -267,7 +268,7 @@ describe('a phone screen scrolls nothing sideways', () => {
     // v15 §6.1: the hub opens on the Leagues tab, and the tables this claim
     // is about are the Race tab's — so the deep link is the one to render.
     render(
-      <MemoryRouter initialEntries={['/league?tab=race']}><League /></MemoryRouter>)
+      <MemoryRouter {...routerFuture} initialEntries={['/league?tab=race']}><League /></MemoryRouter>)
     await screen.findAllByText('Ten Hag Hive')
     wrapped(2)
   })
@@ -281,7 +282,7 @@ describe('a phone screen scrolls nothing sideways', () => {
     // key.
     apiGet.mockImplementation((path: string) => Promise.resolve(
       path === '/api/review' ? { gws: [], summary: null } : HEALTH))
-    render(<MemoryRouter><Model /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('tab', { name: 'Health' }))
     await screen.findAllByText(/bootstrap/)
     wrapped(2)
@@ -289,14 +290,14 @@ describe('a phone screen scrolls nothing sideways', () => {
 
   it('wraps the sensitivity table in its own scroller', async () => {
     apiGet.mockResolvedValue(REPORT)
-    render(<MemoryRouter><SensitivityCard /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><SensitivityCard /></MemoryRouter>)
     await screen.findByText('Salah')
     wrapped()
   })
 
   it('wraps the chip table in its own scroller', async () => {
     apiGet.mockResolvedValue(CHIPS)
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await screen.findAllByText(/wildcard/i)
     wrapped()
   })
@@ -307,7 +308,7 @@ describe('a phone screen scrolls nothing sideways', () => {
        // it". v10b §F2c makes it three, which reopens that decision, so the
        // strip states how it narrows instead of being taken on trust.
        apiGet.mockResolvedValue(CHIPS)
-       render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
        const strip = (await screen.findByRole('button',
          { name: 'Chip table' })).parentElement!
        expect(within(strip).getAllByRole('button')).toHaveLength(3)
@@ -331,7 +332,7 @@ describe('a phone screen scrolls nothing sideways', () => {
       }
       return Promise.resolve(CHIPS)
     })
-    render(<MemoryRouter><ChipsTab /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: 'Season outlook' }))
     await screen.findByTestId('outlook-week-6')
@@ -344,7 +345,7 @@ describe('a phone screen scrolls nothing sideways', () => {
         ? Promise.resolve({ drafts: [] })
         : Promise.resolve({ id: 'j1', status: 'done', result: COMPARE,
                             error: null })))
-    render(<MemoryRouter><DraftsTab current={EMPTY_WHATIF} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={EMPTY_WHATIF} /></MemoryRouter>)
     // No compare has run, so there is no table yet; the assertion here is
     // that the empty state itself draws none.
     await screen.findByTestId('empty-state')
@@ -462,7 +463,7 @@ describe('the four tables a phone reader meets (v19c §2.1)', () => {
    *  table is the thing under test and the hub opens on the pitch. */
   async function renderThisWeek() {
     serveThisWeek()
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await screen.findByRole('heading', { name: 'Recommended moves' })
     await userEvent.click(screen.getByRole('button', { name: 'Table' }))
   }
@@ -497,7 +498,7 @@ describe('the four tables a phone reader meets (v19c §2.1)', () => {
       path === '/api/plan/5'
         ? Promise.resolve(PLAN)
         : Promise.reject(new Error(`absent: ${path}`))))
-    render(<MemoryRouter><PlannerBoard gw={5} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><PlannerBoard gw={5} /></MemoryRouter>)
     const week = await screen.findByTestId('board-week-5')
     expect(within(week).queryAllByRole('table')).toHaveLength(0)
     expect(within(week).getByTestId('board-stacked-5')).toBeInTheDocument()
@@ -505,7 +506,7 @@ describe('the four tables a phone reader meets (v19c §2.1)', () => {
     cleanup()
 
     viewport(1400)
-    render(<MemoryRouter><PlannerBoard gw={5} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><PlannerBoard gw={5} /></MemoryRouter>)
     const wide = await screen.findByTestId('board-week-5')
     expect(within(wide).queryByTestId('board-stacked-5')).toBeNull()
     expect(within(wide).getByTestId('board-in-3')).toBeInTheDocument()
@@ -519,7 +520,7 @@ describe('the shell at each of the three widths', () => {
   function render_shell() {
     apiGet.mockImplementation(() => new Promise(() => {}))
     render(
-      <MemoryRouter>
+      <MemoryRouter {...routerFuture}>
         <AppShell><h1>This Week</h1></AppShell>
       </MemoryRouter>)
     return screen.getByTestId('nav')

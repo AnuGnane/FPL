@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Live from './Live'
 
@@ -85,7 +86,7 @@ afterEach(() => vi.useRealTimers())
 describe('Live', () => {
   it('shows points, provisional bonus and the projected table', async () => {
     apiGet.mockResolvedValue(ACTIVE)
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     // "66" is both your running total and your row in the live table.
     expect(screen.getAllByText('66')).toHaveLength(2)
     expect(screen.getByText(/2 match/)).toBeInTheDocument()
@@ -97,7 +98,7 @@ describe('Live', () => {
 
   it('shows the race as a season total, like the projection beside it',
     async () => {
-      await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+      await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
       // 106 banked + 67.5 this gameweek. The bare 67.5 would read as a worse
       // score than the 172 next to it.
       expect(screen.getByText('173.5')).toBeInTheDocument()
@@ -105,7 +106,7 @@ describe('Live', () => {
 
   it('polls every 60 seconds while a gameweek is live', async () => {
     apiGet.mockResolvedValue(ACTIVE)
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(apiGet).toHaveBeenCalledTimes(1)
     await act(() => vi.advanceTimersByTimeAsync(60000))
     expect(apiGet).toHaveBeenCalledTimes(2)
@@ -115,7 +116,7 @@ describe('Live', () => {
     apiGet.mockResolvedValue(ACTIVE)
     let unmount = () => {}
     await act(async () => {
-      unmount = render(<MemoryRouter><Live /></MemoryRouter>).unmount
+      unmount = render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>).unmount
     })
     expect(apiGet).toHaveBeenCalledTimes(1)
     unmount()
@@ -126,7 +127,7 @@ describe('Live', () => {
   it('says nothing is on when no gameweek is live and stops polling',
     async () => {
       apiGet.mockResolvedValue(IDLE)
-      await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+      await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
       expect(screen.getByText(/no gameweek in progress/i)).toBeInTheDocument()
       await act(() => vi.advanceTimersByTimeAsync(120000))
       expect(apiGet).toHaveBeenCalledTimes(1)
@@ -134,7 +135,7 @@ describe('Live', () => {
 
   it('shows the sampled top-10k EO with its error bar', async () => {
     apiGet.mockResolvedValue(ACTIVE)
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByText('Top 10k EO')).toBeInTheDocument()
     expect(screen.getByText('143.5% ±2.1')).toBeInTheDocument()
     expect(screen.getByText('45%')).toBeInTheDocument()
@@ -142,7 +143,7 @@ describe('Live', () => {
 
   it('renders the table and a notice when tier EO is unavailable', async () => {
     apiGet.mockResolvedValue(NO_TIER)
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByText('Salah')).toBeInTheDocument()
     expect(screen.getAllByText('–').length).toBeGreaterThan(0)
     expect(screen.getByText(/top-10k EO unavailable/)).toBeInTheDocument()
@@ -151,13 +152,13 @@ describe('Live', () => {
   // The suite runs on fake timers, under which RTL's `findBy*` never settles,
   // so these three flush with `act` like every test above them.
   it('heads the page with the live gameweek', async () => {
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByRole('heading', { level: 1, name: /live/i }))
       .toBeInTheDocument()
   })
 
   it('offers an auto-poll toggle', async () => {
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByRole('checkbox', { name: /auto-refresh/i }))
       .toBeInTheDocument()
   })
@@ -165,13 +166,13 @@ describe('Live', () => {
   it('shows an empty state between gameweeks', async () => {
     apiGet.mockResolvedValue({ active: false, gw: null, my_points: 0,
                                matches_in_play: 0, players: [], table: [] })
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByText(/no gameweek in progress/i)).toBeInTheDocument()
   })
 
   it('heads the score with where it is going, not only where it is',
     async () => {
-      await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+      await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
       // "Projected" is both the new stat's label and the league table's
       // column header, so it is matched as a set rather than singly.
       expect(screen.getAllByText('Projected').length).toBeGreaterThan(0)
@@ -180,19 +181,19 @@ describe('Live', () => {
     })
 
   it('draws the race against the pre-gameweek plan', async () => {
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByText(/race to full time/i)).toBeInTheDocument()
     expect(screen.getByText(/plan 61.5/)).toBeInTheDocument()
   })
 
   it('waits for a second poll before drawing a trajectory', async () => {
     apiGet.mockResolvedValue({ ...ACTIVE, race_series: [ACTIVE.race_series[0]] })
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByText(/builds as the page polls/i)).toBeInTheDocument()
   })
 
   it('prices each league place it can reach', async () => {
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByText('One place above')).toBeInTheDocument()
     // "+11" is what I must add *on top of* the projection already shown, not
     // a total, and the copy has to say so.
@@ -204,7 +205,7 @@ describe('Live', () => {
   })
 
   it('chips the projected auto-substitution on both players', async () => {
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByText('auto-sub out')).toBeInTheDocument()
     expect(screen.getByText('auto-sub in · played')).toBeInTheDocument()
   })
@@ -212,7 +213,7 @@ describe('Live', () => {
   it('says why the race is only live points when nothing is banked',
     async () => {
       apiGet.mockResolvedValue(NO_COMPONENTS)
-      await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+      await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
       expect(screen.getByText(/no component breakdown for GW3/))
         .toBeInTheDocument()
       expect(screen.queryByText('One place above')).not.toBeInTheDocument()
@@ -223,7 +224,7 @@ describe('Live', () => {
     // numbers sit there either way, which on a live gameweek is the one thing
     // a reader must not have to guess about.
     vi.setSystemTime(new Date('2026-08-31T14:32:00Z'))
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByTestId('page-context'))
       .toHaveTextContent(/updated \d\d:\d\d/)
     expect(screen.getByTestId('page-context')).not.toHaveTextContent('not yet')
@@ -231,7 +232,7 @@ describe('Live', () => {
 
   it('polls again when Refresh is clicked, and moves the stamp', async () => {
     vi.setSystemTime(new Date('2026-08-31T14:32:00Z'))
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     const first = screen.getByTestId('page-context').textContent
     expect(apiGet).toHaveBeenCalledTimes(1)
     // The clock moves without the interval firing, so the second stamp can
@@ -248,7 +249,7 @@ describe('Live', () => {
 
   it('says not yet before the first answer arrives', async () => {
     apiGet.mockReturnValue(new Promise(() => {}))
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     expect(screen.getByTestId('page-context')).toHaveTextContent('not yet')
   })
 
@@ -263,7 +264,7 @@ describe('Live', () => {
           set_pieces: { penalties: null, free_kicks: null, corners: null },
         })
         : Promise.resolve(ACTIVE)))
-    await act(async () => { render(<MemoryRouter><Live /></MemoryRouter>) })
+    await act(async () => { render(<MemoryRouter {...routerFuture}><Live /></MemoryRouter>) })
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /Salah/ }))
     })

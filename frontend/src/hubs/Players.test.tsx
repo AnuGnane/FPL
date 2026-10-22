@@ -3,6 +3,7 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Players from './Players'
 import { currentToasts } from '../kit/Toast'
@@ -94,13 +95,13 @@ beforeEach(() => {
 
 describe('Players hub', () => {
   it('lists the pool', async () => {
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     expect(await screen.findByText('Salah')).toBeInTheDocument()
     expect(screen.getByText('Saka')).toBeInTheDocument()
   })
 
   it('filters by position through the query string', async () => {
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     await screen.findByText('Salah')
     const filters = screen.getByRole('group', { name: 'Position' })
     await userEvent.click(within(filters).getByRole('button', { name: 'DEF' }))
@@ -108,7 +109,7 @@ describe('Players hub', () => {
   })
 
   it('paints the active position filter in accent (v14)', async () => {
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     await screen.findByText('Salah')
     const filters = screen.getByRole('group', { name: 'Position' })
     const def = within(filters).getByRole('button', { name: 'DEF' })
@@ -119,7 +120,7 @@ describe('Players hub', () => {
   })
 
   it('selects players for comparison and counts them', async () => {
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     await screen.findByText('Salah')
     await userEvent.click(screen.getByRole('checkbox', { name: /compare Salah/i }))
     await userEvent.click(screen.getByRole('checkbox', { name: /compare Saka/i }))
@@ -128,7 +129,7 @@ describe('Players hub', () => {
   })
 
   it('shows the fixture matrix tab', async () => {
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('tab',
                                                   { name: 'Fixture matrix' }))
     expect(await screen.findByText('matrix panel')).toBeInTheDocument()
@@ -158,7 +159,7 @@ describe('Players hub', () => {
                                            data_through_gw: 4,
                                            data_warning: null } })
       ))
-      render(<MemoryRouter><Players /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
       expect(await screen.findByText(/no candidate pool/i)).toBeInTheDocument()
       expect(screen.getByText('Run advise')).toBeInTheDocument()
     })
@@ -171,7 +172,7 @@ describe('Players hub', () => {
         path.startsWith('/api/players') ? Promise.resolve(ROWS)
           : Promise.reject(new ApiError(422, 'no advice on disk yet'))
       ))
-      render(<MemoryRouter><Players /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
       await screen.findByText('Salah')
       await userEvent.click(screen.getByRole('tab', { name: 'Compare' }))
       const empty = await screen.findByTestId('empty-state')
@@ -189,7 +190,7 @@ describe('Players hub', () => {
           ? Promise.reject(new ApiError(500, 'boom'))
           : Promise.resolve({ rows: watch })
       ))
-      render(<MemoryRouter><Players /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
       const callout = await screen.findByText('boom')
       expect(callout.closest('[data-tone="error"]')).toBeInTheDocument()
       expect(screen.queryByText(/no candidate pool/i)).not.toBeInTheDocument()
@@ -203,7 +204,7 @@ describe('Players hub', () => {
             ? Promise.reject(new ApiError(500, 'boom'))
           : Promise.resolve({ rows: watch })
       ))
-      render(<MemoryRouter><Players /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
       await screen.findByText('Salah')
       await userEvent.click(screen.getByRole('tab', { name: 'Compare' }))
       const callout = await screen.findByText('boom')
@@ -217,7 +218,7 @@ describe('Players hub', () => {
       path.startsWith('/api/players') ? Promise.resolve(ROWS)
         : new Promise(() => {})      // never settles
     ))
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     await screen.findByText('Salah')
     await userEvent.click(screen.getByRole('tab', { name: 'Compare' }))
     expect(await screen.findByText('Loading…')).toBeInTheDocument()
@@ -227,7 +228,7 @@ describe('Players hub', () => {
   it('debounces the search box into one request', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {
-      render(<MemoryRouter><Players /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
       await screen.findByText('Salah')
       apiGet.mockClear()
       await userEvent.type(screen.getByLabelText('Search'), 'Salah')
@@ -247,7 +248,7 @@ describe('Players hub', () => {
      async () => {
        // A 0 here would read as "the top 10k have written him off", which is
        // a claim, and we have not measured it.
-       render(<MemoryRouter><Players /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
        expect(await screen.findByText('—')).toBeInTheDocument()
      })
 
@@ -264,20 +265,20 @@ describe('Players hub', () => {
         ])
         : Promise.resolve({ active: true, rows: [], warning: null })
     ))
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     expect(await screen.findByTestId('eo-trend-1')).toHaveTextContent('↑')
     expect(screen.queryByTestId('eo-trend-2')).toBeNull()
   })
 
   it('makes every explorer name the click-to-explain control', async () => {
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     expect(await screen.findByRole('button', { name: 'Salah' }))
       .toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Saka' })).toBeInTheDocument()
   })
 
   it('opens the pin dialog from a row, for that row', async () => {
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: 'pin Saka' }))
     const dialog = await screen.findByRole('dialog')
@@ -287,7 +288,7 @@ describe('Players hub', () => {
   })
 
   it('pins through the overrides endpoint and closes', async () => {
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: 'pin Salah' }))
     await userEvent.type(screen.getByLabelText('probability of playing'), '1')
@@ -308,7 +309,7 @@ describe('Players hub', () => {
                 model_e_min: 60 }]
       return Promise.resolve({ active: true, warning: null, rows: pins })
     })
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: 'pin Salah' }))
     await userEvent.type(screen.getByLabelText('probability of playing'), '1')
@@ -325,7 +326,7 @@ describe('the watchlist star', () => {
     // The pinned-codes idiom: one read on mount, then kept current from the
     // endpoint's own answer, so the table says which rows are starred without
     // a round trip per row.
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     expect(await screen.findByLabelText('unstar Salah')).toBeInTheDocument()
     expect(screen.getByLabelText('star Saka')).toBeInTheDocument()
   })
@@ -337,7 +338,7 @@ describe('the watchlist star', () => {
                                   set_at: '' }]
         return Promise.resolve({ rows: watch })
       })
-      render(<MemoryRouter><Players /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
       await userEvent.click(await screen.findByLabelText('star Saka'))
       expect(await screen.findByLabelText('unstar Saka')).toBeInTheDocument()
       // `{ code }` and no `note`. An omitted note is a third request — "star
@@ -353,7 +354,7 @@ describe('the watchlist star', () => {
       watch = []
       return Promise.resolve({ rows: watch })
     })
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('unstar Salah'))
     expect(await screen.findByLabelText('star Salah')).toBeInTheDocument()
     expect(apiDelete).toHaveBeenCalledWith('/api/watchlist/1')
@@ -362,7 +363,7 @@ describe('the watchlist star', () => {
   it('flips the star optimistically and reverts it with one toast on failure',
     async () => {
       apiPost.mockRejectedValue(new Error('the server did not answer'))
-      render(<MemoryRouter><Players /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
       await userEvent.click(await screen.findByLabelText('star Saka'))
       // The lie this fixes: a filled star for a write the server refused.
       expect(await screen.findByLabelText('star Saka')).toBeInTheDocument()
@@ -376,7 +377,7 @@ describe('the watchlist star', () => {
       watch = [SALAH_STARRED, { code: 2, name: 'Saka', note: '', set_at: '' }]
       return Promise.resolve({ rows: watch })
     })
-    render(<MemoryRouter><Players /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('star Saka'))
     await screen.findByLabelText('unstar Saka')
     // Deliberate (spec D3): the filled star is the acknowledgement, and a
@@ -401,7 +402,7 @@ describe('the watchlist star', () => {
         return Promise.resolve({ rows: watch })
       })
 
-      render(<MemoryRouter><Players /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
       await userEvent.click(await screen.findByLabelText('unstar Salah'))
       await userEvent.click(await screen.findByLabelText('star Saka'))
       await screen.findByLabelText('unstar Saka')
@@ -433,7 +434,7 @@ describe('the watchlist star', () => {
             ? Promise.reject(new Error('watchlist unavailable'))
           : Promise.reject(new Error(`unexpected ${path}`))
       ))
-      render(<MemoryRouter><Players /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><Players /></MemoryRouter>)
       expect(await screen.findByText('Salah')).toBeInTheDocument()
       expect(screen.queryByLabelText('star Salah')).toBeNull()
       const star = await screen.findByLabelText(

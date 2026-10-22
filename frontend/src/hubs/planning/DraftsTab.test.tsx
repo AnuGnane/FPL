@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { WhatIfRequest } from '../../types'
 import DraftsTab from './DraftsTab'
@@ -96,7 +97,7 @@ beforeEach(() => {
 describe('DraftsTab', () => {
   it('says so when nothing is saved', async () => {
     apiGet.mockResolvedValue({ drafts: [] })
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     // An EmptyState now, naming the exact button three lines above it.
     expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
     expect(screen.getByText('No drafts yet')).toBeInTheDocument()
@@ -109,7 +110,7 @@ describe('DraftsTab', () => {
       drafts = [...LIST.drafts, draft('third')]
       return Promise.resolve({ drafts })
     })
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await screen.findByText('keep Salah')
     await userEvent.type(screen.getByLabelText('draft name'), 'third')
     await userEvent.click(screen.getByRole('button',
@@ -120,7 +121,7 @@ describe('DraftsTab', () => {
   })
 
   it('refuses to save a draft with no name', async () => {
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await screen.findByText('keep Salah')
     expect(screen.getByRole('button',
       { name: /save the current what-if/i })).toBeDisabled()
@@ -128,7 +129,7 @@ describe('DraftsTab', () => {
 
   it('shows why a save was refused', async () => {
     apiPost.mockRejectedValue(new Error('a draft called third already exists'))
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await screen.findByText('keep Salah')
     await userEvent.type(screen.getByLabelText('draft name'), 'third')
     await userEvent.click(screen.getByRole('button',
@@ -138,7 +139,7 @@ describe('DraftsTab', () => {
 
   it('compares the ticked drafts and renders the reference row first',
     async () => {
-      render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
       await userEvent.click(await screen.findByLabelText(
         'compare keep Salah'))
       await userEvent.click(screen.getByRole('button', { name: 'Compare' }))
@@ -164,7 +165,7 @@ describe('DraftsTab', () => {
           id: 'j1', status: 'done', error: null,
           result: { ...COMPARE, weeks: 1 },
         })))
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('compare keep Salah'))
     await userEvent.click(screen.getByRole('button', { name: 'Compare' }))
     expect(await screen.findByText(/shortest plan in the comparison/))
@@ -173,7 +174,7 @@ describe('DraftsTab', () => {
   })
 
   it('gives an infeasible draft a row carrying its reason', async () => {
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('compare go wildcard'))
     await userEvent.click(screen.getByRole('button', { name: 'Compare' }))
     expect(await screen.findByText('no legal squad satisfies this draft'))
@@ -184,7 +185,7 @@ describe('DraftsTab', () => {
     const many = { drafts: ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(draft) }
     apiGet.mockImplementation((path: string) => (
       path === '/api/drafts' ? Promise.resolve(many) : Promise.resolve({})))
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await screen.findByText('a')
     for (const name of ['a', 'b', 'c', 'd', 'e', 'f']) {
       await userEvent.click(screen.getByLabelText(`compare ${name}`))
@@ -199,7 +200,7 @@ describe('DraftsTab', () => {
       constraint: 'draft_name', error: 'a draft called third already exists',
       players: [],
     }))
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await screen.findByText('keep Salah')
     await userEvent.type(screen.getByLabelText('draft name'), 'third')
     await userEvent.click(screen.getByRole('button',
@@ -212,7 +213,7 @@ describe('DraftsTab', () => {
     const full = { drafts: 'abcdefghijkl'.split('').map(draft) }
     apiGet.mockImplementation((path: string) => (
       path === '/api/drafts' ? Promise.resolve(full) : Promise.resolve({})))
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await screen.findByText('a')
     await userEvent.type(screen.getByLabelText('draft name'), 'thirteenth')
     expect(screen.getByRole('button',
@@ -226,7 +227,7 @@ describe('DraftsTab', () => {
     const many = { drafts: ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map(draft) }
     apiGet.mockImplementation((path: string) => (
       path === '/api/drafts' ? Promise.resolve(many) : Promise.resolve({})))
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await screen.findByText('a')
     for (const name of ['a', 'b', 'c', 'd', 'e', 'f']) {
       await userEvent.click(screen.getByLabelText(`compare ${name}`))
@@ -243,7 +244,7 @@ describe('DraftsTab', () => {
       drafts = [draft('go wildcard')]
       return Promise.resolve({ drafts })
     })
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('compare keep Salah'))
     await userEvent.click(screen.getByRole('button',
       { name: 'delete keep Salah' }))
@@ -260,7 +261,7 @@ describe('DraftsTab', () => {
       drafts = [draft('go wildcard')]
       return Promise.resolve({ drafts })
     })
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await userEvent.click(await screen.findByRole('button',
       { name: 'delete keep Salah' }))
     expect(apiDelete).toHaveBeenCalledWith('/api/drafts/keep%20Salah')
@@ -273,14 +274,14 @@ describe('DraftsTab', () => {
       path === '/api/drafts' ? Promise.resolve(LIST)
         : Promise.resolve({ id: 'j1', status: 'running', result: null,
                             error: null })))
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('compare keep Salah'))
     await userEvent.click(screen.getByRole('button', { name: /^compare/i }))
     expect(await screen.findByTestId('skeleton')).toBeInTheDocument()
   })
 
   it('shows no skeleton once the comparison is done', async () => {
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('compare keep Salah'))
     await userEvent.click(screen.getByRole('button', { name: /^compare/i }))
     expect(await screen.findByText(/Compared over 4 weeks/))
@@ -290,7 +291,7 @@ describe('DraftsTab', () => {
 
   it('says a draft was saved, and says when one could not be', async () => {
     apiPost.mockResolvedValue({ drafts: [...LIST.drafts, draft('third')] })
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await screen.findByText('keep Salah')
     await userEvent.type(screen.getByLabelText('draft name'), 'third')
     await userEvent.click(screen.getByRole('button',
@@ -302,7 +303,7 @@ describe('DraftsTab', () => {
 
   it('says a delete happened, naming the draft', async () => {
     apiDelete.mockResolvedValue({ drafts: [LIST.drafts[1]] })
-    render(<MemoryRouter><DraftsTab current={CURRENT} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><DraftsTab current={CURRENT} /></MemoryRouter>)
     await userEvent.click(await screen.findByLabelText('delete keep Salah'))
     await waitFor(() => expect(currentToasts()).toHaveLength(1))
     expect(currentToasts()[0].tone).toBe('positive')

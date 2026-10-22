@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { describe, expect, it, vi } from 'vitest'
 import type { LeaguesOverview } from '../../types'
 import LeaguesTab from './LeaguesTab'
@@ -32,7 +33,7 @@ function mount(overview = OVERVIEW, props = {}) {
   const onFocus = vi.fn()
   const onStance = vi.fn()
   render(
-    <MemoryRouter>
+    <MemoryRouter {...routerFuture}>
       <LeaguesTab overview={overview} busy={false} onFocus={onFocus}
                   onStance={onStance} {...props} />
     </MemoryRouter>,

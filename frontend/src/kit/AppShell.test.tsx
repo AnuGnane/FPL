@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from './router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import AppShell from './AppShell'
 
@@ -27,7 +28,7 @@ afterEach(() => { vi.unstubAllGlobals() })
 
 describe('AppShell', () => {
   it('lists exactly the six hubs', () => {
-    render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><AppShell><p>page</p></AppShell></MemoryRouter>)
     for (const label of ['This Week', 'Planning', 'Players', 'League', 'Live',
       'Model']) {
       expect(screen.getByRole('link', { name: label })).toBeInTheDocument()
@@ -36,25 +37,25 @@ describe('AppShell', () => {
   })
 
   it('renders its children as the page body', () => {
-    render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><AppShell><p>page</p></AppShell></MemoryRouter>)
     expect(screen.getByText('page')).toBeInTheDocument()
   })
 
   it('is a sidebar on desktop', () => {
     stubMatchMedia(false)
-    render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><AppShell><p>page</p></AppShell></MemoryRouter>)
     expect(screen.getByTestId('nav')).toHaveAttribute('data-mode', 'sidebar')
   })
 
   it('is a bottom tab bar on mobile', () => {
     stubMatchMedia(true)
-    render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><AppShell><p>page</p></AppShell></MemoryRouter>)
     expect(screen.getByTestId('nav')).toHaveAttribute('data-mode', 'tabbar')
   })
 
   it('marks the active hub', () => {
     render(
-      <MemoryRouter initialEntries={['/planning']}>
+      <MemoryRouter {...routerFuture} initialEntries={['/planning']}>
         <AppShell><p>page</p></AppShell>
       </MemoryRouter>,
     )
@@ -64,7 +65,7 @@ describe('AppShell', () => {
 
   it('puts the theme control in the sidebar footer on desktop', () => {
     stubMatchMedia(false)
-    render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><AppShell><p>page</p></AppShell></MemoryRouter>)
     const nav = screen.getByTestId('nav')
     expect(within(nav).getByRole('group', { name: 'Theme' }))
       .toBeInTheDocument()
@@ -76,7 +77,7 @@ describe('AppShell', () => {
     for (const mobile of [false, true]) {
       stubMatchMedia(mobile)
       const { unmount } = render(
-        <MemoryRouter><AppShell><p>hi</p></AppShell></MemoryRouter>)
+        <MemoryRouter {...routerFuture}><AppShell><p>hi</p></AppShell></MemoryRouter>)
       expect(screen.getByTestId('toast-outlet'))
         .toHaveAttribute('aria-live', 'polite')
       unmount()
@@ -89,7 +90,7 @@ describe('AppShell', () => {
       // sized for seven; the control is chrome, so it goes to the top corner
       // of the page and the six get the width back.
       stubMatchMedia(true)
-      render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><AppShell><p>page</p></AppShell></MemoryRouter>)
       const nav = screen.getByTestId('nav')
       expect(within(nav).getAllByRole('link')).toHaveLength(6)
       expect(within(nav).queryByRole('button', { name: /^Theme: / })).toBeNull()
@@ -98,7 +99,7 @@ describe('AppShell', () => {
     })
 
   it('draws an icon, not a glyph character, beside every hub (v14)', () => {
-    render(<MemoryRouter><AppShell><p>page</p></AppShell></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><AppShell><p>page</p></AppShell></MemoryRouter>)
     for (const label of ['This Week', 'Planning', 'Players', 'League', 'Live',
       'Model']) {
       const link = screen.getByRole('link', { name: label })
@@ -110,7 +111,7 @@ describe('AppShell', () => {
   it('marks the active hub in accent with a left bar, never a white card', () => {
     stubMatchMedia(false)
     render(
-      <MemoryRouter initialEntries={['/planning']}>
+      <MemoryRouter {...routerFuture} initialEntries={['/planning']}>
         <AppShell><p>page</p></AppShell>
       </MemoryRouter>,
     )

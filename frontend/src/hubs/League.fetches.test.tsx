@@ -1,5 +1,6 @@
 import { render, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetPageData } from '../api/pageData'
 import League from './League'
@@ -124,7 +125,7 @@ beforeEach(() => {
 
 describe("League's first render", () => {
   it('asks for exactly these paths, exactly this many times', async () => {
-    render(<MemoryRouter initialEntries={['/league']}><League /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture} initialEntries={['/league']}><League /></MemoryRouter>)
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/api/league/sim'))
     expect(counted()).toEqual({
       '/api/advice/latest': 1,

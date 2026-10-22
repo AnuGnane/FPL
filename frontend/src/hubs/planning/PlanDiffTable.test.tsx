@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { describe, expect, it } from 'vitest'
 import type { WhatIfResult } from '../../types'
 import PlanDiffTable from './PlanDiffTable'
@@ -28,7 +29,7 @@ function rowOf(label: string | RegExp) {
 
 describe('PlanDiffTable', () => {
   it('marks the changed captain row and leaves the unchanged rows plain', () => {
-    render(<MemoryRouter><PlanDiffTable diff={DIFF} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><PlanDiffTable diff={DIFF} /></MemoryRouter>)
     expect(rowOf('Captain')).toHaveAttribute('data-changed', 'true')
     expect(rowOf('Hits')).toHaveAttribute('data-changed', 'false')
     expect(rowOf('Transfers in')).toHaveTextContent('Wirtz')
@@ -36,7 +37,7 @@ describe('PlanDiffTable', () => {
   })
 
   it('marks transfers changed and prints a dash for an empty side', () => {
-    render(<MemoryRouter><PlanDiffTable diff={{
+    render(<MemoryRouter {...routerFuture}><PlanDiffTable diff={{
       ...DIFF, transfers_changed: true,
       yours: { ...DIFF.yours, buys: [], sells: [] },
     } as WhatIfResult} /></MemoryRouter>)
@@ -45,7 +46,7 @@ describe('PlanDiffTable', () => {
   })
 
   it('lists the XI coming in and a dash for the side nobody leaves', () => {
-    render(<MemoryRouter><PlanDiffTable diff={DIFF} /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><PlanDiffTable diff={DIFF} /></MemoryRouter>)
     expect(screen.getByText('XI In').parentElement)
       .toHaveTextContent('Haaland')
     expect(screen.getByText('XI Out').parentElement).toHaveTextContent('—')

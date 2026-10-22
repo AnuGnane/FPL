@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { render as rtlRender, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../kit/router'
 import { describe, expect, it, vi } from 'vitest'
 import SquadTable, { type SquadRow } from './SquadTable'
 
@@ -15,7 +16,7 @@ vi.mock('react-router-dom', async () => ({
 /** Every rendering sits in a router since v19e §2.4: each row carries a menu
  *  whose items navigate to the What-If lab. */
 function render(ui: ReactElement) {
-  return rtlRender(<MemoryRouter>{ui}</MemoryRouter>)
+  return rtlRender(<MemoryRouter {...routerFuture}>{ui}</MemoryRouter>)
 }
 
 const ROWS: SquadRow[] = [

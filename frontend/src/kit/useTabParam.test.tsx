@@ -8,6 +8,7 @@
 import { renderHook, act } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom'
+import { routerFuture } from './router'
 import { describe, expect, it } from 'vitest'
 import { useTabParam } from './useTabParam'
 
@@ -15,7 +16,7 @@ const TABS = ['quality', 'journal', 'health'] as const
 
 function wrapper(initial: string) {
   return ({ children }: { children: ReactNode }) => (
-    <MemoryRouter initialEntries={[initial]}>{children}</MemoryRouter>
+    <MemoryRouter {...routerFuture} initialEntries={[initial]}>{children}</MemoryRouter>
   )
 }
 

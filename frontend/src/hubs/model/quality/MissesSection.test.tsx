@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../../../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MissesSection from './MissesSection'
 
@@ -35,7 +36,7 @@ describe('the biggest misses', () => {
       { code: 22, name: 'Sub', position: 'FWD', price: 6.0, ep: 7.0,
         actual: 1, minutes: 12, miss: -6.0 },
     ] })
-    render(<MemoryRouter><MissesSection /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><MissesSection /></MemoryRouter>)
     expect(await screen.findByText('Saka')).toBeInTheDocument()
     expect(screen.getByText('+10.5')).toBeInTheDocument()
     expect(screen.getByText('-6.0')).toBeInTheDocument()
@@ -47,7 +48,7 @@ describe('the biggest misses', () => {
     // way this case did inside the tab (v18f §2.1).
     mockMisses({ gw: null, rows: [] })
     const { container } = render(
-      <MemoryRouter><MissesSection /></MemoryRouter>)
+      <MemoryRouter {...routerFuture}><MissesSection /></MemoryRouter>)
     await waitFor(() => { expect(apiGet).toHaveBeenCalledWith('/api/misses') })
     expect(screen.queryByText(/Biggest misses/)).toBeNull()
     expect(container).toBeEmptyDOMElement()

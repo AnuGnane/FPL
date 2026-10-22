@@ -2,6 +2,7 @@ import {
   fireEvent, render, screen, waitFor, within,
 } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { seedPageData } from '../api/pageData'
 import ThisWeek from './ThisWeek'
@@ -161,7 +162,7 @@ const WHOLE_PAGE: Record<string, unknown> = {
 
 describe('This Week hub', () => {
   it('heads the page with the gameweek and the deadline', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByRole('heading', { level: 1, name: /GW5/ }))
       .toBeInTheDocument()
     // v19a §2.1: the header counts down rather than printing a bare stamp.
@@ -180,7 +181,7 @@ describe('This Week hub', () => {
                             staleness: { ...ADVICE.staleness, stale: true,
                                          reason: 'advice is for GW4' } })
         : route(path)))
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByTestId('countdown'))
       .toHaveTextContent(/to the GW5 deadline · /)
     const alert = screen.getByRole('alert')
@@ -191,7 +192,7 @@ describe('This Week hub', () => {
   // --- v19d §2.1: the context strip and its anchors ------------------------
 
   it('heads the page with the week in one line under the title', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     const strip = await screen.findByTestId('context-strip')
     expect(strip).toHaveTextContent('GW5')
     expect(strip).toHaveTextContent('captain Salah')
@@ -201,7 +202,7 @@ describe('This Week hub', () => {
   it('anchors every link in the strip to a section of the page', async () => {
     apiGet.mockImplementation((path: string) => (
       path in WHOLE_PAGE ? Promise.resolve(WHOLE_PAGE[path]) : route(path)))
-    const { container } = render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    const { container } = render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     const strip = await screen.findByTestId('context-strip')
     await screen.findByRole('heading', { name: 'News' })
     const targets = within(strip).getAllByRole('link')
@@ -213,7 +214,7 @@ describe('This Week hub', () => {
   })
 
   it('shows the four stats: XI, captain, chip and league', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByText('Expected XI')).toBeInTheDocument()
     // v9a: the pitch is the default view, so the bare '61.5' that used to
     // come off the squad table's EO cell is now only the stat tile's value.
@@ -228,7 +229,7 @@ describe('This Week hub', () => {
   })
 
   it('draws the chip gain against its threshold, as a meter with the need stated', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await waitFor(() =>
       expect(screen.getByTestId('threshold-fill')).toBeInTheDocument())
     expect(screen.getByTestId('threshold-mark')).toBeInTheDocument()
@@ -238,7 +239,7 @@ describe('This Week hub', () => {
   })
 
   it('states the league gap as a number with the side of it as the unit', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     const league = (await screen.findByText('League')).closest('div')!
     expect(within(league).getByText('84')).toBeInTheDocument()
     expect(within(league).getByText('behind')).toBeInTheDocument()
@@ -249,7 +250,7 @@ describe('This Week hub', () => {
     // The tile's own fixture, in the case that reads it: the overview is
     // decoration and every other case here renders without it.
     seedPageData({ '/api/league/leagues': OVERVIEW })
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     const league = (await screen.findByText('League')).closest('div')!
     expect(await within(league).findByText(/Shocky Supplies · chase · tilt \+0\.25/))
       .toBeInTheDocument()
@@ -259,13 +260,13 @@ describe('This Week hub', () => {
   it('flags a manual stance on the tile', async () => {
     seedPageData({ '/api/league/leagues': { ...OVERVIEW, stance: 'defend',
                                             focus_stance: 'defend' } })
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     const league = (await screen.findByText('League')).closest('div')!
     expect(await within(league).findByText('manual')).toBeInTheDocument()
   })
 
   it('states the captain with the sims share and the vice as context', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     const captain = (await screen.findByText('Captain')).closest('div')!
     expect(within(captain).getByText(/of sims · vice/)).toBeInTheDocument()
   })
@@ -278,14 +279,14 @@ describe('This Week hub', () => {
                                          data_warning:
                                            'model has no data for GW5' } })
         : route(path)))
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveAttribute('data-tone', 'warn')
     expect(alert).toHaveTextContent('model has no data for GW5')
   })
 
   it('makes Run advise the primary action and Fast advise secondary', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByRole('button', { name: 'Run advise' }))
       .toHaveClass('bg-accent')
     expect(screen.getByRole('button', { name: 'Fast advise' }))
@@ -297,19 +298,19 @@ describe('This Week hub', () => {
     // is unchanged. Scoped to the squad card because v14's Expected XI tile
     // prints its unit beside the value rather than inside it, so the page now
     // carries the bare '61.5' twice: the tile's points and this EO cell.
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
     expect(within(await squadCard()).getByText('61.5')).toBeInTheDocument()
   })
 
   it('lists the recommended moves', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByText('Wirtz')).toBeInTheDocument()
     expect(screen.getByText('Isak')).toBeInTheDocument()
   })
 
   it('offers a Run advise button', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByRole('button', { name: 'Run advise' }))
       .toBeInTheDocument()
   })
@@ -330,7 +331,7 @@ describe('This Week hub', () => {
   it('shows an empty state naming the button when there is no advice',
     async () => {
       cold()
-      render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
       expect(await screen.findByText(/no advice/i)).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Run advise' }))
         .toBeInTheDocument()
@@ -339,14 +340,14 @@ describe('This Week hub', () => {
   it('offers one control on a cold tree, not the same one twice',
     async () => {
       cold()
-      render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
       await screen.findByTestId('empty-state')
       expect(screen.getAllByRole('button', { name: /advise/i })).toHaveLength(1)
     })
 
   it('starts the solve from the empty state itself', async () => {
     cold()
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await screen.findByTestId('empty-state')
     fireEvent.click(screen.getByRole('button', { name: 'Run advise' }))
     expect(jobStart).toHaveBeenCalled()
@@ -368,7 +369,7 @@ describe('This Week hub', () => {
                   mean_pts: null, p_beats_bank: null, p_best: null,
                   vs_below: null }],
       } })
-      render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+      render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
       expect(await screen.findByTestId('moves-cap-line'))
         .toHaveTextContent('1 free transfer · cap 2 hits')
       expect(screen.getByText('Transfer ladder')).toBeInTheDocument()
@@ -390,7 +391,7 @@ describe('an advice payload missing its armband', () => {
       path === '/api/advice/latest'
         ? Promise.resolve(withoutCaptain('captain'))
         : route(path)))
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /this week/i }))
       .toBeInTheDocument()
@@ -401,7 +402,7 @@ describe('an advice payload missing its armband', () => {
       path === '/api/advice/latest'
         ? Promise.resolve(withoutCaptain('vice'))
         : route(path)))
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByTestId('empty-state')).toBeInTheDocument()
   })
 
@@ -410,13 +411,13 @@ describe('an advice payload missing its armband', () => {
       path === '/api/advice/latest'
         ? Promise.resolve(withoutCaptain('captain'))
         : route(path)))
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await screen.findByTestId('empty-state')
     expect(screen.getByRole('button', { name: /advise/i })).toBeInTheDocument()
   })
 
   it('offers the fast run beside the full one', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByRole('button', { name: 'Run advise' }))
       .toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Fast advise' }))
@@ -434,14 +435,14 @@ describe('the captaincy title-odds chip', () => {
          baseline_exp_finish: 1.6, exp_finish: 1.7, delta_rank: 0.1,
          table: [], unknown_codes: [],
        })
-       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        expect(await screen.findByTestId('captain-odds-chip'))
          .toHaveTextContent('+3pp')
      })
 
   it('asks only for a cached answer, never for a fresh fetch storm', async () => {
     apiPost.mockResolvedValue(null)
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith(
       '/api/league/whatif',
       expect.objectContaining({ cached_only: true })))
@@ -449,21 +450,21 @@ describe('the captaincy title-odds chip', () => {
 
   it('is simply absent on a cold cache, which answers 204 as null', async () => {
     apiPost.mockResolvedValue(null)
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
     expect(screen.queryByTestId('captain-odds-chip')).not.toBeInTheDocument()
   })
 
   it('is simply absent when the simulation is not available', async () => {
     apiPost.mockRejectedValue(new Error('422'))
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
     expect(screen.queryByTestId('captain-odds-chip')).not.toBeInTheDocument()
   })
 
   it('never blocks the page on it', async () => {
     apiPost.mockReturnValue(new Promise(() => {}))     // never resolves
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
   })
 })
@@ -497,7 +498,7 @@ describe('the pitch and the table', () => {
   it('shows the pitch by default, with the bench on it', async () => {
     // D3: the pitch is This Week's default. The table is a click away and
     // stays the data-dense view.
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
     expect(screen.getByTestId('bench-strip')).toBeInTheDocument()
     expect(within(await squadCard()).queryByRole('table'))
@@ -506,14 +507,14 @@ describe('the pitch and the table', () => {
 
   it('draws each XI player exactly once', async () => {
     // The regression A11 exists to prevent: two cards, both drawing the XI.
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await screen.findByTestId('pitch-row-MID')
     expect(within(screen.getByTestId('pitch-row-MID'))
       .getAllByText('Salah')).toHaveLength(1)
   })
 
   it('switches to the table and back', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
     expect(within(await squadCard()).getByRole('table')).toBeInTheDocument()
     expect(screen.queryByTestId('pitch-row-MID')).not.toBeInTheDocument()
@@ -522,7 +523,7 @@ describe('the pitch and the table', () => {
   })
 
   it('says which view is showing', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     const pitch = await screen.findByRole('button', { name: 'Pitch' })
     expect(pitch).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Table' }))
@@ -530,7 +531,7 @@ describe('the pitch and the table', () => {
   })
 
   it('carries the fixture chips onto the pitch', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByText(/MUN \(H\)/)).toBeInTheDocument()
   })
 
@@ -543,13 +544,13 @@ describe('the pitch and the table', () => {
            ? Promise.resolve(adviceWithout(['team_short', 'team_code',
                                             'next_fixture']))
            : route(path)))
-       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        expect(await screen.findByTestId('pitch-row-MID')).toBeInTheDocument()
        expect(screen.getAllByText('Blank').length).toBeGreaterThan(0)
      })
 
   it('keeps the captain line and the odds chip above the pitch', async () => {
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await screen.findByTestId('pitch-row-MID')
     const header = (await squadCard()).querySelector('header')!
     expect(header.textContent).toMatch(/Captain Salah/)
@@ -578,7 +579,7 @@ describe('the captain against the field (v10b §F1a)', () => {
           field_class: 'shield', note: NOTE,
         }))
         : route(path)))
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByTestId('captain-field-note'))
       .toHaveTextContent(NOTE)
   })
@@ -586,7 +587,7 @@ describe('the captain against the field (v10b §F1a)', () => {
   it('renders no sentence and an intact header without captain_field',
      async () => {
        // The cold-clone case, which is most weeks for most users.
-       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        await screen.findByTestId('pitch-row-MID')
        expect(screen.queryByTestId('captain-field-note')).toBeNull()
        const header = (await squadCard()).querySelector('header')!
@@ -608,7 +609,7 @@ describe('the captain against the field (v10b §F1a)', () => {
              most_captained: { code: 9, name: 'Haaland', gw: 5 },
            }))
            : route(path)))
-       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        const note = await screen.findByTestId('captain-field-note')
        expect(note).toHaveTextContent(modalNote)
        expect(note.textContent).not.toMatch(/%/)
@@ -628,14 +629,14 @@ describe('the captain against the field (v10b §F1a)', () => {
          }
          return route(path)
        })
-       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        expect(await screen.findByTestId('captain-field-note'))
          .toHaveTextContent(NOTE)
      })
 
   it('joins Field% onto the squad rows, and an em dash where it is unknown',
      async () => {
-       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
        const table = within(await squadCard()).getByRole('table')
        const salah = within(table).getByText('Salah').closest('tr')!
@@ -653,7 +654,7 @@ describe('the EO lens (v10b §F1c, v14 as a background tint)', () => {
   it('is off on first render', async () => {
     // A14: off by default, and state rather than localStorage — persisting a
     // view preference is a real feature with real questions behind it.
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await screen.findByTestId('pitch-row-MID')
     expect(screen.getByRole('button', { name: /EO lens/ }))
       .toHaveAttribute('aria-pressed', 'false')
@@ -662,7 +663,7 @@ describe('the EO lens (v10b §F1c, v14 as a background tint)', () => {
 
   it('tints the pitch when switched on and untints when switched off',
      async () => {
-       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        await screen.findByTestId('pitch-row-MID')
        const lens = screen.getByRole('button', { name: /EO lens/ })
        fireEvent.click(lens)
@@ -673,7 +674,7 @@ describe('the EO lens (v10b §F1c, v14 as a background tint)', () => {
 
   it('is not offered in the table view, where there is nothing to tint',
      async () => {
-       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
        expect(screen.queryByRole('button', { name: /EO lens/ })).toBeNull()
      })
@@ -699,7 +700,7 @@ describe("the captain's own note (v12 W5 §6.3)", () => {
 
   it('renders the captain note the advice run wrote', async () => {
     serve(withCaptainNote("covering Dave's last armband"))
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByTestId('captain-note'))
       .toHaveTextContent("covering Dave's last armband")
   })
@@ -716,7 +717,7 @@ describe("the captain's own note (v12 W5 §6.3)", () => {
        // is what makes an empty string free to test. An empty chip is worse
        // than no chip.
        serve(withCaptainNote(''))
-       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        await screen.findByTestId('pitch-row-MID')
        expect(screen.queryByTestId('captain-note')).toBeNull()
        const header = (await squadCard()).querySelector('header')!
@@ -725,7 +726,7 @@ describe("the captain's own note (v12 W5 §6.3)", () => {
 
   it('draws nothing for a payload written before the field existed',
      async () => {
-       render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+       render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        await screen.findByTestId('pitch-row-MID')
        expect(screen.queryByTestId('captain-note')).toBeNull()
        const header = (await squadCard()).querySelector('header')!
@@ -737,7 +738,7 @@ describe("the captain's own note (v12 W5 §6.3)", () => {
       gw: 5, reason: null, text: '', at: null, state: 'before_deadline',
       deadline: '2099-09-18T17:30:00Z', grade: null,
     } })
-    render(<MemoryRouter><ThisWeek /></MemoryRouter>)
+    render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     expect(await screen.findByText(/opens at the deadline/i)).toBeInTheDocument()
   })
 })
