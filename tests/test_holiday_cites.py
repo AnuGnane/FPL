@@ -110,7 +110,7 @@ def test_the_code_list_reads_every_tree_and_skips_the_rails():
              for p in files}
     assert roots == {"src/gaffer", "tests", "scripts", "frontend"}, roots
     assert not any("archive" in p.parts or p.name in _RAILS for p in files)
-    # F-177 found about 175 cites on 2026-10-21; a glob gone stale reads few.
+    # F-177: 305 distinct ids per file on 2026-10-22; a stale glob reads few.
     assert sum(len(cited(p.read_text())) for p in files) > 150
 
 
