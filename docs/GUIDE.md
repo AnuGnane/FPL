@@ -884,6 +884,60 @@ and it is worth knowing because you can read the evidence yourself:
   (`tests/test_route_models.py`, F-157); and every npm script is named by
   a doc, CI or another script (`tests/test_npm_scripts.py`, F-162).
 
+**The rails on the docs.** Every test module that reads a doc or a config
+file is named here, by rail (`tests/test_guide_rails.py`, holiday F-179,
+with an allowlist for the two that only name one in passing). This guide is
+held to the code by `tests/test_guide_scripts.py` (every live script named
+here, the archived ones in `scripts/archive/README.md`, F-87),
+`tests/test_guide_jobs.py` (every job kind, F-96),
+`tests/test_launchd_tables.py` (every plist's fire times and command in both
+launchd tables, F-97 and F-115), `tests/test_guide_commands.py` (every CLI
+command and option in §8 and the README, F-100 and F-105),
+`tests/test_guide_routes.py` (every API route in §5, F-102),
+`tests/test_guide_switches.py` (every v20 switch Health lists, F-111),
+`tests/test_guide_data_files.py` (every data file the code spells, in §9,
+F-117), `tests/test_guide_readings.py` (the readings table's prefixes and
+each reading script's pass rule, F-51 and F-125),
+`tests/test_guide_timeouts.py` (§13's job timeouts quote the job kinds'
+constants, F-141) and `tests/test_guide_history.py` (§11 names every cycle
+the ROADMAP ships, F-140). The docs' cross-references are checked by
+`tests/test_doc_paths.py` (every file path the docs name exists, F-107),
+`tests/test_guide_anchors.py` (every in-page link resolves, F-59 and F-108),
+`tests/test_guide_sections.py` (every `§` the docs cite is a heading, F-137),
+`tests/test_doc_commands.py` (every `gaffer` command the docs name is real,
+F-151), `tests/test_doc_pins.py` (the pins the docs quote match their rails,
+F-110), `tests/test_data_gated_tables.py` (the ROADMAP's and §12.2's
+data-gated tables hold the same rows, F-124), `tests/test_holiday_cites.py`
+(every holiday id the docs cite is a box in `HOLIDAY.md`, F-123),
+`tests/test_holiday_shape.py` (`HOLIDAY.md`'s ids, dependencies, gates and
+traces, F-139), `tests/test_roadmap_specs.py` (every spec, plan and research
+document is named in the ROADMAP, F-129 and F-176),
+`tests/test_spec_gates.py` (every spec since v7b pre-registers its gate,
+F-145) and `tests/test_code_cycle_cites.py` (every cycle a comment cites is
+one the ROADMAP ships or a spec names, F-149 and F-178). The README is held
+by `tests/test_readme_config.py` (`Config`'s defaults, F-104),
+`tests/test_readme_modules.py` (every module, F-106) and
+`tests/test_readme_frontend.py` (the frontend's directories and hubs,
+F-118). `CLAUDE.md`'s rules are held by `tests/test_claude_commands.py` (its
+Commands block names real commands and npm scripts, F-131),
+`tests/test_ci_gates.py` (CI runs every gate line it names, F-119),
+`tests/test_noqa_reasons.py` (every noqa mark carries a reason, F-69),
+`tests/test_test_names.py` (test names are sentences, F-73) and
+`tests/test_tracked_secrets.py` (the secrets rule, F-138). The config files
+are held by `tests/test_config_example.py` (`config.example.toml` names every
+key `load_config` reads, with `Config`'s defaults, F-103 and F-113),
+`tests/test_config_v8a.py` and `tests/test_config_v8c.py` (v8a's `[news]`
+and v8c's `[league]` keys documented there), `tests/test_v13_degradation.py`
+(v13's ladder caps documented there and in the README),
+`tests/test_ruff_target.py` (ruff's target and `.python-version` equal
+`requires-python`, F-136), `tests/test_pytest_markers.py` (every marker
+registered in `pyproject.toml`, F-132), `tests/test_pulp_filters.py` (the
+PuLP warning filters fail when PuLP 4 arrives, F-89),
+`tests/test_v12_mcp.py` (v12's `mcp` dependency floor) and
+`tests/test_ci_versions.py` (CI's Python and Node versions each read one
+pinned file, F-150). `tests/test_v7b_driver.py` holds v7b's rule that
+`CONVENTIONS.md` is committed and linked from the ROADMAP.
+
 **The drivers in `scripts/`.** `scripts/v7b_replay.py` and
 `scripts/replay_pair.sh` run the replays; `scripts/seed_stats.py` reads
 banked replay reports back into one multi-seed line, so single seeds run
