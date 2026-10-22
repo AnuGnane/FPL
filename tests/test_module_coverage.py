@@ -13,6 +13,14 @@ as ``gaffer.models.modes_extra``) or imports it as
 uses for ``availability_eval``). ``web/routers/`` is skipped: F-157's
 ``tests/test_route_models.py`` and the ``tests/test_web_*.py`` files reach
 those through the app. ``__init__.py`` is skipped as a package, not a module.
+
+Holiday F-174 asks the same of ``scripts/``: every live script (F-87's
+``_live_scripts()``: not the archive, not a plist) is named by its file name
+in some ``tests/test_*.py``, or imported there by its bare stem
+(``import v7b_composite``, the form ``tests/test_v7b_composite.py`` uses). The
+two unnamed on 2026-10-22 sit on ``SCRIPTS_ALLOWED``, F-170's shape: it can
+only shrink, and F-175 empties it. The package counted three, but
+``v7b_legacy_minutes.py`` is imported by stem in ``tests/test_v7b_driver.py``.
 """
 from __future__ import annotations
 
@@ -20,12 +28,20 @@ import ast
 import re
 from pathlib import Path
 
+from tests.test_guide_scripts import _live_scripts
+
 ROOT = Path(__file__).resolve().parent.parent
 PACKAGE = ROOT / "src" / "gaffer"
 SKIPPED_DIRS = (("web", "routers"),)
 
 # Path under ``src/gaffer/`` to the reason no test names it. Empty on landing.
 ALLOWED: dict[str, str] = {}
+
+# F-174: the live scripts no test names yet; F-175 gives each a test.
+SCRIPTS_ALLOWED = {
+    "eval_milestone.py",  # the milestone evaluation
+    "replay_pair.sh",  # the bash driver that runs an arm against its control
+}
 
 
 def _modules(package: Path) -> dict[str, str]:
@@ -107,3 +123,48 @@ def test_a_dotted_path_and_a_from_import_both_name_a_module(tmp_path):
                      "from gaffer import top\n",
     })
     assert _unnamed(pkg, tdir) == []
+
+
+def _unnamed_scripts(scripts: list[Path], tests: Path, skip: Path | None = None) -> list[str]:
+    """F-174: file names of ``scripts`` no ``tests/test_*.py`` names or imports."""
+    texts, imported = [], set()
+    for path in sorted(tests.glob("test_*.py")):
+        if skip is not None and path.resolve() == skip.resolve():
+            continue
+        text = path.read_text(encoding="utf-8")
+        texts.append(text)
+        for node in ast.walk(ast.parse(text, filename=str(path))):
+            if isinstance(node, ast.Import):
+                imported.update(a.name for a in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                imported.add(node.module)
+    text = "\n".join(texts)
+    # Behind a word boundary, so `v7b_probe.py` does not name a `probe.py`.
+    return [
+        p.name for p in scripts
+        if p.stem not in imported
+        and not re.search(r"(?<![\w])" + re.escape(p.name), text)
+    ]
+
+
+def test_every_live_script_outside_the_allowlist_is_named_by_a_test():
+    stray = [s for s in _unnamed_scripts(_live_scripts(), ROOT / "tests", Path(__file__))
+             if s not in SCRIPTS_ALLOWED]
+    assert stray == []
+
+
+def test_every_allowlisted_script_still_needs_its_entry():
+    unnamed = set(_unnamed_scripts(_live_scripts(), ROOT / "tests", Path(__file__)))
+    assert sorted(SCRIPTS_ALLOWED - unnamed) == []
+
+
+def test_a_script_nobody_names_is_caught_and_a_name_or_bare_import_names_one(tmp_path):
+    scripts = [tmp_path / n for n in ("probe.py", "v7b_probe.py", "head.py", "pair.sh")]
+    tdir = tmp_path / "tests"
+    tdir.mkdir()
+    (tdir / "test_a.py").write_text(
+        '"""Runs scripts/v7b_probe.py and scripts/pair.sh."""\nimport head\n',
+        encoding="utf-8",
+    )
+    (tdir / "helper.py").write_text('"""probe.py"""\n', encoding="utf-8")
+    assert _unnamed_scripts(scripts, tdir) == ["probe.py"]
