@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import re
 import sys
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -20,8 +20,8 @@ sys.path.insert(0, "scripts")
 
 import v20_appendix as ap  # noqa: E402 — scripts/ is not a package; the path insert must come first
 
-OLD = datetime(2026, 10, 13, 22, 0, tzinfo=timezone.utc).timestamp()
-NEW = datetime(2026, 10, 15, 6, 0, tzinfo=timezone.utc).timestamp()
+OLD = datetime(2026, 10, 13, 22, 0, tzinfo=UTC).timestamp()
+NEW = datetime(2026, 10, 15, 6, 0, tzinfo=UTC).timestamp()
 
 B_LOG = """\
 starting replay

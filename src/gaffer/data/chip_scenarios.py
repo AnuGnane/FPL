@@ -8,7 +8,7 @@ this cycle.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -53,7 +53,7 @@ def write_chip_scenarios(fixtures: pd.DataFrame | None,
             # Never a file for nothing: absence is the honest state, and it is
             # also the state every shipped test and every clone expects.
             return 0
-        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        stamp = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         lines = [
             "# Derived, not hand-written. Delete it freely.",
             "#",

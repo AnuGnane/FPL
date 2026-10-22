@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from gaffer import artifacts
@@ -245,7 +245,7 @@ def run_sensitivity(gw: int | None = None, k: int = SENSITIVITY_K,
         "gw": int(gw), "k": int(k), "completed": int(run.completed),
         "failures": int(run.failures), "seed": int(seed),
         "horizon": weeks, "wall_s": wall,
-        "generated_at": datetime.now(timezone.utc).isoformat(
+        "generated_at": datetime.now(UTC).isoformat(
             timespec="seconds"),
         "notice": notice,
         "frequencies": freqs,

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -202,14 +202,14 @@ def build_journal(client, entry_id: int) -> dict:
                            "delta": model_total - actual_total})
 
     return {"rows": rows, "cumulative": cumulative,
-            "built_at": datetime.now(timezone.utc).isoformat()}
+            "built_at": datetime.now(UTC).isoformat()}
 
 
 def _stale(path: Path) -> bool:
     try:
-        age = (datetime.now(timezone.utc)
+        age = (datetime.now(UTC)
                - datetime.fromtimestamp(path.stat().st_mtime,
-                                        tz=timezone.utc)).total_seconds()
+                                        tz=UTC)).total_seconds()
     except OSError:
         return True
     return age > CACHE_MAX_AGE_S

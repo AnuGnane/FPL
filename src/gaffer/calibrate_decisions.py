@@ -18,7 +18,7 @@ This module is deliberately isolated from the advise path: nothing in
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -190,7 +190,7 @@ def run_calibration(seasons: list[str], start_gw: int = 5) -> dict:
                 float(row["gain"]))
     return {
         "version": 1,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "seasons": used,
         "transfer_surplus": transfer_surplus,
         "chip_surplus": chip_surplus,

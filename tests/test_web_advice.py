@@ -2,6 +2,7 @@
 a real advice JSON, a real solve state, and a two-row events table."""
 
 import json
+from datetime import UTC
 from pathlib import Path
 
 import pandas as pd
@@ -253,10 +254,10 @@ def _history(tmp_path, gw, stamp, **overrides):
 
 
 def test_advice_diff_without_a_previous_run_is_not_an_error(client, tmp_path):
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     _advice_on_disk(tmp_path)
-    _history(tmp_path, 5, datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc))
+    _history(tmp_path, 5, datetime(2026, 9, 4, 9, 0, tzinfo=UTC))
     body = client.get("/api/advice/diff").json()
     assert body["available"] is False
     assert body["gw"] == 5
@@ -270,12 +271,12 @@ def test_advice_diff_with_nothing_on_disk_at_all_is_not_an_error(client):
 
 def test_advice_diff_compares_the_two_newest_runs_of_the_same_gw(client,
                                                                  tmp_path):
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     _advice_on_disk(tmp_path)
-    _history(tmp_path, 5, datetime(2026, 9, 3, 9, 0, tzinfo=timezone.utc),
+    _history(tmp_path, 5, datetime(2026, 9, 3, 9, 0, tzinfo=UTC),
              buys=[{"code": 200, "name": "Isak"}], expected_pts=61.5)
-    _history(tmp_path, 5, datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc),
+    _history(tmp_path, 5, datetime(2026, 9, 4, 9, 0, tzinfo=UTC),
              buys=[{"code": 201, "name": "Wirtz"}], expected_pts=64.0,
              captain={"code": 101, "name": "Haaland"})
     body = client.get("/api/advice/diff").json()
@@ -300,12 +301,12 @@ def test_advice_diff_survives_a_history_file_it_cannot_read(client,
     The read is refused by a patched `Path.read_text` as well as the chmod
     (holiday F-44): root reads a 0o000 file anyway, so under the cloud
     sandbox the chmod alone left the route's `except OSError` unexercised."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     _advice_on_disk(tmp_path)
-    _history(tmp_path, 5, datetime(2026, 9, 3, 9, 0, tzinfo=timezone.utc))
+    _history(tmp_path, 5, datetime(2026, 9, 3, 9, 0, tzinfo=UTC))
     written = _history(tmp_path, 5,
-                       datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc))
+                       datetime(2026, 9, 4, 9, 0, tzinfo=UTC))
     unreadable = Path(written).resolve()
     original = Path.read_text
 
@@ -327,23 +328,23 @@ def test_advice_diff_survives_a_history_file_it_cannot_read(client,
 def test_advice_diff_ignores_runs_of_a_different_gameweek(client, tmp_path):
     """Last week's advice is not "the previous run" — the strip says what
     changed about *this* decision."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     _advice_on_disk(tmp_path)
-    _history(tmp_path, 4, datetime(2026, 8, 28, 9, 0, tzinfo=timezone.utc),
+    _history(tmp_path, 4, datetime(2026, 8, 28, 9, 0, tzinfo=UTC),
              expected_pts=50.0)
-    _history(tmp_path, 5, datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc))
+    _history(tmp_path, 5, datetime(2026, 9, 4, 9, 0, tzinfo=UTC))
     body = client.get("/api/advice/diff").json()
     assert body["available"] is False
 
 
 def test_advice_diff_can_be_asked_for_an_explicit_gameweek(client, tmp_path):
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     _advice_on_disk(tmp_path)
-    _history(tmp_path, 4, datetime(2026, 8, 27, 9, 0, tzinfo=timezone.utc),
+    _history(tmp_path, 4, datetime(2026, 8, 27, 9, 0, tzinfo=UTC),
              expected_pts=50.0)
-    _history(tmp_path, 4, datetime(2026, 8, 28, 9, 0, tzinfo=timezone.utc),
+    _history(tmp_path, 4, datetime(2026, 8, 28, 9, 0, tzinfo=UTC),
              expected_pts=52.0)
     body = client.get("/api/advice/diff?gw=4").json()
     assert body["available"] is True

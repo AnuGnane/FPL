@@ -10,7 +10,7 @@ non-empty while there is no plan diff at all (plan A10).
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
@@ -85,10 +85,10 @@ def test_the_movers_ride_a_full_diff_too(client):
     # to the second, so two banked runs inside one second are one file and
     # there would be nothing to diff.
     append_advice_history(ADVICE, GW, now=datetime(2026, 8, 31, 9, 0,
-                                                   tzinfo=timezone.utc))
+                                                   tzinfo=UTC))
     append_advice_history({**ADVICE, "expected_pts": 62.0}, GW,
                           now=datetime(2026, 8, 31, 17, 0,
-                                       tzinfo=timezone.utc))
+                                       tzinfo=UTC))
     body = client.get(f"/api/advice/diff?gw={GW}").json()
     assert body["available"] is True and body["changed"] is True
     assert body["ep_movers_count"] == 1

@@ -6,7 +6,7 @@ them instead. Nothing is persisted, exactly as the module intends.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 from fastapi import APIRouter
@@ -378,7 +378,7 @@ def live() -> LiveState:
             RACE_RIVAL[gw] = int(rival["entry"])
     series = RACE_SERIES.setdefault(gw, [])
     series.append({
-        "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "at": datetime.now(UTC).isoformat(timespec="seconds"),
         "you": my_race,
         "rival": (float(rival["race"]) if rival
                   and rival.get("race") is not None else None)})

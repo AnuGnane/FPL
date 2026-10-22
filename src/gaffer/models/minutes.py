@@ -152,7 +152,7 @@ class ThreeModeModel:
         self.modes_seen: list[int] = []
         self.dnp_cal = None
 
-    def fit(self, df: pd.DataFrame) -> "ThreeModeModel":
+    def fit(self, df: pd.DataFrame) -> ThreeModeModel:
         X = df[self.feature_cols]
         y = mode_labels(df)
         mins = pd.to_numeric(df["minutes"], errors="coerce").fillna(0.0)

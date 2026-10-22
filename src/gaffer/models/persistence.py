@@ -9,7 +9,7 @@ only record of what a pickle was trained on, so it always gets a
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import joblib
@@ -23,7 +23,7 @@ def save_model(obj, name: str, meta: dict | None = None) -> Path:
     path = MODELS_DIR / f"{name}.joblib"
     joblib.dump(obj, path)
     meta = dict(meta or {})
-    meta["saved_at"] = datetime.now(timezone.utc).isoformat()
+    meta["saved_at"] = datetime.now(UTC).isoformat()
     (MODELS_DIR / f"{name}.meta.json").write_text(json.dumps(meta, indent=1))
     return path
 
@@ -56,7 +56,7 @@ def save_params(name: str, params: dict) -> Path:
     MODELS_DIR.mkdir(exist_ok=True)
     path = MODELS_DIR / f"{name}.params.json"
     payload = dict(params)
-    payload["saved_at"] = datetime.now(timezone.utc).isoformat()
+    payload["saved_at"] = datetime.now(UTC).isoformat()
     path.write_text(json.dumps(payload, indent=1))
     return path
 

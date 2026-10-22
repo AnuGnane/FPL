@@ -22,7 +22,7 @@ here is ever a feature. A star is a bookmark.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from gaffer import artifacts
@@ -158,7 +158,7 @@ def watch(code: int, *, note: str | None = None, known_codes=None) -> dict:
     existing = rows.get(code)
     if note is None and existing is not None:
         return dict(existing)
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    now = datetime.now(UTC).isoformat(timespec="seconds")
     row = {"note": str(note or ""),
            "set_at": now,
            "starred_at": str((existing or {}).get("starred_at") or now)}

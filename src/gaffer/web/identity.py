@@ -26,7 +26,8 @@ worst case is the payload handed back exactly as it arrived.
 from __future__ import annotations
 
 import threading
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import pandas as pd
 

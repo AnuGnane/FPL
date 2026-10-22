@@ -3,7 +3,7 @@ httpx.MockTransport against the committed snapshots in tests/data/news/."""
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -339,7 +339,7 @@ def test_fetch_injuries_matches_codes_and_caches_the_page(tmp_path):
 
     calls: list[str] = []
     client = httpx.Client(transport=_transport(calls, _injury_html()))
-    now = datetime(2026, 9, 4, 9, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 4, 9, 0, tzinfo=UTC)
     out = fetch_injuries(_players(), _teams(), cache_dir=tmp_path,
                          client=client, now=now, classifier=False,
                          shadow=False)
@@ -385,7 +385,7 @@ def test_cache_path_clamps_the_window_to_a_day(tmp_path):
     stops carrying the day; below 1 it divides by zero."""
     from gaffer.data.news import cache_path
 
-    now = datetime(2026, 9, 4, 23, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 4, 23, tzinfo=UTC)
     assert (cache_path(tmp_path, "x", 999, now).name
             == cache_path(tmp_path, "x", 24, now).name)
     assert (cache_path(tmp_path, "x", 0, now).name

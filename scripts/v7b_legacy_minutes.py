@@ -39,7 +39,7 @@ class LegacyMinutesModel:
         self.sixty_clf = LGBMClassifier(**LGB_KW)
         self.min_reg = LGBMRegressor(**LGB_KW)
 
-    def fit(self, df: pd.DataFrame) -> "LegacyMinutesModel":
+    def fit(self, df: pd.DataFrame) -> LegacyMinutesModel:
         X = df[self.feature_cols]
         self.play_clf.fit(X, (df["minutes"] > 0).astype(int))
         self.sixty_clf.fit(X, (df["minutes"] >= 60).astype(int))

@@ -9,7 +9,7 @@ is half a point, and says so, because a test that depended on HiGHS resolving
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pandas as pd
 import pytest
@@ -23,7 +23,7 @@ from tests.conftest import patch_view
 # stamped relative to the clock rather than with a literal date that would
 # quietly turn every one of these into a stale-log test tomorrow.
 TODAY = snap_date()
-YESTERDAY = snap_date(datetime.now(timezone.utc) - timedelta(days=1))
+YESTERDAY = snap_date(datetime.now(UTC) - timedelta(days=1))
 
 
 @pytest.fixture(autouse=True)
@@ -260,7 +260,7 @@ def test_the_cache_does_not_serve_yesterdays_table_after_midnight(monkeypatch):
                             "now_cost": [80], "price_change_percent": [-50.0],
                             "direction": ["drop"], "calibrating": [False]}))
     assert price_timing.owned_price_falls([1]) == {1: 0.5}
-    day["now"] = snap_date(datetime.now(timezone.utc) + timedelta(days=1))
+    day["now"] = snap_date(datetime.now(UTC) + timedelta(days=1))
     assert price_timing.owned_price_falls([1]) == {}
 
 

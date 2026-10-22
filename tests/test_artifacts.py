@@ -5,7 +5,7 @@ a column that goes missing or a key that comes back a string breaks them far
 from where it was lost. The round trips are pinned here, at the seam.
 """
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
@@ -339,10 +339,10 @@ def test_append_advice_history_writes_one_file_per_run(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     first = art.append_advice_history(_advice(), 5,
                                       now=datetime(2026, 9, 4, 9, 0,
-                                                   tzinfo=timezone.utc))
+                                                   tzinfo=UTC))
     second = art.append_advice_history(_advice(pts=63.0), 5,
                                        now=datetime(2026, 9, 4, 10, 0,
-                                                    tzinfo=timezone.utc))
+                                                    tzinfo=UTC))
     assert first != second
     assert first.parent == art.ADVICE_HISTORY
     assert len(art.advice_history_files(5)) == 2
@@ -356,7 +356,7 @@ def test_advice_history_is_pruned_to_the_newest_twenty(tmp_path, monkeypatch):
     for minute in range(25):
         art.append_advice_history(
             _advice(pts=float(minute)), 5,
-            now=datetime(2026, 9, 4, 9, minute, tzinfo=timezone.utc))
+            now=datetime(2026, 9, 4, 9, minute, tzinfo=UTC))
     files = art.advice_history_files()
     assert len(files) == art.ADVICE_HISTORY_KEEP
     newest = json.loads(files[-1].read_text())
@@ -369,10 +369,10 @@ def test_advice_history_files_filter_by_gameweek(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     art.append_advice_history(_advice(gw=5), 5,
                               now=datetime(2026, 9, 4, 9, 0,
-                                           tzinfo=timezone.utc))
+                                           tzinfo=UTC))
     art.append_advice_history(_advice(gw=6), 6,
                               now=datetime(2026, 9, 11, 9, 0,
-                                           tzinfo=timezone.utc))
+                                           tzinfo=UTC))
     assert len(art.advice_history_files(5)) == 1
     assert len(art.advice_history_files(6)) == 1
     assert len(art.advice_history_files()) == 2

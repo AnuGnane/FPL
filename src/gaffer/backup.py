@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import subprocess
 import tarfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from gaffer import io
@@ -68,7 +68,7 @@ def archive_name(now: datetime | None = None) -> str:
     order.
     """
     return "gaffer-{}.tar.gz".format(
-        (now or datetime.now(timezone.utc)).strftime("%Y%m%d-%H%M%S"))
+        (now or datetime.now(UTC)).strftime("%Y%m%d-%H%M%S"))
 
 
 def archived_roots() -> list[tuple[Path, str]]:
@@ -193,7 +193,7 @@ def latest_backup(dest: Path | str) -> dict | None:
     stat = newest.stat()
     return {"path": str(newest),
             "modified_at": datetime.fromtimestamp(
-                stat.st_mtime, tz=timezone.utc).isoformat(),
+                stat.st_mtime, tz=UTC).isoformat(),
             "bytes": int(stat.st_size)}
 
 

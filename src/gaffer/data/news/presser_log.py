@@ -10,7 +10,7 @@ Never raises: instrumentation does not block advice.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 
@@ -64,7 +64,7 @@ def presser_rows(frame: pd.DataFrame, season: str, gw: int,
                                     errors="coerce"),
         "p_play_before": before,
         "p_play_would": before * factor,
-        "run_at": str(run_at or datetime.now(timezone.utc).isoformat())})
+        "run_at": str(run_at or datetime.now(UTC).isoformat())})
     return out[PRESSER_COLS].reset_index(drop=True)
 
 

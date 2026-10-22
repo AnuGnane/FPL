@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import json
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -323,7 +323,7 @@ def _file_stamp(rel: str) -> str | None:
     try:
         return datetime.fromtimestamp(
             (store.DATA_DIR / rel).stat().st_mtime,
-            tz=timezone.utc).isoformat(timespec="seconds")
+            tz=UTC).isoformat(timespec="seconds")
     except OSError:
         return None
 
@@ -729,7 +729,7 @@ def _notify(title: str, body: str) -> bool:
 # --- the runner -------------------------------------------------------
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def format_digest(payload: dict) -> str:

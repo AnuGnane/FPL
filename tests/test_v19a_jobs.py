@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 import plistlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -32,7 +32,7 @@ from gaffer.web.app import create_app
 from gaffer.web.routers import meta
 from gaffer.web.routers.meta import job_health
 
-NOW = datetime(2026, 9, 15, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 15, 12, 0, tzinfo=UTC)
 # Read before the autouse fixture below repoints it for every test.
 INSTALLED_DEFAULT = meta.INSTALLED_PLIST_DIR
 

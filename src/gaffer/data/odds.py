@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import math
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -44,7 +44,7 @@ class OddsClient:
                 resp.raise_for_status()
                 data = resp.json()
                 if snapshot:
-                    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+                    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
                     self.raw_dir.mkdir(parents=True, exist_ok=True)
                     (self.raw_dir / f"{snapshot}-{ts}.json").write_text(
                         json.dumps(data))

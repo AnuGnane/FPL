@@ -9,7 +9,7 @@ Task 5's merge rules are appended below, at ``--- the merge ---``.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 import pandas as pd
@@ -235,7 +235,7 @@ def test_one_silent_provider_leaves_the_other_alone(tmp_path):
     stamped to the second, so two fetches that straddle a second boundary
     differed in that column alone and the comparison failed, which a CI tick
     cannot tell from a real regression."""
-    now = datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
     alone = fetch_lineups(_players(), _teams(), cache_dir=tmp_path / "a",
                           client=_both(_ffs_html(), None),
                           providers=["ffs"], absence=False, now=now)

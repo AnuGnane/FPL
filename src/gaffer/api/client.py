@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -82,7 +82,7 @@ class FPLClient:
             # byte for byte what the last poll wrote.
             if existing and existing[-1].read_text() == body:
                 return
-            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+            ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
             (self.raw_dir / f"{kind}-{ts}.json").write_text(body)
             for stale in self._dumps(kind)[:-KEEP_DUMPS]:
                 # missing_ok: another process pruning the same directory is a

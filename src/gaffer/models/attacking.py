@@ -55,7 +55,7 @@ class AttackingModel:
         yield "MID", df[df["position"] == "MID"]
         yield "FWD", df[df["position"] == "FWD"]
 
-    def fit(self, df: pd.DataFrame) -> "AttackingModel":
+    def fit(self, df: pd.DataFrame) -> AttackingModel:
         played = df[df["minutes"] > 0]
         self.cols_ = [c for c in self.feature_cols if c in df.columns]
         for grp, sub in self._groups(played):
