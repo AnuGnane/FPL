@@ -1,22 +1,17 @@
 // Holiday F-185: a test that writes to console.error or console.warn fails
 // unless the message belongs to a family listed here. On 2026-10-22 vitest
 // passed 1,295 tests and printed 57 stderr blocks nobody read; the guard makes
-// a new one a failure instead of noise. Each entry names the package that
-// empties it, so the list only ever shrinks: F-186 closed the act warnings at
-// source and removed theirs, and F-187 removes the router's.
+// a new one a failure instead of noise. The list started with two families and
+// only shrinks: F-186 closed the act warnings at source and F-187 set the
+// router's v7 future flags, so it is empty. A new entry carries its reason and
+// the package that will empty it again.
 
 interface ExpectedMessage {
   pattern: RegExp
   reason: string
 }
 
-export const EXPECTED: readonly ExpectedMessage[] = [
-  {
-    pattern: /React Router Future Flag Warning/,
-    reason: 'react-router-dom 6.26 warns once per router mount until the v7 '
-      + 'future flags are set; F-187 sets them and removes this entry.',
-  },
-]
+export const EXPECTED: readonly ExpectedMessage[] = []
 
 type Method = 'error' | 'warn'
 const METHODS: readonly Method[] = ['error', 'warn']
