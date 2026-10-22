@@ -4,6 +4,8 @@ ROADMAP candidate 7, in F-87's shape (``tests/test_guide_scripts.py``): both
 docs name all of ``gaffer --help``'s commands today, but nothing held the
 rule, so the next command could go unnamed. Membership only, no count.
 Since F-105 every option of every command is held to §8 the same way.
+Since F-191 every command is also invoked by some test beyond ``--help``,
+or sits in ``UNEXERCISED`` until one is written.
 """
 
 from __future__ import annotations
@@ -114,3 +116,58 @@ def test_a_section_missing_one_options_mention_fails_the_rail():
     section = _guide_section()
     assert "`--lan` serves" in section
     assert _unnamed_options(["--lan"], section.replace("`--lan` serves", "serves")) == ["--lan"]
+
+
+# A test invokes a command when its name opens the argument list of a
+# ``runner.invoke(app, [...])`` (or ``cli.app``), or follows the gaffer
+# executable in a ``subprocess.run([...])`` argv (holiday F-191).
+_INVOKED = re.compile(
+    r'invoke\(\s*(?:cli\.)?app,\s*\[\s*"([a-z][a-z0-9-]*)"(?!\s*,\s*"--help"\s*\])'
+)
+_SPAWNED = re.compile(r'subprocess\.run\(\s*\[\s*[^,\]]*gaffer[^,\]]*,\s*"([a-z][a-z0-9-]*)"')
+
+# The commands no test invokes beyond ``--help``, held exactly in F-69's shape:
+# a new command without a test fails the rail, and so does a test written for
+# one of these until its line is struck (F-191; F-192 writes the six tests).
+UNEXERCISED = {
+    "train",         # (re)trains every model on history and live data
+    "field-scrape",  # banks the top-10k field sample and its EO for a gameweek
+    "review",        # grades last week's decisions against the model's
+    "digest",        # writes the Friday or Tuesday digest and notifies
+    "backup",        # tars the data no command can rebuild, keeping the last few
+    "mcp",           # serves the advice to an MCP client over stdio
+}
+
+
+def _exercised(sources: list[str]) -> set[str]:
+    found: set[str] = set()
+    for text in sources:
+        found.update(_INVOKED.findall(text))
+        found.update(_SPAWNED.findall(text))
+    return found
+
+
+def _test_sources() -> list[str]:
+    return [p.read_text(encoding="utf-8") for p in sorted(Path("tests").glob("test_*.py"))
+            if p.name != "test_guide_commands.py"]
+
+
+def test_every_cli_command_is_exercised_by_a_test_or_allowlisted():
+    unexercised = set(_commands()) - _exercised(_test_sources())
+    assert unexercised - UNEXERCISED == set()
+
+
+def test_each_allowlisted_command_is_still_unexercised_and_still_a_command():
+    exercised = _exercised(_test_sources())
+    assert UNEXERCISED & exercised == set()
+    assert UNEXERCISED - set(_commands()) == set()
+
+
+def test_the_rail_reads_invoke_and_subprocess_and_skips_a_bare_help():
+    sample = (
+        'runner.invoke(app, ["advise", "--gw", "7"])\n'
+        'result = runner.invoke(\n    cli.app,\n    ["tidy"],\n)\n'
+        'subprocess.run([str(gaffer), "refresh"], cwd=tmp)\n'
+        'runner.invoke(app, ["train", "--help"])\n'
+    )
+    assert _exercised([sample]) == {"advise", "tidy", "refresh"}
