@@ -133,7 +133,9 @@ test, the allowlist empty).
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
 rulings on 2026-09-15; plan `plans/2026-09-15-v19-programme.md`; tracker
 `plans/2026-09-15-v19-tracker.md`; research
-`research/2026-09-15-v19-research-{frontend,backend,product}.md`). Eight
+`research/2026-09-15-v19-research-frontend.md`,
+`research/2026-09-15-v19-research-backend.md` and
+`research/2026-09-15-v19-research-product.md`). Eight
 sub-cycles aimed at the site's surface and the weekly loop, the model's
 replay-free half and code health, none changing a served number; the
 replay-gated model arms are costed in the design's §4 and deferred to
@@ -256,8 +258,10 @@ rendered (v19g), the schema field sentences (v19h).
 
 ## Candidates for the next spec (not planned, not committed)
 
-From the 2026-09-01 research, items v12 did not take, in its ranking.
-Detail in `docs/GUIDE.md` §12.5.
+From the 2026-09-01 research
+(`research/2026-09-01-polish-and-improvement-research.md`), items v12 did
+not take, in its ranking. Detail in `docs/GUIDE.md` §12.5. The survey before
+it is `research/2026-08-25-improvement-research.md`.
 
 1. **C1 news-layer ablation vs the plain FPL flag** — the research's most important experiment; GW2's news-shadow reading points the same way. Both halves pre-registered (buckets + K ≥ 5 replay)
 2. ~~The K ≥ 5 role replay above~~ (ran 2026-10-13, v20a: `role` stays; the minutes model ships as it is)
@@ -269,7 +273,7 @@ Detail in `docs/GUIDE.md` §12.5.
 8. B8 FotMob xG fallback — only if Understat goes down
 9. **A blended league stance** (v15 deferred): per-league λ and cover tables merged by weight. Chasing in one league and defending in another largely cancel, so it needs a replay to justify before it touches protected solver code
 10. ~~The in-app chat~~ (shipped as v19f's question box) — v16 deferred it, gated on a few briefs read: a question box on This Week over the same facts document the brief reads, the same no-tools command, the same truth check on every answer
-11. **The bonus head sees goals** (09-04 review item 3): feed `e_goals`, `e_assists` and `position` to the bonus model — the review's clearest structural defect. The model cycle's first arm; replay-gated
+11. **The bonus head sees goals** (09-04 review item 3, `research/2026-09-04-current-state-review.md`): feed `e_goals`, `e_assists` and `position` to the bonus model — the review's clearest structural defect. The model cycle's first arm; replay-gated
 12. **Bound `e_gc_model`** (item 4): a Dixon-Coles sanity floor so 0.035 expected goals conceded cannot be served. Replay-gated; v19g pre-registered the band (`p_cs` 0.02–0.85, `e_gc` 0.15–4.0) as a strict xfail rail, so the clip is measured by removing the mark
 13. ~~A GKP calibration delta~~ — closed by accrual and pinned in v19g (four keys, the floor named on Health)
 14. **Bank the price reading minutes before the solve** (v19g's price-timing reading): a midday solve reads a log dated the night before, so the term charges nothing or reads unknown; the Thursday 18:00 run is the first that can show a charge
