@@ -18,9 +18,8 @@ Holiday F-174 asks the same of ``scripts/``: every live script (F-87's
 ``_live_scripts()``: not the archive, not a plist) is named by its file name
 in some ``tests/test_*.py``, or imported there by its bare stem
 (``import v7b_composite``, the form ``tests/test_v7b_composite.py`` uses). The
-two unnamed on 2026-10-22 sit on ``SCRIPTS_ALLOWED``, F-170's shape: it can
-only shrink, and F-175 empties it. The package counted three, but
-``v7b_legacy_minutes.py`` is imported by stem in ``tests/test_v7b_driver.py``.
+two unnamed on 2026-10-22 sat on an allowlist until F-175 gave each a test
+and deleted it, so a new script lands with its test.
 """
 from __future__ import annotations
 
@@ -36,12 +35,6 @@ SKIPPED_DIRS = (("web", "routers"),)
 
 # Path under ``src/gaffer/`` to the reason no test names it. Empty on landing.
 ALLOWED: dict[str, str] = {}
-
-# F-174: the live scripts no test names yet; F-175 gives each a test.
-SCRIPTS_ALLOWED = {
-    "eval_milestone.py",  # the milestone evaluation
-    "replay_pair.sh",  # the bash driver that runs an arm against its control
-}
 
 
 def _modules(package: Path) -> dict[str, str]:
@@ -147,15 +140,8 @@ def _unnamed_scripts(scripts: list[Path], tests: Path, skip: Path | None = None)
     ]
 
 
-def test_every_live_script_outside_the_allowlist_is_named_by_a_test():
-    stray = [s for s in _unnamed_scripts(_live_scripts(), ROOT / "tests", Path(__file__))
-             if s not in SCRIPTS_ALLOWED]
-    assert stray == []
-
-
-def test_every_allowlisted_script_still_needs_its_entry():
-    unnamed = set(_unnamed_scripts(_live_scripts(), ROOT / "tests", Path(__file__)))
-    assert sorted(SCRIPTS_ALLOWED - unnamed) == []
+def test_every_live_script_is_named_by_a_test():
+    assert _unnamed_scripts(_live_scripts(), ROOT / "tests", Path(__file__)) == []
 
 
 def test_a_script_nobody_names_is_caught_and_a_name_or_bare_import_names_one(tmp_path):
