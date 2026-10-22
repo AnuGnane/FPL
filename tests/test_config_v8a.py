@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from gaffer.config import Config, config_in_force, invalidate, load_config
 
 _TOML = """
@@ -75,11 +77,11 @@ def test_the_shipped_command_hands_the_model_no_tools():
                  "WebFetch", "WebSearch", "Task", "NotebookEdit"):
         assert tool in LLM_NO_TOOLS.split(",")
     for doc in ("config.example.toml", "README.md"):
-        assert LLM_NO_TOOLS in open(doc, encoding="utf-8").read()
+        assert LLM_NO_TOOLS in Path(doc).read_text(encoding="utf-8")
 
 
 def test_the_example_config_documents_every_new_key():
-    text = open("config.example.toml", encoding="utf-8").read()
+    text = Path("config.example.toml").read_text(encoding="utf-8")
     for key in ("llm_classifier", "llm_shadow", "llm_command",
                 "llm_timeout_s", "lineup_absence", "lineup_absence_damp",
                 "lineup_start_floor"):
