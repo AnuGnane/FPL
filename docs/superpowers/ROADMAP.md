@@ -132,8 +132,8 @@ F-173 put `bash -n frontend/scripts/shots.sh` in CI beside
 `replay_pair.sh`'s, and F-175's `tests/test_shell_syntax.py` parses every
 live bash script in the inner loop too; `tests/test_module_coverage.py`
 gained a second tree, every live script named by a test (F-174, its
-allowlist emptied by F-175's tests for `eval_milestone.py` and
-`v7b_legacy_minutes.py`); `tests/test_roadmap_specs.py` reads the research
+allowlist emptied and deleted by F-175's tests for `eval_milestone.py`,
+`v7b_legacy_minutes.py` and the bash scripts); `tests/test_roadmap_specs.py` reads the research
 documents too (F-176), `tests/test_holiday_cites.py` every holiday id the
 code cites (F-177) and `tests/test_code_cycle_cites.py` the cycles
 `tests/` and `frontend/src/` cite (F-178); F-179's
