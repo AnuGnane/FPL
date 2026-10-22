@@ -935,7 +935,9 @@ and v8c's `[league]` keys documented there), `tests/test_v13_degradation.py`
 `requires-python`, F-136), `tests/test_pytest_markers.py` (every marker
 registered in `pyproject.toml`, F-132), `tests/test_pulp_filters.py` (the
 PuLP warning filters fail when PuLP 4 arrives, F-89),
-`tests/test_v12_mcp.py` (v12's `mcp` dependency floor) and
+`tests/test_v12_mcp.py` (v12's `mcp` dependency floor),
+`tests/test_dependencies.py` (every declared dependency is imported and
+every third-party import declared, F-182) and
 `tests/test_ci_versions.py` (CI's Python and Node versions each read one
 pinned file, F-150). `tests/test_v7b_driver.py` holds v7b's rule that
 `CONVENTIONS.md` is committed and linked from the ROADMAP. Beside them,
