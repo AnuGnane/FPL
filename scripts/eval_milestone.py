@@ -16,66 +16,8 @@ from gaffer.models.train import evaluate_predictions, load_training_frame, train
 
 HOLDOUT_SEASON, HOLDOUT_FROM = 3, 30      # season_idx 3 = 2025-26
 
-df_full, tg_full, elo_final = load_training_frame()
-train_df = df_full[(df_full.season_idx < HOLDOUT_SEASON) |
-                   ((df_full.season_idx == HOLDOUT_SEASON) &
-                    (df_full.gw < HOLDOUT_FROM))]
-train_tg = tg_full[(tg_full.season_idx < HOLDOUT_SEASON) |
-                   ((tg_full.season_idx == HOLDOUT_SEASON) &
-                    (tg_full.gw < HOLDOUT_FROM))]
-models = train_all(train_df, train_tg, save=False)
 
-holdout = df_full[(df_full.season_idx == HOLDOUT_SEASON) &
-                  (df_full.gw >= HOLDOUT_FROM)].reset_index(drop=True)
-mp = models["minutes"].predict(holdout)
-ap = models["attacking"].predict(holdout)
-dp = models["defcon"].predict(holdout)
-sp = models["saves"].predict(holdout)
-# v20b §2: a head fitted with BONUS_SEES_ATTACK on reads the attacking
-# head's output; an off head reads the holdout as it always did.
-bp = models["bonus"].predict(
-    with_attack(holdout, ap["e_goals"], ap["e_assists"])
-    if bonus_sees_attack(models["bonus"]) else holdout)
-tg_holdout = tg_full[(tg_full.season_idx == HOLDOUT_SEASON) &
-                     (tg_full.gw >= HOLDOUT_FROM)].dropna(subset=["elo_diff"])
-tp = models["team"].predict(tg_holdout)
-tp["opp_code"] = tg_holdout["opp_code"].values
-
-# Positional assembly, not a merge: (code, season_idx, gw) is not unique in a
-# double gameweek — player_gw holds one row per player-MATCH — so merging the
-# per-player predictions would fan each DGW pair out to n**2 rows. Every
-# predict() returns one row per input row in input order, so column copies are
-# exact. The team merge is genuinely many-to-one and stays a merge.
-keys = ["code", "season_idx", "gw"]
-comp = holdout[keys + ["position", "team_code", "opp_code"]].copy()
-comp["p_play"] = mp["p_play"].values
-comp["p60"] = mp["p60"].values
-comp["e_goals"] = ap["e_goals"].values
-comp["e_assists"] = ap["e_assists"].values
-comp["p_defcon"] = dp["p_defcon"].values
-comp["e_saves"] = sp["e_saves"].values
-comp["e_bonus"] = bp["e_bonus"].values
-# opp_code is part of the join key so a double gameweek's two fixtures match
-# the right team prediction each: (team_code, gw) alone is not unique there.
-comp = comp.merge(tp.rename(columns={"code": "team_code"}),
-                  on=["team_code", "season_idx", "gw", "opp_code"], how="left",
-                  validate="many_to_one")
-comp["p_cs"] = comp["p_cs"].fillna(0.25)
-comp["e_gc"] = comp["e_gc"].fillna(1.4)
-comp["e_cards"] = holdout.apply(card_penalty, axis=1).values
-scoring = scoring_table(load_bootstrap_sample())
-# Same seam as advise/backtest: calibrate per fixture, then collapse.
-ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
-                                 models.get("calibration")))
-
-# One truth row per player-gameweek, matching ep_matrix's DGW summing. Left
-# per-fixture, a double gameweek would score the model's summed ep twice
-# against half its points while the per-fixture baselines went unpenalised.
-truth = holdout.groupby(["code", "gw"], as_index=False).agg(
-    total_points=("total_points", "sum"), minutes=("minutes", "sum"))
-
-
-def baseline(col: str):
+def baseline(holdout, col: str):
     """Naive predictor from a rolling column, one row per player-gameweek.
 
     A baseline carries one value per match, and a DGW's two matches share a
@@ -85,7 +27,7 @@ def baseline(col: str):
     return b.groupby(["code", "gw"], as_index=False).agg(ep=("ep", "first"))
 
 
-def bias_60(pred):
+def bias_60(pred, truth):
     """Signed mean of (ep - actual) over rows a player actually started.
 
     Same inner join as :func:`evaluate_predictions`, so the row set matches
@@ -96,9 +38,72 @@ def bias_60(pred):
     return round(float((st["ep"] - st["total_points"]).mean()), 3)
 
 
-print("NOTE    : odds features are inactive in this eval "
-      "(no historical odds; odds blend in at prediction time only)")
-print("MODEL   :", evaluate_predictions(ep, truth))
-print("          bias_60:", bias_60(ep))
-print("LAST-5  :", evaluate_predictions(baseline("total_points_r5"), truth))
-print("SEASON  :", evaluate_predictions(baseline("total_points_r38"), truth))
+def main() -> None:
+    df_full, tg_full, elo_final = load_training_frame()
+    train_df = df_full[(df_full.season_idx < HOLDOUT_SEASON) |
+                       ((df_full.season_idx == HOLDOUT_SEASON) &
+                        (df_full.gw < HOLDOUT_FROM))]
+    train_tg = tg_full[(tg_full.season_idx < HOLDOUT_SEASON) |
+                       ((tg_full.season_idx == HOLDOUT_SEASON) &
+                        (tg_full.gw < HOLDOUT_FROM))]
+    models = train_all(train_df, train_tg, save=False)
+
+    holdout = df_full[(df_full.season_idx == HOLDOUT_SEASON) &
+                      (df_full.gw >= HOLDOUT_FROM)].reset_index(drop=True)
+    mp = models["minutes"].predict(holdout)
+    ap = models["attacking"].predict(holdout)
+    dp = models["defcon"].predict(holdout)
+    sp = models["saves"].predict(holdout)
+    # v20b §2: a head fitted with BONUS_SEES_ATTACK on reads the attacking
+    # head's output; an off head reads the holdout as it always did.
+    bp = models["bonus"].predict(
+        with_attack(holdout, ap["e_goals"], ap["e_assists"])
+        if bonus_sees_attack(models["bonus"]) else holdout)
+    tg_holdout = tg_full[(tg_full.season_idx == HOLDOUT_SEASON) &
+                         (tg_full.gw >= HOLDOUT_FROM)].dropna(subset=["elo_diff"])
+    tp = models["team"].predict(tg_holdout)
+    tp["opp_code"] = tg_holdout["opp_code"].values
+
+    # Positional assembly, not a merge: (code, season_idx, gw) is not unique in a
+    # double gameweek — player_gw holds one row per player-MATCH — so merging the
+    # per-player predictions would fan each DGW pair out to n**2 rows. Every
+    # predict() returns one row per input row in input order, so column copies are
+    # exact. The team merge is genuinely many-to-one and stays a merge.
+    keys = ["code", "season_idx", "gw"]
+    comp = holdout[keys + ["position", "team_code", "opp_code"]].copy()
+    comp["p_play"] = mp["p_play"].values
+    comp["p60"] = mp["p60"].values
+    comp["e_goals"] = ap["e_goals"].values
+    comp["e_assists"] = ap["e_assists"].values
+    comp["p_defcon"] = dp["p_defcon"].values
+    comp["e_saves"] = sp["e_saves"].values
+    comp["e_bonus"] = bp["e_bonus"].values
+    # opp_code is part of the join key so a double gameweek's two fixtures match
+    # the right team prediction each: (team_code, gw) alone is not unique there.
+    comp = comp.merge(tp.rename(columns={"code": "team_code"}),
+                      on=["team_code", "season_idx", "gw", "opp_code"], how="left",
+                      validate="many_to_one")
+    comp["p_cs"] = comp["p_cs"].fillna(0.25)
+    comp["e_gc"] = comp["e_gc"].fillna(1.4)
+    comp["e_cards"] = holdout.apply(card_penalty, axis=1).values
+    scoring = scoring_table(load_bootstrap_sample())
+    # Same seam as advise/backtest: calibrate per fixture, then collapse.
+    ep = ep_matrix(apply_calibration(assemble_ep(comp, scoring),
+                                     models.get("calibration")))
+
+    # One truth row per player-gameweek, matching ep_matrix's DGW summing. Left
+    # per-fixture, a double gameweek would score the model's summed ep twice
+    # against half its points while the per-fixture baselines went unpenalised.
+    truth = holdout.groupby(["code", "gw"], as_index=False).agg(
+        total_points=("total_points", "sum"), minutes=("minutes", "sum"))
+
+    print("NOTE    : odds features are inactive in this eval "
+          "(no historical odds; odds blend in at prediction time only)")
+    print("MODEL   :", evaluate_predictions(ep, truth))
+    print("          bias_60:", bias_60(ep, truth))
+    print("LAST-5  :", evaluate_predictions(baseline(holdout, "total_points_r5"), truth))
+    print("SEASON  :", evaluate_predictions(baseline(holdout, "total_points_r38"), truth))
+
+
+if __name__ == "__main__":
+    main()
