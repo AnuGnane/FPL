@@ -47,3 +47,10 @@ def test_a_target_below_the_floor_fails(tmp_path):
     problem = ruff_target_mismatch(pyproject.read_text(), "3.13\n")
     assert problem is not None
     assert "py311" in problem and ".python-version is 3.13" in problem
+
+
+def test_ruff_selects_the_pyupgrade_family():
+    """Holiday F-188 turned ``UP`` on; dropping it from ``select`` would let
+    ``timezone.utc`` and quoted annotations creep back without a word."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    assert "UP" in data["tool"]["ruff"]["lint"]["select"]

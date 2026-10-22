@@ -78,7 +78,7 @@ filterwarnings = [
 ]
 
 [tool.ruff]
-# v18g §1: E, F, B and I at line 100; the ignores below each carry a reason.
+# v18g §1: E, F, B and I at line 100, and UP since holiday F-188; the ignores below each carry a reason.
 line-length = 100
 target-version = "py312"
 # F-167: scripts/archive/ is the retired code v18g moved out of the way; it is
@@ -86,7 +86,7 @@ target-version = "py312"
 extend-exclude = ["scripts/archive"]
 
 [tool.ruff.lint]
-select = ["E", "F", "B", "I"]
+select = ["E", "F", "B", "I", "UP"]
 # B905: zip(strict=) on 174 sites is noise, not safety — every zip here is
 # over parallel columns the caller built (v18g §1).
 ignore = ["B905"]
@@ -113,6 +113,21 @@ ignore = ["B905"]
 # I001: s2_replay.py is orchestrator-only (CLAUDE.md), so F-167 leaves its
 # import order as it stands rather than sorting it.
 "scripts/s2_replay.py" = ["I001"]
+# UP (holiday F-188): the golden modules are on the Mac's golden path
+# (HOLIDAY.md Merging rule 2), so their sites wait for F-190's needs-mac PR.
+"src/gaffer/pipeline.py" = ["UP"]
+"src/gaffer/config.py" = ["UP"]
+"src/gaffer/artifacts.py" = ["UP"]
+"src/gaffer/brief.py" = ["UP"]
+"src/gaffer/ladder.py" = ["UP"]
+"src/gaffer/web/job_kinds.py" = ["UP"]
+# UP (holiday F-188): orchestrator-only files (CLAUDE.md) keep their spelling
+# for good; the orchestrator owns their diffs.
+"src/gaffer/advise.py" = ["UP"]
+"src/gaffer/optimize/milp.py" = ["UP"]
+"src/gaffer/web/jobs.py" = ["UP"]
+"tests/test_advise.py" = ["UP"]
+"tests/test_v9d_degradation.py" = ["UP"]
 
 [tool.ruff.lint.flake8-bugbear]
 # B008: typer's declarative defaults are the CLI's idiom (v18g §2.1).
