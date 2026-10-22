@@ -54,3 +54,10 @@ def test_ruff_selects_the_pyupgrade_family():
     ``timezone.utc`` and quoted annotations creep back without a word."""
     data = tomllib.loads(Path("pyproject.toml").read_text())
     assert "UP" in data["tool"]["ruff"]["lint"]["select"]
+
+
+def test_ruff_selects_the_simplify_family():
+    """Holiday F-189 turned ``SIM`` on, in F-188's shape: the family stays
+    selected or this fails, so it cannot be dropped silently."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    assert "SIM" in data["tool"]["ruff"]["lint"]["select"]
