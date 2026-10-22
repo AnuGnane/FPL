@@ -9,6 +9,13 @@ id must be a box in ``HOLIDAY.md``, and an id cited where the GUIDE says a
 line is closed (a struck ``~~…~~`` span in §12.4 or §12.5, or a row of the
 §12.5 readings table) must be a ticked one. An id cited as still open, as
 ROADMAP "Where things stand" names F-92, is not read for its tick.
+
+Since F-177 the code is read too (``CODE``): every ``.py`` under
+``src/gaffer/``, ``tests/`` and ``scripts/`` outside the archive, and every
+``.ts``/``.tsx`` under ``frontend/src/``. A comment citing an F-id that is no
+box is a pointer to nowhere, so it fails here as a doc's would. The two
+holiday rails' own files are left out: their ``F-999`` fixtures are
+deliberate.
 """
 
 from __future__ import annotations
@@ -23,6 +30,17 @@ DOCS = [Path("README.md"), Path("docs/GUIDE.md"),
         # replay package's id lands next (F-126's shape applied here).
         Path("CLAUDE.md"), Path("docs/superpowers/CONVENTIONS.md")]
 HOLIDAY = Path("HOLIDAY.md")
+# F-177: the holiday rails themselves cite F-999 on purpose.
+_RAILS = {"test_holiday_cites.py", "test_holiday_shape.py"}
+
+
+def code_files() -> list[Path]:
+    """The code whose ``F-<n>`` cites must be boxes (F-177)."""
+    py = [p for d in ("src/gaffer", "tests", "scripts")
+          for p in Path(d).rglob("*.py")
+          if "archive" not in p.parts and p.name not in _RAILS]
+    ts = [p for ext in ("*.ts", "*.tsx") for p in Path("frontend/src").rglob(ext)]
+    return sorted(py + ts)
 
 _ID = re.compile(r"\bF-(\d+)\b")
 _BOX = re.compile(r"^- \[([ x])\] \*\*F-(\d+)\b", re.M)
@@ -84,6 +102,21 @@ def test_every_cited_holiday_id_is_a_box():
     box = boxes(HOLIDAY.read_text())
     assert box, "HOLIDAY.md has no boxes"
     assert unboxed([p.read_text() for p in DOCS], box) == []
+
+
+def test_the_code_list_reads_every_tree_and_skips_the_rails():
+    files = code_files()
+    roots = {p.parts[0] if p.parts[0] != "src" else "/".join(p.parts[:2])
+             for p in files}
+    assert roots == {"src/gaffer", "tests", "scripts", "frontend"}, roots
+    assert not any("archive" in p.parts or p.name in _RAILS for p in files)
+    # F-177 found about 175 cites on 2026-10-21; a glob gone stale reads few.
+    assert sum(len(cited(p.read_text())) for p in files) > 150
+
+
+def test_every_holiday_id_the_code_cites_is_a_box():
+    box = boxes(HOLIDAY.read_text())
+    assert unboxed([p.read_text() for p in code_files()], box) == []
 
 
 def test_every_id_cited_as_closed_is_ticked():
