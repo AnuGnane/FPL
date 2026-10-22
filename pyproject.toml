@@ -60,6 +60,9 @@ markers = [
 # over 100 is silenced by its message, with the reason; nothing is silenced by
 # category alone, so a new family still shows up.
 filterwarnings = [
+    # holiday F-184: a new family fails the test that raises it, rather than
+    # showing up in a summary line nobody reads; the ignores below still apply.
+    "error",
     # PuLP 3.3 deprecates the builders optimize/ uses; 10,927 of the 11,032.
     # Migrate at PuLP 4 (prob.add_variable_dicts).
     'ignore:LpVariable\.dicts is deprecated:DeprecationWarning',
