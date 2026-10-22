@@ -161,7 +161,7 @@ class TeamModel:
             tg[col] = float("nan")
         return tg
 
-    def fit(self, tg: pd.DataFrame) -> "TeamModel":
+    def fit(self, tg: pd.DataFrame) -> TeamModel:
         tg = self._with_odds(tg)
         # Rolling columns are absent on early frames / callers that skip
         # add_team_rolling; intersect rather than KeyError.

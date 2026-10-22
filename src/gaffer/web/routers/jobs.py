@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Iterator
+from collections.abc import Iterator
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse

@@ -449,7 +449,7 @@ def elo_as_of(season_rows: pd.DataFrame, gw: int) -> dict:
 
 
 def understat_team_as_of(ut: pd.DataFrame | None,
-                         cut: "pd.Timestamp | None") -> pd.DataFrame | None:
+                         cut: pd.Timestamp | None) -> pd.DataFrame | None:
     """The rolled team-Understat frame as it stood before ``cut``.
 
     Truncation happens on the *raw* rows, before the roll. Rolling first and

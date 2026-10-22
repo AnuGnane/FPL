@@ -19,7 +19,7 @@ this module, and it does no work at import time.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -92,7 +92,7 @@ def fit_curves(spells: pd.DataFrame,
             curves[str(itype)] = curve
     return {
         "version": 1,
-        "generated_at": datetime.now(timezone.utc).isoformat(
+        "generated_at": datetime.now(UTC).isoformat(
             timespec="seconds"),
         "horizon": int(horizon),
         "spells": int(len(spells)),

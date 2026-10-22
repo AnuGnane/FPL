@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 
@@ -1328,7 +1328,7 @@ def run_review(cfg=None, gw: int | None = None, *, client=None) -> list[int]:
             if row is None:
                 print(f"GW{target} skipped: picks banked but not readable.")
                 continue
-            row["reviewed_at"] = datetime.now(timezone.utc).isoformat(
+            row["reviewed_at"] = datetime.now(UTC).isoformat(
                 timespec="seconds")
             append_ledger(row)
             print(format_review(row))

@@ -17,7 +17,7 @@ shows a retry button, never a stack trace.
 from __future__ import annotations
 
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Response
 
@@ -398,7 +398,7 @@ def sim(league_id: int | None = None) -> LeagueSimData:
     gw = latest_gw()
     key = _cache_key(cfg, int(gw), league_id) if gw is not None else None
     result, inputs = _run(cfg, gw, league_id=league_id)
-    run_at = datetime.now(timezone.utc).isoformat()
+    run_at = datetime.now(UTC).isoformat()
     if _take_fresh(key):
         try:
             append_sim_history(result, int(gw), run_at)

@@ -9,7 +9,7 @@ test; the ``opt`` line removed fails the third.
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pulp
 import pytest
@@ -82,8 +82,8 @@ def test_solve_names_highs_when_it_runs_and_cbc_when_it_falls_back(monkeypatch):
 
 def test_two_builds_with_different_clocks_differ_only_in_their_stamp():
     plan = a_plan(captain=116, vice=117)
-    t1 = datetime(2026, 9, 12, 10, 0, tzinfo=timezone.utc)
-    t2 = datetime(2026, 9, 12, 11, 0, tzinfo=timezone.utc)
+    t1 = datetime(2026, 9, 12, 10, 0, tzinfo=UTC)
+    t2 = datetime(2026, 9, 12, 11, 0, tzinfo=UTC)
     one = build_advice(tiny_inputs(), tiny_cfg(), solver=ScriptedSolver(plan=plan),
                        now=t1)
     two = build_advice(tiny_inputs(), tiny_cfg(), solver=ScriptedSolver(plan=plan),

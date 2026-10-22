@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 
@@ -70,7 +70,7 @@ def save_note(gw: int, reason: str, text: str) -> dict:
     if len(text) > TEXT_MAX:
         raise ValueError(f"text is at most {TEXT_MAX} characters")
     note = {"gw": int(gw), "reason": reason, "text": text,
-            "at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+            "at": datetime.now(UTC).isoformat(timespec="seconds")}
     with _LOCK:
         notes = load_decisions()
         notes[int(gw)] = note

@@ -27,7 +27,8 @@ calibration has just admitted might play is a substitute, not a starter.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -59,7 +60,7 @@ class DnpCalibrator:
     def __init__(self) -> None:
         self.iso: IsotonicRegression | None = None
 
-    def fit(self, p_dnp, is_dnp) -> "DnpCalibrator":
+    def fit(self, p_dnp, is_dnp) -> DnpCalibrator:
         """Learn the map on genuinely out-of-sample predictions.
 
         The caller supplies predictions made by a model that never saw these

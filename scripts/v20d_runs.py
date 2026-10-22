@@ -65,7 +65,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -126,7 +126,7 @@ def _utc(stamp: str | None) -> datetime | None:
     except ValueError:
         return None
     if when.tzinfo is not None:
-        when = when.astimezone(timezone.utc)
+        when = when.astimezone(UTC)
     return when
 
 

@@ -21,7 +21,7 @@ import tempfile
 import time
 from contextlib import contextmanager, nullcontext
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -573,7 +573,7 @@ def write_expected(golden: Path = GOLDEN_DIR, *, scratch: Path | None = None,
                               RecordingModels(golden / INPUTS_DIR)),
                 golden / INPUTS_DIR)
     old = json.loads((golden / HEADER_NAME).read_text()) if (golden / HEADER_NAME).exists() else {}
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    now = datetime.now(UTC).isoformat(timespec="seconds")
     header = {
         "recorded_at": recorded_at or old.get("recorded_at") or now,
         "written_at": now,
@@ -616,7 +616,7 @@ def record(golden: Path = GOLDEN_DIR) -> dict:
     recorder = RecordingClient(golden, raw_dir=root / "data" / "raw")
     run_golden(root, client=recorder)
     recorder.save()
-    recorded_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    recorded_at = datetime.now(UTC).isoformat(timespec="seconds")
     return write_expected(golden, recorded_at=recorded_at)
 
 

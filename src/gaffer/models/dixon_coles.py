@@ -252,7 +252,7 @@ class DixonColesModel:
         self.fallback_defence_ = float(
             np.mean([defence[index[c]] for c in bottom]))
 
-    def fit(self, tg: pd.DataFrame) -> "DixonColesModel":
+    def fit(self, tg: pd.DataFrame) -> DixonColesModel:
         """Weighted MLE over every completed match in the frame.
 
         Each match is weighted ``exp(-xi * days)`` back from the newest

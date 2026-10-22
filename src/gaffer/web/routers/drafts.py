@@ -13,7 +13,7 @@ source text and namespace (plan A7).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -148,7 +148,7 @@ def compare_drafts(names: list[str], gw: int) -> dict:
     opt = solve_kw_from_state(state)
     meta = {int(r.code): {"name": str(r.name), "position": str(r.position)}
             for r in state.pool.drop_duplicates("code").itertuples()}
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    now = datetime.now(UTC).isoformat(timespec="seconds")
 
     def solve(name: str, req: WhatIfRequest | None,
               reference: bool = False) -> tuple[DraftCompareRow, list | None,

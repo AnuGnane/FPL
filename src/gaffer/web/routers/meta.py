@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import plistlib
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -218,8 +218,8 @@ def _stat(path: Path) -> tuple[bool, str | None, float | None]:
         stamp = path.stat().st_mtime
     except OSError:
         return False, None, None
-    modified = datetime.fromtimestamp(stamp, tz=timezone.utc)
-    age = (datetime.now(timezone.utc) - modified).total_seconds() / 3600
+    modified = datetime.fromtimestamp(stamp, tz=UTC)
+    age = (datetime.now(UTC) - modified).total_seconds() / 3600
     return True, modified.isoformat(), round(age, 2)
 
 
@@ -340,7 +340,7 @@ def job_health(plist_dir: Path = PLIST_DIR, *,
     ``installed_dir`` defaults to :data:`INSTALLED_PLIST_DIR`, read at call
     time so a test can repoint it.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     installed_dir = Path(INSTALLED_PLIST_DIR if installed_dir is None
                          else installed_dir)
     rows: list[JobHealth] = []

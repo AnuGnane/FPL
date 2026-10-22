@@ -67,7 +67,7 @@ from __future__ import annotations
 
 import argparse
 import re
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 ARMS = ["v20a", "v20b", "v20c0", "v20c", "v20d", "unclaimed"]
@@ -163,7 +163,7 @@ def _files(paths: list[Path]) -> list[Path]:
 
 
 def _mtime(path: Path) -> datetime:
-    return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    return datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
 
 
 def collect(paths: list[Path], since: date | None = None

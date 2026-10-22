@@ -56,7 +56,7 @@ class DefconModel:
         self.feature_cols = feature_cols
         self.clf = LGBMClassifier(**LGB_KW)
 
-    def fit(self, df: pd.DataFrame) -> "DefconModel":
+    def fit(self, df: pd.DataFrame) -> DefconModel:
         sub = df[(df["minutes"] > 0) & df["tackles"].notna()
                  & df["cbi"].notna() & (df["position"] != "GKP")]
         self.cols_ = [c for c in self.feature_cols if c in sub.columns]
@@ -93,7 +93,7 @@ class SavesModel:
         self.feature_cols = feature_cols
         self.reg = LGBMRegressor(**LGB_KW)
 
-    def fit(self, df: pd.DataFrame) -> "SavesModel":
+    def fit(self, df: pd.DataFrame) -> SavesModel:
         sub = df[(df["position"] == "GKP") & (df["minutes"] > 0)]
         self.cols_ = [c for c in self.feature_cols if c in sub.columns]
         self.reg.fit(sub[self.cols_], sub["saves"])
@@ -182,7 +182,7 @@ class BonusModel:
         return df.assign(**{c: (df["position"] == c[4:]).astype(float)
                             for c in missing})
 
-    def fit(self, df: pd.DataFrame) -> "BonusModel":
+    def fit(self, df: pd.DataFrame) -> BonusModel:
         df = self._frame(df)
         sub = df[(df["minutes"] > 0) & (df["season_idx"] >= self.min_season_idx)
                  & df["bonus"].notna()]

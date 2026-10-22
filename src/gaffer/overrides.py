@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from gaffer import artifacts
@@ -123,7 +123,7 @@ def set_override(code: int, *, p_play=None, e_min=None, note: str = "",
     previous = rows.get(code, {})
     row = {
         "p_play": play, "e_min": mins, "note": str(note or ""),
-        "set_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "set_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "model_p_play": (previous.get("model_p_play")
                          if previous.get("model_p_play") is not None
                          else opt_float(model_p_play)),

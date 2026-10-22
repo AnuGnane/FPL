@@ -34,7 +34,7 @@ import shlex
 import subprocess
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -210,7 +210,7 @@ def classify_news(texts: list[NewsText], *, cmd: str,
     Never raises, whatever the CLI does. An empty frame is the
     classifier-absent path, which is the shipped behaviour anyway.
     """
-    stamp = (now or datetime.now(timezone.utc)).isoformat()
+    stamp = (now or datetime.now(UTC)).isoformat()
     cache_dir = Path(cache_dir)
     model = shlex.split(cmd)[0] if cmd.strip() else ""
     rows: list[dict] = []

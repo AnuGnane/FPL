@@ -16,7 +16,7 @@ behaviour exactly. That is the contract ``tests/test_v5_degradation.py`` pins.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -61,7 +61,7 @@ def cache_path(cache_dir: Path, prefix: str, cache_hours: int,
     meaningless without making the window any longer than the date stamp
     already allows.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     hours = min(max(int(cache_hours), 1), 24)
     bucket = (now.hour // hours) * hours
     stamp = f"{now:%Y%m%d}T{bucket:02d}"
@@ -90,4 +90,4 @@ def cached_text(url: str, dest: Path, client: httpx.Client | None = None
 
 
 def fetched_at(now: datetime | None = None) -> str:
-    return (now or datetime.now(timezone.utc)).isoformat(timespec="seconds")
+    return (now or datetime.now(UTC)).isoformat(timespec="seconds")

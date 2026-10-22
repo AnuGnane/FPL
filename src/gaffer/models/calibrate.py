@@ -47,7 +47,7 @@ class CalibrationModel:
         self.by_pos: dict[str, float] = {}
 
     def fit(self, ep: pd.Series, actual: pd.Series,
-            position: pd.Series) -> "CalibrationModel":
+            position: pd.Series) -> CalibrationModel:
         """Learn ``E[actual - ep | 60+ minutes]`` per position group.
 
         The caller restricts the rows to 60-minute appearances (see

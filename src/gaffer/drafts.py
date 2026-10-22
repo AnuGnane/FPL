@@ -16,7 +16,7 @@ report store uses.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from gaffer import artifacts
@@ -115,7 +115,7 @@ def add_draft(name: str, constraints: dict | None) -> dict:
         raise GafferError(
             f"{MAX_DRAFTS} drafts is the cap — delete one first")
     row = {"name": clean,
-           "created_at": datetime.now(timezone.utc).isoformat(
+           "created_at": datetime.now(UTC).isoformat(
                timespec="seconds"),
            "constraints": normalize(constraints)}
     rows.append(row)

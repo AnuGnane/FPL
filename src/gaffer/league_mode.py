@@ -63,7 +63,7 @@ class LeagueParams:
                 f"sigma_floor must be positive, got {self.sigma_floor}")
 
     @classmethod
-    def from_config(cls, cfg) -> "LeagueParams":
+    def from_config(cls, cfg) -> LeagueParams:
         return cls(z_scale=float(getattr(cfg, "z_scale", Z_SCALE)),
                    lambda_cap=float(getattr(cfg, "lambda_cap", LAMBDA_CAP)),
                    sigma_floor=float(getattr(cfg, "sigma_floor", SIGMA_FLOOR)),

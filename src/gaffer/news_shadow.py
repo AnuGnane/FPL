@@ -15,7 +15,7 @@ failed is worse than an unmeasured one.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 
@@ -68,7 +68,7 @@ def shadow_rows(comp: pd.DataFrame, gw: int,
     # is called (advise.py:585-586).
     grouped["p_play_presser"] = grouped["p_play_news"] * _presser_factors(
         grouped["code"], season, gw)
-    grouped["run_at"] = run_at or datetime.now(timezone.utc).isoformat(
+    grouped["run_at"] = run_at or datetime.now(UTC).isoformat(
         timespec="seconds")
     return grouped[SHADOW_COLS]
 

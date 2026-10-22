@@ -11,7 +11,7 @@ the key instead, and nothing that wants the date pulls a log in with it.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def snap_date(now: datetime | None = None) -> str:
@@ -20,4 +20,4 @@ def snap_date(now: datetime | None = None) -> str:
     UTC rather than local time so a machine that travels, or one running the
     job either side of a clock change, cannot bank two "days" for one.
     """
-    return (now or datetime.now(timezone.utc)).strftime("%Y-%m-%d")
+    return (now or datetime.now(UTC)).strftime("%Y-%m-%d")
