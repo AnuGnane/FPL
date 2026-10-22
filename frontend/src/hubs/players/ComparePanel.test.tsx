@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ComparePanel from './ComparePanel'
 import { difficultyTone } from '../../kit'
@@ -85,8 +85,10 @@ beforeEach(() => {
 })
 
 describe('ComparePanel', () => {
-  it('asks for two to four players', () => {
-    render(<ComparePanel gw={5} players={[PLAYERS[0]]} />)
+  // Holiday F-186: the panel's two reads still land under the empty state, so
+  // the render is awaited through act until they have.
+  it('asks for two to four players', async () => {
+    await act(async () => { render(<ComparePanel gw={5} players={[PLAYERS[0]]} />) })
     expect(screen.getByText(/pick at least two/i)).toBeInTheDocument()
   })
 
@@ -121,9 +123,9 @@ describe('ComparePanel', () => {
     await waitFor(() => expect(salah).toHaveTextContent('EVE'))
   })
 
-  it('refuses more than four', () => {
+  it('refuses more than four', async () => {
     const five = [...PLAYERS, ...PLAYERS, PLAYERS[0]]
-    render(<ComparePanel gw={5} players={five} />)
+    await act(async () => { render(<ComparePanel gw={5} players={five} />) })
     expect(screen.getByText(/at most four/i)).toBeInTheDocument()
   })
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -228,7 +228,8 @@ describe('WhyPanel', () => {
           new FakeApiError(404, 'no component breakdown'))
     const { container } = render(
       <MemoryRouter><WhyPanel gw={5} codes={CODES} /></MemoryRouter>)
-    await new Promise((r) => setTimeout(r, 0))
+    // Holiday F-186: the failed read settles inside act, not after the test.
+    await act(async () => { await new Promise((r) => { setTimeout(r, 0) }) })
     expect(container.textContent).toBe('')
   })
 })

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DigestCard from './DigestCard'
 import { JOB_KIND_LABEL } from '../../types'
@@ -108,7 +108,8 @@ describe('DigestCard', () => {
     // is silence, never an error state above the recommended moves.
     serve(new Error('network'))
     const { container } = render(<DigestCard />)
-    await new Promise((r) => { setTimeout(r, 0) })
+    // Holiday F-186: the failed read settles inside act, not after the test.
+    await act(async () => { await new Promise((r) => { setTimeout(r, 0) }) })
     expect(container.textContent).toBe('')
   })
 

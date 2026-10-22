@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -152,6 +152,9 @@ describe('what-if tab', () => {
     render(<MemoryRouter><WhatIfTab /></MemoryRouter>)
     const select = screen.getByLabelText('Max hits') as HTMLSelectElement
     expect(select.value).toBe('0')
+    // Holiday F-186: the fixture ticker's read settles inside act, not after
+    // the test has returned.
+    await act(async () => { await new Promise((r) => { setTimeout(r, 0) }) })
   })
 
   it('shows a structured infeasibility inline', async () => {
