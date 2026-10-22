@@ -88,3 +88,11 @@ def test_only_the_readme_bullets_count_as_names():
         "- `b.sh` — the spec's §G3, cites `c.py` in passing.\n"
     )
     assert _bulleted(readme) == ["a.py", "b.sh"]
+
+
+def test_every_list_line_in_the_readme_is_a_backticked_bullet():
+    """A bullet in another form would be invisible to the name rule, so a
+    line could outlive its file unread (F-180 review)."""
+    lines = README.read_text().splitlines()
+    odd = [ln for ln in lines if re.match(r"\s*[-*+] ", ln) and not _BULLET.match(ln)]
+    assert odd == []
