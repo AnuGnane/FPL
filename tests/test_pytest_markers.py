@@ -60,7 +60,7 @@ def test_the_rail_names_a_misspelt_marker() -> None:
 # one still shows up, but only in a summary line no cloud run reads. "error"
 # first turns a new warning into a failure that names its test; each ignore
 # after it names its message and category and carries a `#` reason above it.
-IGNORE = re.compile(r"ignore:.+:[A-Z]\w*Warning(:[\w\\.]+)?")
+IGNORE = re.compile(r"ignore:.+:(\w+\.)*[A-Z]\w*Warning(:[\w\\.]+)?")
 
 
 def _unreasoned_filters(text: str, filters: list[str]) -> list[str]:
