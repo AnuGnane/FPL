@@ -60,6 +60,7 @@ night shift transcribes the lines.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import re
@@ -120,16 +121,12 @@ def read_file(path: Path, payload: dict) -> dict:
 def _paths(reports: Path) -> list[Path]:
     """The banked advice files; a directory that will not list is none."""
     found: list[Path] = []
-    try:
+    with contextlib.suppress(OSError):
         found += [p for p in reports.iterdir() if CURRENT.match(p.name)]
-    except OSError:
-        pass
     history = reports / "advice_history"
-    try:
+    with contextlib.suppress(OSError):
         found += [p for p in history.iterdir()
                   if p.is_file() and HISTORY.match(p.name)]
-    except OSError:
-        pass
     return sorted(found)
 
 

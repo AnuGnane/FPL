@@ -72,12 +72,11 @@ def save_bundle(directory: Path, bodies: dict[str, object]) -> Path:
     # GzipFile rather than gzip.open: only the former takes ``mtime``, and a
     # zero there keeps the clock out of the header so a re-record with the same
     # answers really is the same bytes (spec §2.2).
-    with open(path, "wb") as raw_fh:
-        # An empty filename for the same reason: left to itself GzipFile would
-        # stamp the absolute path of the file handle into the header.
-        with gzip.GzipFile(filename="", fileobj=raw_fh, mode="wb",
-                           compresslevel=9, mtime=0) as fh:
-            fh.write(raw)
+    # An empty filename for the same reason: left to itself GzipFile would
+    # stamp the absolute path of the file handle into the header.
+    with open(path, "wb") as raw_fh, gzip.GzipFile(filename="", fileobj=raw_fh, mode="wb",
+                                                   compresslevel=9, mtime=0) as fh:
+        fh.write(raw)
     return path
 
 

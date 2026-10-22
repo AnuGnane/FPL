@@ -105,7 +105,7 @@ def test_the_same_seed_is_the_same_report(board):
 
 def test_a_different_seed_may_differ_but_stays_well_formed(board):
     payload = run_sensitivity(k=4, seed=99)
-    assert 0 < len(payload["frequencies"])
+    assert len(payload["frequencies"]) > 0
     for row in payload["frequencies"]:
         assert 0.0 < row["frequency"] <= 1.0
         assert row["count"] <= payload["completed"]

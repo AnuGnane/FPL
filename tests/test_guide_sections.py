@@ -42,9 +42,7 @@ def guide_sections(text: str) -> set[str]:
     """The numbers of the GUIDE's ``## N.`` and ``### N.M`` headings."""
     sections = set()
     for line in text.splitlines():
-        if m := re.match(r"## (\d+)\. ", line):
-            sections.add(m.group(1))
-        elif m := re.match(r"### (\d+\.\d+) ", line):
+        if (m := re.match(r"## (\d+)\. ", line)) or (m := re.match(r"### (\d+\.\d+) ", line)):
             sections.add(m.group(1))
     return sections
 

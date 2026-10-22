@@ -583,7 +583,7 @@ def test_a_second_store_keeps_the_first_beside_it(cache):
     assert list(cache._CACHE) == ["a", "b"]
     assert cache._cache_get("a") == ("sim-a", "in-a")
     assert cache._cache_get("b") == ("sim-b", "in-b")
-    assert cache._FRESH <= set(cache._CACHE)  # never describes a gone entry
+    assert set(cache._CACHE) >= cache._FRESH  # never describes a gone entry
 
 
 def test_the_ninth_key_evicts_the_oldest_stored(cache):
@@ -598,7 +598,7 @@ def test_the_ninth_key_evicts_the_oldest_stored(cache):
     assert cache._cache_get(0) is None
     assert cache._cache_get(1) == ("sim-1", "in-1")
     assert 0 not in cache._FRESH
-    assert cache._FRESH <= set(cache._CACHE)
+    assert set(cache._CACHE) >= cache._FRESH
 
 
 def test_a_key_stored_again_moves_to_the_newest_end(cache):
@@ -647,7 +647,7 @@ def test_a_second_request_landing_mid_store_does_not_lose_its_answer(cache,
     second.join()
 
     assert list(cache._CACHE) == ["a", "b"]  # the second waited its turn
-    assert cache._FRESH == {"a", "b"}
+    assert {"a", "b"} == cache._FRESH
     assert cache._cache_get("a") == ("sim-a", "in-a")
     assert cache._cache_get("b") == ("sim-b", "in-b")
 

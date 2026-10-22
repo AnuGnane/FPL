@@ -119,18 +119,18 @@ def run_backup(*, to: Path | str, rsync: str | None = None,
     # any exit — including the KeyboardInterrupt that a hand-run `gaffer
     # backup` is most likely to die of.
     try:
-        with io.atomic_path(path) as part:
-            # dereference=True: `models/` and `reports/` are ordinary
-            # directories here, but a user who has symlinked one onto another
-            # volume — which is exactly what somebody short of disk does —
-            # would otherwise get an archive of dangling links that restores
-            # to nothing. It is not free: a symlink cycle inside an archived
-            # root recurses until tarfile runs out of stack or disk, and a
-            # large tree symlinked in is archived by value rather than as the
-            # one-line link it is on disk.
-            with tarfile.open(part, "w:gz", dereference=True) as tar:
-                for root, arcname in roots:
-                    tar.add(root, arcname=arcname)
+        # dereference=True: `models/` and `reports/` are ordinary
+        # directories here, but a user who has symlinked one onto another
+        # volume — which is exactly what somebody short of disk does —
+        # would otherwise get an archive of dangling links that restores
+        # to nothing. It is not free: a symlink cycle inside an archived
+        # root recurses until tarfile runs out of stack or disk, and a
+        # large tree symlinked in is archived by value rather than as the
+        # one-line link it is on disk.
+        with (io.atomic_path(path) as part,
+              tarfile.open(part, "w:gz", dereference=True) as tar):
+            for root, arcname in roots:
+                tar.add(root, arcname=arcname)
     except OSError as exc:
         print(f"backup: failed to write {path} ({exc}) — no archive was "
               f"written, and the previous ones are untouched")

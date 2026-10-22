@@ -280,4 +280,4 @@ def test_every_reading_prefix_a_script_prints_is_collected():
     missed = sorted(p for p in printed - NOT_EVIDENCE
                     if not ap.file_lines(p + " {}"))
     assert missed == []
-    assert NOT_EVIDENCE <= printed
+    assert printed >= NOT_EVIDENCE
