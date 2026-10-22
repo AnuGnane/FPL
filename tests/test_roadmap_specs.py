@@ -1,12 +1,14 @@
-"""Every spec and plan under ``docs/superpowers/`` is named in the ROADMAP
-(holiday F-129).
+"""Every spec, plan and research document under ``docs/superpowers/`` is
+named in the ROADMAP (holiday F-129; research since F-176).
 
 ROADMAP candidate 7, in F-87's shape (``tests/test_guide_scripts.py``): a
 file nothing names is one a reader cannot find a reason for. The ROADMAP is
 the index of cycles, so each spec and plan is named there by its filename,
 at the end of the block of the cycle it belongs to (v17d's "Spec ``…``, plan
 ``…``" form). ``HOLIDAY.md`` and the GUIDE name some of them too; this rail
-does not read them. No allowlist.
+does not read them. No allowlist. F-176 adds ``research/``, its ``.md`` and
+``.html`` files alike, named on the ROADMAP line that already cited each by
+date, so "the 09-01 research" is a file a reader can open.
 """
 
 from __future__ import annotations
@@ -15,11 +17,13 @@ import re
 from pathlib import Path
 
 ROADMAP = Path("docs/superpowers/ROADMAP.md")
-DIRS = (Path("docs/superpowers/specs"), Path("docs/superpowers/plans"))
+DIRS = (Path("docs/superpowers/specs"), Path("docs/superpowers/plans"),
+        Path("docs/superpowers/research"))
 
 
 def _files() -> list[Path]:
-    return sorted(p for d in DIRS for p in d.glob("*.md"))
+    return sorted(p for d in DIRS for ext in ("*.md", "*.html")
+                  for p in d.glob(ext))
 
 
 def _misses(text: str, files: list[Path]) -> list[str]:
@@ -33,9 +37,15 @@ def _misses(text: str, files: list[Path]) -> list[str]:
     ]
 
 
-def test_there_are_specs_and_plans_to_check():
+def test_there_are_specs_plans_and_research_to_check():
     names = {p.parent.name for p in _files()}
-    assert names == {"specs", "plans"} and len(_files()) > 100, len(_files())
+    assert names == {"specs", "plans", "research"} and len(_files()) > 100, len(_files())
+
+
+def test_the_research_html_is_among_the_files_checked():
+    # F-176: the 09-07 architecture review is the one .html; a glob of
+    # "*.md" alone would pass it over silently.
+    assert any(p.suffix == ".html" for p in _files())
 
 
 def test_every_spec_and_plan_is_named_in_the_roadmap():
