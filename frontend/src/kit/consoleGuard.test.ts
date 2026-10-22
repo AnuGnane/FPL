@@ -5,16 +5,16 @@ import {
 
 // Holiday F-185: the families recorded on 2026-10-22, quoted as the libraries
 // print them (the act text is React 18's format string). F-186 closed the act
-// warnings at source, so that family is no longer expected.
+// warnings at source and F-187 set the router's future flags, so neither is
+// expected any more and either one returning fails its test.
 const ROUTER = '⚠️ React Router Future Flag Warning: React Router will begin '
   + 'wrapping state updates in `React.startTransition` in v7.'
 const ACT = 'Warning: An update to %s inside a test was not wrapped in act(...).'
 
 describe('consoleGuard', () => {
-  it('holds only the router family once the act warnings are closed', () => {
-    expect(EXPECTED).toHaveLength(1)
-    expect(isExpected(ROUTER)).toBe(true)
-    expect(() => assertExpected([ROUTER])).not.toThrow()
+  it('expects nothing once both recorded families are closed', () => {
+    expect(EXPECTED).toEqual([])
+    expect(() => assertExpected([])).not.toThrow()
   })
 
   it('fails a test that prints an act warning again', () => {
@@ -22,9 +22,14 @@ describe('consoleGuard', () => {
     expect(() => assertExpected([ACT])).toThrow(/not wrapped in act/)
   })
 
-  it('does not expect a message outside those families', () => {
+  it('fails a test that prints the router future-flag notice again', () => {
+    expect(isExpected(ROUTER)).toBe(false)
+    expect(() => assertExpected([ROUTER])).toThrow(/Future Flag Warning/)
+  })
+
+  it('does not expect an arbitrary message', () => {
     expect(isExpected('unexpected')).toBe(false)
-    expect(() => assertExpected([ROUTER, 'unexpected'])).toThrow(/unexpected/)
+    expect(() => assertExpected(['unexpected'])).toThrow(/unexpected/)
   })
 
   it('fails a test that writes an unexpected console error', () => {
