@@ -97,3 +97,13 @@ def test_ruff_selects_the_perf_furb_and_pyi_families():
     data = tomllib.loads(Path("pyproject.toml").read_text())
     select = data["tool"]["ruff"]["lint"]["select"]
     assert {"PERF", "FURB", "PYI"} <= set(select)
+
+
+def test_ruff_selects_the_pylint_warning_convention_and_error_families():
+    """Holiday F-207 turned ``PLW``, ``PLC`` and ``PLE`` on, in F-188's shape,
+    with ``PLC0415`` ruled out: heavy imports sit in the functions that need
+    them so ``gaffer --help`` and the web app start without the model stack."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    lint = data["tool"]["ruff"]["lint"]
+    assert {"PLW", "PLC", "PLE"} <= set(lint["select"])
+    assert "PLC0415" in lint["ignore"]
