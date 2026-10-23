@@ -180,6 +180,7 @@ def is_shipped(name: str) -> bool:
 
 
 def arm_features(name: str) -> list[str]:
+    """The shipped minutes features plus the named arm's additions."""
     return list(tr.MINUTES_FEATURES) + arm_additions(name)
 
 
@@ -400,6 +401,8 @@ def verdict(base: dict, arm: dict) -> dict:
 
 
 def main() -> None:
+    """Run each arm on the benchmark and print a ``W4_ARM_DONE`` line per
+    arm."""
     print("W4_ARM_RULE", ARM_RULE, flush=True)
     shipped = list(tr.MINUTES_FEATURES)
     df, _tg, _elo = _memoised()

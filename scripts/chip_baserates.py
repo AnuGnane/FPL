@@ -29,6 +29,8 @@ they are printed and not asserted."""
 
 
 def main() -> int:
+    """Print each chip's banked gain for the gameweek beside the community's
+    base rate."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--gw", type=int, default=None)
     args = parser.parse_args()

@@ -187,6 +187,8 @@ def pplay_reading(df: pd.DataFrame | None,
 
 
 def main() -> int:
+    """Read the feature frame and print the ``C2_PPLAY`` verdict line on the
+    top bin."""
     try:
         if not store.exists(PLAYER_GW_PATH):
             payload = _empty(f"no feature frame: "

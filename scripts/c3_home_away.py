@@ -212,6 +212,7 @@ def home_away_reading(df: pd.DataFrame | None,
 
 
 def main() -> int:
+    """Read the feature frame and print the ``C3_HOME_AWAY`` verdict line."""
     try:
         if not store.exists(PLAYER_GW_PATH):
             payload = _empty(f"no feature frame: "

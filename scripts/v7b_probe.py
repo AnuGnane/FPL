@@ -86,6 +86,8 @@ def _fit_and_predict(season_idx: int, gw: int) -> pd.DataFrame:
 
 
 def main(argv: list[str] | None = None) -> dict:
+    """Run the two diagnostics for a gameweek, print their ``V7B_PROBE``
+    lines and return the results."""
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--gw", type=int, default=20)
     a = p.parse_args(argv)

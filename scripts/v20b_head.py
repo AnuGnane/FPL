@@ -113,6 +113,7 @@ def split_holdout(df: pd.DataFrame
 
 
 def with_positions(df: pd.DataFrame) -> pd.DataFrame:
+    """A copy of ``df`` with one dummy column per position."""
     out = df.copy()
     for col in POS_DUMMIES:
         out[col] = (out["position"] == col[4:]).astype(float)
@@ -232,6 +233,7 @@ def head_reading(df: pd.DataFrame | None,
 
 
 def main() -> int:
+    """Read the feature frame and print the ``V20B_HEAD`` verdict line."""
     try:
         if not store.exists(PLAYER_GW_PATH):
             payload = _empty(f"no feature frame: "

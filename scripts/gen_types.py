@@ -168,6 +168,7 @@ that consistent.
 
 
 def schema_path() -> str:
+    """The repo-relative path the JSON Schema is written to."""
     return "frontend/src/schemas.json"
 
 
@@ -330,6 +331,7 @@ def check(root: pathlib.Path) -> int:
 
 
 def write(root: pathlib.Path) -> int:
+    """Write the JSON Schema under ``root`` and print the path written."""
     target = root / schema_path()
     target.write_text(serialize(build_schema()))
     print(f"wrote {schema_path()}")

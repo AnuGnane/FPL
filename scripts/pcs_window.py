@@ -223,6 +223,8 @@ def read(data: Path = DATA, reports: Path = REPORTS) -> tuple[list[dict], dict]:
 
 
 def main(data: Path = DATA, reports: Path = REPORTS) -> None:
+    """Read the banked runs and print a ``PCS_WINDOW`` line per run and the
+    ``PCS_WINDOWS`` summary."""
     rows, summary = read(data, reports)
     for row in rows:
         print(f"PCS_WINDOW {json.dumps(row)}")

@@ -138,6 +138,8 @@ def _fit(arm: str, train_df, train_tg):
 
 
 def main() -> None:
+    """Solve each gameweek under each arm and print a ``W4_CF_GW`` line per
+    week and the ``W4_CF_DONE`` verdict."""
     from gaffer.assets import load_bootstrap_sample
     from gaffer.data.bootstrap import scoring_table
     from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix

@@ -315,6 +315,8 @@ def reading(log_text: str | None, payloads: list[dict],
 
 
 def main() -> int:
+    """Read the advise log and reports and print a ``V20D_RUN`` line per run
+    and the ``V20D_ROW`` summary."""
     try:
         log_text = (ADVISE_LOG.read_text(errors="replace")
                     if ADVISE_LOG.is_file() else None)

@@ -164,6 +164,8 @@ def _season() -> str:
 
 
 def main() -> int:
+    """Read the banked Understat files and print the ``B8_UNDERSTAT`` verdict
+    line."""
     season = _season()
     try:
         payload = understat_reading(

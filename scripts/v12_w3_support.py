@@ -73,6 +73,8 @@ def _p_play(comp, gws: list[int]) -> dict[int, dict[int, float]]:
 
 
 def main() -> None:
+    """Read the latest saved solve and print the ``W3_SUPPORT_DONE`` line on
+    the captain's support."""
     gw = latest_gw()
     if gw is None:
         raise SystemExit("no saved solve state — run `gaffer advise` first")

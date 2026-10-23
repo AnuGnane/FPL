@@ -39,6 +39,8 @@ def bias_60(pred, truth):
 
 
 def main() -> None:
+    """Train on everything before the holdout and print the model's errors
+    beside the last-5 and season baselines."""
     df_full, tg_full, elo_final = load_training_frame()
     train_df = df_full[(df_full.season_idx < HOLDOUT_SEASON) |
                        ((df_full.season_idx == HOLDOUT_SEASON) &

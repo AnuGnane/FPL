@@ -266,6 +266,8 @@ def _season() -> str:
 
 
 def main() -> int:
+    """Read the snapshot log against the results and print the
+    ``B1_STATUS_AGE`` verdict line."""
     season = _season()
     try:
         payload = status_age_reading(load_snapshot_log(), news_actuals(),
