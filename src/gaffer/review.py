@@ -1158,8 +1158,8 @@ def append_ledger(row: dict):
     # the read-modify-write, not the rename, which was already atomic.
     with _ledger_lock(lock_path()):
         rows = []
-        for r in _all_ledger_rows():
-            r = {**r, "season": str(r.get("season") or season)}
+        for stored in _all_ledger_rows():
+            r = {**stored, "season": str(stored.get("season") or season)}
             if r["season"] == banked["season"] \
                     and int(r["gw"]) == int(banked["gw"]):
                 continue

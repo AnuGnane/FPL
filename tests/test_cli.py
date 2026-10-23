@@ -410,7 +410,7 @@ def test_a_missing_config_is_one_line_not_a_traceback(tmp_path, monkeypatch):
     # `refresh` loads config and catches nothing itself, so the only thing
     # between GafferError and the terminal is main().
     result = subprocess.run([str(gaffer), "refresh"], cwd=tmp_path,
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, check=False)
     assert result.returncode == 1
     assert "Traceback" not in result.stderr
     assert "config.example.toml" in (result.stdout + result.stderr)

@@ -265,8 +265,8 @@ def test_pass_two_pins_pass_ones_xi_and_captain(monkeypatch):
 def _bench_coefficients(objective: str, prefix: str) -> list[float]:
     """The coefficients on every variable whose name starts with ``prefix``."""
     out = []
-    for term in objective.replace("- ", "+ -").split(" + "):
-        term = term.strip()
+    for raw in objective.replace("- ", "+ -").split(" + "):
+        term = raw.strip()
         if prefix in term:
             head = term.split("*")[0].strip()
             try:

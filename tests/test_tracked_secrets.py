@@ -54,7 +54,7 @@ def key_shaped(text: str) -> list[str]:
 
 def _git(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(["git", *args], capture_output=True, text=True,
-                          cwd=_ROOT)
+                          cwd=_ROOT, check=False)
 
 
 def _tracked() -> list[str]:

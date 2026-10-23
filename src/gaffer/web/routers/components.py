@@ -106,11 +106,11 @@ def components(gw: int,
     bands = bands_by_player_gw(frame)
 
     players: list[ComponentPlayer] = []
-    for code, rows in frame.groupby("code", sort=True):
+    for code, group in frame.groupby("code", sort=True):
         # mergesort because it is stable: a double gameweek's two fixtures
         # can share a kickoff time in a fixture file, and the order they were
         # written in is the order the opponents should read in.
-        rows = rows.sort_values("kickoff_time", na_position="last",
+        rows = group.sort_values("kickoff_time", na_position="last",
                                 kind="mergesort")
         fixtures = []
         for row in rows.itertuples():

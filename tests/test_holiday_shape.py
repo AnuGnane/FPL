@@ -36,8 +36,8 @@ def depends(body: str) -> set[int]:
     ids: set[int] = set()
     for chain in _DEPENDS.findall(body):
         last = None
-        for joint, n in _LINK.findall(chain):
-            n = int(n)
+        for joint, digits in _LINK.findall(chain):
+            n = int(digits)
             if joint == " to " and last is not None:
                 ids.update(range(last, n + 1))
             ids.add(n)

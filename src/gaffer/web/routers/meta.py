@@ -357,10 +357,9 @@ def job_health(plist_dir: Path = PLIST_DIR, *,
             source = "installed" if installed.exists() else "repo"
         except OSError:
             source = "repo"
-        if source == "installed":
-            path = installed
+        read = installed if source == "installed" else path
         try:
-            payload = _load_plist(path)
+            payload = _load_plist(read)
             label = str(payload.get("Label", label)).removeprefix(
                 "com.gaffer.")
         except Exception:  # noqa: BLE001 — an unreadable plist is a row

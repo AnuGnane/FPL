@@ -81,7 +81,7 @@ ARMS: dict[str, list[str]] = {
 claim measured two ways — the same treatment v8a gave ``f2_cups`` — and
 because a withdrawal here is a withdrawal of the claim, not of a column."""
 
-_cached = None
+_cached: dict = {}  # holiday F-207: a memo mutated in place, no ``global``
 _real_load = tr.load_training_frame
 
 
@@ -92,10 +92,9 @@ def _memoised():
     construction; copies mean an arm that mutates its frame cannot poison the
     next one. ``scripts/v8a_arms.py:53-67``, verbatim in intent.
     """
-    global _cached
-    if _cached is None:
-        _cached = _real_load()
-    df, tg, elo = _cached
+    if "load" not in _cached:
+        _cached["load"] = _real_load()
+    df, tg, elo = _cached["load"]
     return df.copy(), tg.copy(), elo
 
 

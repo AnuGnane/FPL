@@ -135,7 +135,7 @@ ARM_COLS = ["role_wb_share", "density_pub_7d"]
 """The *value* columns, as opposed to the missing indicators. Coverage is
 measured on these — an indicator is never null and would report 100%."""
 
-_cached = None
+_cached: dict = {}  # holiday F-207: a memo mutated in place, no ``global``
 _real_load = tr.load_training_frame
 
 
@@ -146,10 +146,9 @@ def _memoised():
     expensive half and cannot differ between arms by construction, and copies
     mean an arm that mutates its frame cannot poison the next one.
     """
-    global _cached
-    if _cached is None:
-        _cached = _real_load()
-    df, tg, elo = _cached
+    if "load" not in _cached:
+        _cached["load"] = _real_load()
+    df, tg, elo = _cached["load"]
     return df.copy(), tg.copy(), elo
 
 

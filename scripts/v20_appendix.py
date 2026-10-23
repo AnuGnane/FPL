@@ -138,7 +138,8 @@ def file_lines(text: str) -> list[tuple[str, str]]:
     anchors = [(i, arm) for i, (arm, kind, _) in enumerate(found)
                if kind in ("tagged", "reading")]
     out = []
-    for i, (arm, kind, line) in enumerate(found):
+    for i, (named, kind, line) in enumerate(found):
+        arm = named
         if kind == "lever":
             after = next((a for j, a in anchors if j > i), None)
             before = next((a for j, a in reversed(anchors) if j < i), None)

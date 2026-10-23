@@ -793,7 +793,7 @@ def test_a_guard_exit_does_not_leak_the_memoised_loader(monkeypatch):
                           "role_wb_missing": [0.0, 0.0],
                           "density_pub_7d": [1.0, 2.0],
                           "density_pub_missing": [0.0, 0.0]})
-    monkeypatch.setattr(d, "_cached", (frame, pd.DataFrame(), None))
+    monkeypatch.setattr(d, "_cached", {"load": (frame, pd.DataFrame(), None)})
     before_load, before_feats = tr.load_training_frame, tr.MINUTES_FEATURES
     try:
         with pytest.raises(SystemExit):

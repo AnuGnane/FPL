@@ -29,9 +29,9 @@ def _fixtures(seasons: int = 2, gws: int = 38) -> pd.DataFrame:
     start = pd.Timestamp("2024-08-01", tz="UTC")
     for s in range(seasons):
         for gw in range(1, gws + 1):
-            for home, away in PAIRINGS[gw % len(PAIRINGS)]:
-                if gw % 2:
-                    home, away = away, home
+            for first, second in PAIRINGS[gw % len(PAIRINGS)]:
+                # odd weeks reverse the venue
+                home, away = (second, first) if gw % 2 else (first, second)
                 rows.append({
                     "season_idx": s, "gw": gw,
                     "kickoff_time": start + pd.Timedelta(days=7 * (s * gws + gw)),
