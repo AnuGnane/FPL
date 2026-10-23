@@ -109,7 +109,8 @@ ignore = ["B905"]
 "tests/test_match_odds.py" = ["E402"]
 # E402: the re-export at the bottom of minutes.py (v5). RUF100 (holiday
 # F-204): minutes.py is on the golden path through models/train.py (F-92's
-# reason), so its unused marks wait for F-210's needs-mac PR, as do cli.py's.
+# reason), so its two unused marks wait for F-210's needs-mac PR; cli.py,
+# golden too, holds none today and the waiver keeps a new one off this gate.
 "src/gaffer/models/minutes.py" = ["E402", "RUF100"]
 "src/gaffer/cli.py" = ["RUF100"]
 # E501: prose sentences and a recorded board asserted verbatim (v18g §1).
@@ -158,8 +159,9 @@ ignore = ["B905"]
 # so engineer.py's one site waits for F-190 on the Mac with the six modules.
 "src/gaffer/features/engineer.py" = ["SIM"]
 # RUF100 (holiday F-204): the orchestrator-only files (CLAUDE.md) keep their
-# marks for good, as on the lines above for test_golden_board.py,
-# test_v12_w3_degradation.py, milp.py and test_advise.py.
+# marks for good, as on the lines above for test_golden_board.py (two unused
+# today), test_v12_w3_degradation.py, milp.py and test_advise.py (none today;
+# the waiver keeps a new one from asking for an orchestrator's diff).
 "tests/test_pipeline.py" = ["RUF100"]
 # RUF100 (holiday F-204): these four broad excepts re-raise, so BLE001 never
 # fires on them, but tests/test_noqa_reasons.py (F-69) and CLAUDE.md still ask
