@@ -70,7 +70,6 @@ CLASSES_ALLOWED = {
     "optimize/milp.py": 3,         # orchestrator-only, for good
     "served.py": 2,                # golden
     "web/jobs.py": 1,              # orchestrator-only, for good
-    "web/schemas.py": 107,         # F-198, with the generated types
 }
 
 
