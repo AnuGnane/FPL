@@ -78,9 +78,10 @@ filterwarnings = [
 ]
 
 [tool.ruff]
-# v18g §1: E, F, B, I, UP, SIM, C4, PIE, RET, ERA, BLE and RUF100 at line 100
-# (UP since holiday F-188, SIM since F-189, C4, PIE, RET and ERA since F-201,
-# BLE and RUF100 since F-204); the ignores below each carry a reason.
+# v18g §1: E, F, B, I, UP, SIM, C4, PIE, RET, ERA, BLE, RUF100 and PT at line
+# 100 (UP since holiday F-188, SIM since F-189, C4, PIE, RET and ERA since
+# F-201, BLE and RUF100 since F-204, PT since F-205); the ignores below each
+# carry a reason.
 line-length = 100
 target-version = "py312"
 # F-167: scripts/archive/ is the retired code v18g moved out of the way; it is
@@ -88,10 +89,13 @@ target-version = "py312"
 extend-exclude = ["scripts/archive"]
 
 [tool.ruff.lint]
-select = ["E", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "ERA", "BLE", "RUF100"]
+select = ["E", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "ERA", "BLE", "RUF100",
+          "PT"]
 # B905: zip(strict=) on 174 sites is noise, not safety — every zip here is
 # over parallel columns the caller built (v18g §1).
-ignore = ["B905"]
+# PT018 (holiday F-205): a composite ``assert a and b`` reads as one sentence
+# in these tests, and splitting 656 of them names no new failure.
+ignore = ["B905", "PT018"]
 
 [tool.ruff.lint.per-file-ignores]
 # E402: these tests import a fixture module after setting a path (v18g §1).
@@ -139,11 +143,11 @@ ignore = ["B905"]
 # C4, PIE, RET and ERA (holiday F-201): orchestrator-only files (CLAUDE.md)
 # keep their spelling for good, as F-188's advise.py line does.
 "tests/test_v4c_degradation.py" = ["C4", "PIE", "RET", "ERA"]
-"tests/test_v11_degradation.py" = ["C4", "PIE", "RET", "ERA"]
-"tests/test_v12_w1_degradation.py" = ["C4", "PIE", "RET", "ERA"]
-"tests/test_v12_w3_degradation.py" = ["C4", "PIE", "RET", "ERA", "RUF100"]
-"tests/test_v12_w4_degradation.py" = ["C4", "PIE", "RET", "ERA"]
-"tests/test_v12_w5_degradation.py" = ["C4", "PIE", "RET", "ERA"]
+"tests/test_v11_degradation.py" = ["C4", "PIE", "RET", "ERA", "PT"]
+"tests/test_v12_w1_degradation.py" = ["C4", "PIE", "RET", "ERA", "PT"]
+"tests/test_v12_w3_degradation.py" = ["C4", "PIE", "RET", "ERA", "RUF100", "PT"]
+"tests/test_v12_w4_degradation.py" = ["C4", "PIE", "RET", "ERA", "PT"]
+"tests/test_v12_w5_degradation.py" = ["C4", "PIE", "RET", "ERA", "PT"]
 "tests/test_v19_degradation.py" = ["C4", "PIE", "RET", "ERA"]
 "tests/test_web_job_kinds_v8b.py" = ["C4", "PIE", "RET", "ERA"]
 "tests/test_web_job_kinds_v8f.py" = ["C4", "PIE", "RET", "ERA"]
@@ -171,6 +175,19 @@ ignore = ["B905"]
 "src/gaffer/web/routers/league_sim.py" = ["RUF100"]
 "src/gaffer/web/routers/live.py" = ["RUF100"]
 "src/gaffer/web/settings_keys.py" = ["RUF100"]
+# PT (holiday F-205): the orchestrator-only degradation rails (CLAUDE.md)
+# keep their pytest spelling for good; the orchestrator owns their diffs,
+# as on the lines above that add "PT" to an existing entry.
+"tests/test_v10b_degradation.py" = ["PT"]
+"tests/test_v12_w2_degradation.py" = ["PT"]
+"tests/test_v12_w5_projections_degradation.py" = ["PT"]
+"tests/test_v13_degradation.py" = ["PT"]
+"tests/test_v8a_degradation.py" = ["PT"]
+"tests/test_v8b_degradation.py" = ["PT"]
+"tests/test_v8c_degradation.py" = ["PT"]
+"tests/test_v8f_degradation.py" = ["PT"]
+"tests/test_v8g_degradation.py" = ["PT"]
+"tests/test_v9a_degradation.py" = ["PT"]
 
 [tool.ruff.lint.flake8-bugbear]
 # B008: typer's declarative defaults are the CLI's idiom (v18g §2.1).
