@@ -88,6 +88,8 @@ def components(gw: int,
                    None, description="Comma-separated player codes; all "
                                      "players when omitted.")
                ) -> ComponentsBreakdown:
+    """The per-component expected points for a gameweek, optionally for the given player codes
+    only."""
     try:
         frame = load_components(gw)
     except GafferError as exc:

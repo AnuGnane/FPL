@@ -245,6 +245,7 @@ def _league(cfg, client, league_id: int | None) -> tuple[int, str, bool]:
 
 @router.get("/race", response_model=LeagueRace)
 def race(league_id: int | None = None) -> LeagueRace:
+    """The league's standings and race, the focus league unless ``league_id`` names another."""
     cfg = _config()
     client = fpl_client()
     league, league_name, is_focus = _league(cfg, client, league_id)
@@ -358,6 +359,7 @@ def _squad(picks: list[dict], players) -> list[SquadPlayer]:
 
 @router.get("/rivals", response_model=list[RivalSummary])
 def rivals(league_id: int | None = None) -> list[RivalSummary]:
+    """A summary row per rival in the league, set against the reader's squad."""
     cfg = _config()
     client = fpl_client()
     league, _, _ = _league(cfg, client, league_id)
@@ -383,6 +385,7 @@ def rivals(league_id: int | None = None) -> list[RivalSummary]:
 
 @router.get("/rivals/{entry_id}", response_model=RivalDetail)
 def rival(entry_id: int, league_id: int | None = None) -> RivalDetail:
+    """One rival's squad and live points, set against the reader's."""
     from gaffer.live_gw import active_gameweek, entry_live_points
 
     cfg = _config()

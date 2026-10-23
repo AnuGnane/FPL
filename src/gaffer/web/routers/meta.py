@@ -103,6 +103,7 @@ def _state():
 
 @router.get("/chips/plan", response_model=ChipPlan)
 def chips_plan() -> ChipPlan:
+    """When to play each remaining chip, priced in raw points over the solve's horizon."""
     state = _state()
     ep_by = raw_ep_by(state)          # chips are priced in raw points
     pool = milp_pool(state, ep_by, state.gws)
@@ -163,6 +164,7 @@ def _actual_points(advice: dict, live: pd.DataFrame) -> int | None:
 
 @router.get("/history", response_model=History)
 def history() -> History:
+    """The season so far: each advised gameweek beside the points and value that followed."""
     live = (store.load("live/player_gw.parquet")
             if store.exists("live/player_gw.parquet")
             else pd.DataFrame(columns=["code", "gw", "total_points",
@@ -574,6 +576,7 @@ def team_model_health() -> TeamModelHealth | None:
 
 @router.get("/health", response_model=Health)
 def health() -> Health:
+    """The Health page: each data source's age, the models and the config in force."""
     from gaffer.config import load_config
 
     sources = []
@@ -725,6 +728,7 @@ def health() -> Health:
 
 @router.get("/fixtures/ticker", response_model=Ticker)
 def ticker(weeks: int = Query(8, ge=1, le=20)) -> Ticker:
+    """The fixture ticker: each team's rated fixtures over the next ``weeks`` gameweeks."""
     # A shape adapter over ``gaffer.difficulty`` since v18d §2: the rating
     # moved to the core because the ladder and the identity decorator need it
     # and must not import the web layer. The order the core returns — teams by

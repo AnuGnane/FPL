@@ -23,6 +23,8 @@ router = APIRouter(prefix="/api", tags=["ladder"])
 
 @router.get("/ladder", response_model=LadderPayload)
 def ladder(gw: int | None = Query(default=None)) -> LadderPayload:
+    """The transfer ladder for ``gw`` (the latest solve by default), with a note when there is
+    none."""
     current = latest_gw()
     wanted = current if gw is None else int(gw)
     if wanted is None:
@@ -52,6 +54,7 @@ def ladder(gw: int | None = Query(default=None)) -> LadderPayload:
 
 @router.post("/ladder", status_code=202, response_model=JobAccepted)
 def rebuild(request: Request):
+    """Queue a rebuild of the latest gameweek's ladder as an anonymous job."""
     gw = latest_gw()
     if gw is None:
         raise GafferError("no saved solve state — run `gaffer advise` first")

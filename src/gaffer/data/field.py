@@ -70,6 +70,7 @@ hour. See :func:`run_field_scrape`."""
 
 def field_sample_path(season: str, gw: int,
                       raw_dir: Path | str = RAW_FIELD) -> Path:
+    """Where one gameweek's banked field sample lives: ``<raw_dir>/<season>/gw<gw>.json``."""
     return Path(raw_dir) / str(season) / f"gw{int(gw)}.json"
 
 

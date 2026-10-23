@@ -41,56 +41,20 @@ TESTS_ALLOWED = {
 }
 
 # F-193: per file, the public top-level functions still without a docstring.
+# Since F-194 only two kinds are left. The golden modules (imported or patched
+# by ``tests/test_golden_board.py`` and ``tests/test_pipeline.py``, so under
+# HOLIDAY.md's Merging rule 2 their docstrings are a ``needs-mac`` part 3) and
+# the orchestrator-only ``web/routers/whatif.py`` (``CLAUDE.md``), which stays.
 FUNCTIONS_ALLOWED = {
-    "api/parse.py": 2,
-    "artifacts.py": 7,
-    "brief.py": 7,
-    "config.py": 1,
-    "data/bootstrap.py": 4,
-    "data/field.py": 1,
-    "data/my_entry.py": 4,
-    "data/news/__init__.py": 1,
-    "data/store.py": 3,
-    "decisions.py": 1,
-    "drafts.py": 2,
-    "evaluation.py": 1,
-    "ladder.py": 1,
-    "league_sim.py": 1,
-    "models/persistence.py": 1,
-    "report/render.py": 1,
-    "review.py": 2,
-    "sensitivity.py": 1,
-    "tracking.py": 1,
-    "web/app.py": 1,
-    "web/routers/advice.py": 1,
-    "web/routers/ask.py": 1,
-    "web/routers/brief.py": 2,
-    "web/routers/chips.py": 1,
-    "web/routers/components.py": 1,
-    "web/routers/confidence.py": 1,
-    "web/routers/decisions.py": 2,
-    "web/routers/digest.py": 1,
-    "web/routers/drafts.py": 3,
-    "web/routers/fixtures.py": 1,
-    "web/routers/jobs.py": 3,
-    "web/routers/journal.py": 1,
-    "web/routers/ladder.py": 2,
-    "web/routers/league.py": 3,
-    "web/routers/league_sim.py": 1,
-    "web/routers/live.py": 1,
-    "web/routers/meta.py": 4,
-    "web/routers/misses.py": 1,
-    "web/routers/news.py": 1,
-    "web/routers/overrides.py": 3,
-    "web/routers/plan.py": 1,
-    "web/routers/players.py": 2,
-    "web/routers/prices.py": 1,
-    "web/routers/quality.py": 1,
-    "web/routers/review.py": 1,
-    "web/routers/sensitivity.py": 1,
-    "web/routers/settings.py": 2,
-    "web/routers/watchlist.py": 3,
-    "web/routers/whatif.py": 2,
+    "artifacts.py": 7,             # golden
+    "brief.py": 7,                 # golden
+    "config.py": 1,                # golden
+    "data/bootstrap.py": 4,        # golden (patched by test_pipeline.py)
+    "ladder.py": 1,                # golden
+    "report/render.py": 1,         # golden (patched by test_pipeline.py)
+    "tracking.py": 1,              # golden (patched by test_pipeline.py)
+    "web/routers/advice.py": 1,    # golden
+    "web/routers/whatif.py": 2,    # orchestrator-only, for good
 }
 
 

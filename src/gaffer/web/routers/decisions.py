@@ -29,11 +29,14 @@ def _view(gw: int) -> DecisionNote:
 
 @router.get("/decisions/{gw}", response_model=DecisionNote)
 def decision(gw: int) -> DecisionNote:
+    """The reader's note on a gameweek's decision."""
     return _view(gw)
 
 
 @router.post("/decisions/{gw}", response_model=DecisionNote)
 def save(gw: int, req: DecisionWrite) -> DecisionNote:
+    """Store the reader's note on a gameweek's decision, refusing an unknown reason or an
+    over-long text."""
     if req.reason not in REASONS:
         raise fail("unknown_reason",
                    f"the reason is one of {', '.join(REASONS)}")

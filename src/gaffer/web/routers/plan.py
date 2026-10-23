@@ -33,6 +33,7 @@ def _move(move: ServedMove | None) -> PlanMove | None:
 
 @router.get("/plan/{gw}", response_model=PlanTimeline)
 def plan(gw: int) -> PlanTimeline:
+    """The served plan's timeline for a gameweek; 404 when its artifact is missing."""
     try:
         served = served_plan(gw)
     except GafferError as exc:

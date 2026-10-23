@@ -17,6 +17,8 @@ router = APIRouter(prefix="/api", tags=["ask"])
 
 @router.post("/ask", status_code=202, response_model=JobAccepted)
 def ask(request: Request, body: AskRequest):
+    """Queue an answer to the reader's question about the advice (v19f), refusing an over-long
+    one before a job exists."""
     from gaffer.config import config_in_force
 
     # v19f §2.1: the length is decided here, before a job exists, so a refusal

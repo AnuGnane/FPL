@@ -246,6 +246,7 @@ def players(position: str | None = None, team: int | None = None,
             search: str | None = None,
             sort: str = Query("ep_next", pattern="|".join(SORTS))
             ) -> list[PlayerRow]:
+    """The Players table: the pool's projections, filtered and sorted as asked."""
     state = _state()
     snapshot = load_snapshot("live/players.parquet")
     teams = load_snapshot("live/teams.parquet")
@@ -414,6 +415,7 @@ COMPONENT_LABELS = [
 
 @router.get("/{code}/explain", response_model=PlayerExplain)
 def explain(code: int) -> PlayerExplain:
+    """One player's expected points broken into its component models for the current gameweek."""
     state = _state()
     comp = load_components(state.gw)
     mine = comp[comp["code"] == code]

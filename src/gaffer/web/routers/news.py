@@ -79,6 +79,7 @@ def _snapshot(rel: str) -> pd.DataFrame:
 
 @router.get("/news/{gw}", response_model=NewsPanelData)
 def news(gw: int) -> NewsPanelData:
+    """The news shadow's moves for a gameweek; empty when no shadow is banked."""
     empty = NewsPanelData(gw=int(gw), moved=0, rows=[])
     if not store.exists(SHADOW_PATH):
         return empty

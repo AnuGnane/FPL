@@ -199,11 +199,13 @@ def _checked(entry, value):
 
 @router.get("/settings", response_model=SettingsPanel)
 def settings() -> SettingsPanel:
+    """The settings this page may change, with their values in force."""
     return _panel()
 
 
 @router.post("/settings", response_model=SettingsPanel)
 def save(req: SettingWrite) -> SettingsPanel:
+    """Change one live setting in the local overlay, refusing a key the page may not change."""
     entry = BY_FIELD.get(req.key)
     if entry is None or entry.field not in set(live_keys()):
         raise fail("unknown_setting",

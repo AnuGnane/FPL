@@ -30,6 +30,8 @@ def _view(run) -> JobRunView:
 
 @router.post("/{kind}", status_code=202, response_model=JobStarted)
 def start(kind: str, request: Request):
+    """Start a job of a known kind; 404 for an unknown kind, 409 naming the run that holds the
+    lane."""
     runner = request.app.state.job_runner
     if kind not in runner.kinds:
         raise HTTPException(
@@ -48,6 +50,7 @@ def start(kind: str, request: Request):
 
 @router.get("/current", response_model=JobRunView)
 def current(request: Request):
+    """The job running now, or 204 when the lane is free."""
     run = request.app.state.job_runner.current()
     if run is None:
         return Response(status_code=204)
@@ -84,6 +87,8 @@ def cancel_current(request: Request):
 
 @router.get("/{job_id}")
 def status(job_id: str, request: Request):
+    """One job's state, from the kind runner or the anonymous registry; 404 when neither knows
+    it."""
     run = request.app.state.job_runner.get(job_id)
     if run is not None:
         return _view(run).model_dump()

@@ -394,6 +394,8 @@ def _field_panel(cfg, inputs, gw: int) -> FieldRank:
 
 @router.get("/sim", response_model=LeagueSimData)
 def sim(league_id: int | None = None) -> LeagueSimData:
+    """The league's simulated finishing odds for the latest solve, cached per config and
+    gameweek."""
     cfg = load_config()
     gw = latest_gw()
     key = _cache_key(cfg, int(gw), league_id) if gw is not None else None

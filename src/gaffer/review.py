@@ -1013,12 +1013,15 @@ test that redirects the reports directory redirects the ledger with it."""
 
 
 def ledger_path():
+    """The decision ledger under ``artifacts.REPORTS``, read at call time for the reason
+    ``LEDGER`` gives."""
     from gaffer import artifacts
 
     return artifacts.REPORTS / LEDGER
 
 
 def lock_path():
+    """The lock file beside the ledger that serialises its writers."""
     return ledger_path().with_name(f"{LEDGER}.lock")
 
 

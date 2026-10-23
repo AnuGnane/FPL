@@ -22,6 +22,8 @@ router = APIRouter(prefix="/api", tags=["confidence"])
 
 @router.get("/confidence", response_model=Confidence)
 def confidence() -> Confidence:
+    """How far the decision ledger says the model's calls can be trusted; empty when the ledger
+    is unreadable."""
     from gaffer.review import load_ledger
 
     try:

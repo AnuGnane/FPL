@@ -90,4 +90,5 @@ def cached_text(url: str, dest: Path, client: httpx.Client | None = None
 
 
 def fetched_at(now: datetime | None = None) -> str:
+    """The UTC stamp a fetched page is recorded with, to the second."""
     return (now or datetime.now(UTC)).isoformat(timespec="seconds")

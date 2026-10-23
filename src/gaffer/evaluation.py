@@ -191,6 +191,7 @@ them may take the others down with it, so writes merge rather than replace.
 
 
 def run_at() -> str:
+    """The UTC stamp an evaluation key is written with, so each key says when it was measured."""
     return datetime.now(UTC).isoformat()
 
 

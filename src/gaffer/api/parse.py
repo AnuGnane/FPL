@@ -7,6 +7,7 @@ from __future__ import annotations
 
 
 def to_float(v, default=None):
+    """``v`` as a float, or ``default`` when it is ``None``, empty or not a number."""
     if v is None or v == "":
         return default
     try:
@@ -16,5 +17,7 @@ def to_float(v, default=None):
 
 
 def to_int(v, default=None):
+    """``v`` as an int through :func:`to_float`, so ``"3.0"`` reads as 3 and a blank as
+    ``default``."""
     f = to_float(v)
     return default if f is None else int(f)
