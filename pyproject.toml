@@ -209,14 +209,14 @@ ignore = ["B905", "PT018", "PLC0415"]
 # (added to their lines above), test_served_plan.py and test_v8d_degradation.py
 # are orchestrator-only (CLAUDE.md) and keep their spelling for good.
 "src/gaffer/price_timing.py" = ["PLW", "PLC", "PLE"]
+"tests/test_served_plan.py" = ["PLW", "PLC", "PLE"]
+"tests/test_v8d_degradation.py" = ["PLW", "PLC", "PLE"]
 # N (holiday F-208): minutes.py's design-matrix ``X`` is on the golden path
 # (models/train.py imports it, F-92's reason), so it waits for F-210's
 # needs-mac PR. jobs.py's JobQueueFull and JobAlreadyRunning are public names
 # in an orchestrator-only file, and a rename is an API change; milp.py's ``T``
 # and ``V`` and test_v12_w1_degradation.py are orchestrator-only (CLAUDE.md).
 # All three keep their spelling for good, added to their lines above.
-"tests/test_served_plan.py" = ["PLW", "PLC", "PLE"]
-"tests/test_v8d_degradation.py" = ["PLW", "PLC", "PLE"]
 
 [tool.ruff.lint.flake8-bugbear]
 # B008: typer's declarative defaults are the CLI's idiom (v18g §2.1).
