@@ -189,6 +189,7 @@
    "type": "object"
   },
   "AdvicePlayer": {
+   "description": "One player named in an advice diff.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -231,6 +232,7 @@
    "type": "object"
   },
   "ArtifactItem": {
+   "description": "One file under ``reports/`` and its size, in the health report.",
    "properties": {
     "bytes": {
      "description": "File size in bytes, from ``path.stat().st_size``.",
@@ -326,6 +328,7 @@
    "type": "object"
   },
   "BackupHealth": {
+   "description": "The latest backup file and its size, in the health report.",
    "properties": {
     "bytes": {
      "description": "Its size on disk.",
@@ -349,6 +352,7 @@
    "type": "object"
   },
   "BenchmarkEvaluation": {
+   "description": "The benchmark evaluation against reference forecasts, in ``GET\n/api/quality``.",
    "properties": {
     "caveat": {
      "description": "Why the comparison to ``references`` is not exact.",
@@ -499,6 +503,7 @@
    "type": "object"
   },
   "CalibrationGw": {
+   "description": "One gameweek of the calibration report.",
    "properties": {
     "gw": {
      "description": "The gameweek this row scores.",
@@ -630,6 +635,7 @@
    "type": "object"
   },
   "CategoryMetrics": {
+   "description": "RMSE, MAE and count for one category of the evaluation.",
    "properties": {
     "mae": {
      "description": "Mean absolute error on this category's held-out rows.",
@@ -653,6 +659,7 @@
    "type": "object"
   },
   "ChipPlan": {
+   "description": "``GET /api/chips/plan``: when each unplayed chip is worth most.",
    "properties": {
     "chips": {
      "description": "One row per chip, best gain first.",
@@ -674,6 +681,7 @@
    "type": "object"
   },
   "ChipPlanRow": {
+   "description": "One chip's best week and whether to play it now, in the chip plan.",
    "properties": {
     "best_gain": {
      "description": "The total gain at ``best_gw``.",
@@ -796,6 +804,7 @@
    "type": "object"
   },
   "ChipWeek": {
+   "description": "One gameweek's gain for a chip, in the chip plan.",
    "properties": {
     "gain": {
      "description": "Total expected-points gain from playing the chip in ``gw``, from\n``optimize/chips.py``'s ``evaluate_chips``.",
@@ -914,6 +923,7 @@
    "type": "object"
   },
   "ChipsWorkbench": {
+   "description": "``GET /api/chips``: the chip-by-gameweek table and the wildcard squad.",
    "properties": {
     "chips": {
      "description": "Every (chip, gameweek) cell in the advice run's own chip table.",
@@ -948,6 +958,7 @@
    "type": "object"
   },
   "Component": {
+   "description": "One labelled part of a player's expected points (appearance, goals,\nclean sheet and so on).",
    "properties": {
     "label": {
      "description": "The scoring category this term covers (e.g. minutes, goals, saves).",
@@ -1033,6 +1044,7 @@
    "type": "object"
   },
   "ComponentPlayer": {
+   "description": "One player's expected points and spread in the components breakdown.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -1152,6 +1164,7 @@
    "type": "object"
   },
   "ComponentsBreakdown": {
+   "description": "``GET /api/components/{gw}``: each player's expected points by component\nfor a gameweek.",
    "properties": {
     "gw": {
      "description": "The gameweek this breakdown was requested for.",
@@ -1173,6 +1186,7 @@
    "type": "object"
   },
   "ConfidenceData": {
+   "description": "``GET /api/confidence``: how often the model's captaincy calls have come\ngood.",
    "properties": {
     "captain": {
      "$ref": "#/definitions/ConfidenceTier",
@@ -1242,6 +1256,7 @@
    "type": "object"
   },
   "CoreInsightsHealth": {
+   "description": "Whether the core-insights collector has banked its tables for the\nseason.",
    "properties": {
     "collected": {
      "description": "Whether any of the collector's tables exist for ``season``.",
@@ -1281,6 +1296,7 @@
    "type": "object"
   },
   "CoreInsightsTable": {
+   "description": "One core-insights table and how many rows the collector has banked.",
    "properties": {
     "latest": {
      "anyOf": [
@@ -1312,6 +1328,7 @@
    "type": "object"
   },
   "CurrentEvaluation": {
+   "description": "The current models' holdout evaluation, in ``GET /api/quality``.",
    "properties": {
     "baselines": {
      "additionalProperties": {
@@ -1365,6 +1382,7 @@
    "type": "object"
   },
   "DecisionGrade": {
+   "description": "How the review graded the gameweek a deviation note covers.",
    "properties": {
     "delta_pts": {
      "anyOf": [
@@ -1529,6 +1547,7 @@
    "type": "object"
   },
   "DecisionWrite": {
+   "description": "The body of ``POST /api/decisions/{gw}``: why the user went against the\nadvice.",
    "properties": {
     "reason": {
      "description": "One of ``decisions.REASONS``; refused with ``unknown_reason`` otherwise.",
@@ -1548,6 +1567,7 @@
    "type": "object"
   },
   "DecompositionCell": {
+   "description": "One cell of the points decomposition: total, per gameweek and hits.",
    "properties": {
     "hits": {
      "description": "Hits taken over the replay window.",
@@ -1571,6 +1591,7 @@
    "type": "object"
   },
   "DecompositionData": {
+   "description": "The season's points decomposition, with the forecast gap and the\nplanning ceiling, in ``GET /api/quality``.",
    "properties": {
     "cells": {
      "additionalProperties": {
@@ -1617,6 +1638,7 @@
    "type": "object"
   },
   "Digest": {
+   "description": "One banked digest, Friday's or Tuesday's.",
    "properties": {
     "error": {
      "anyOf": [
@@ -1729,6 +1751,7 @@
    "type": "object"
   },
   "DraftCompare": {
+   "description": "The summary of a ``POST /api/drafts/compare`` job: the drafts' plans\nside by side.",
    "properties": {
     "gw": {
      "description": "The gameweek the comparison was solved from.",
@@ -1755,6 +1778,7 @@
    "type": "object"
   },
   "DraftCompareRequest": {
+   "description": "The body of ``POST /api/drafts/compare``: the drafts to solve side by\nside.",
    "properties": {
     "names": {
      "description": "Which saved drafts to compare, up to :data:`MAX_COMPARE`.",
@@ -1771,6 +1795,7 @@
    "type": "object"
   },
   "DraftCompareRow": {
+   "description": "One draft's solved plan in the draft comparison.",
    "properties": {
     "buys": {
      "description": "Players this row's plan buys.",
@@ -1916,6 +1941,7 @@
    "type": "object"
   },
   "DraftList": {
+   "description": "The saved drafts, as ``GET``, ``POST`` and ``DELETE /api/drafts`` return\nthem.",
    "properties": {
     "drafts": {
      "description": "Every saved draft.",
@@ -1932,6 +1958,7 @@
    "type": "object"
   },
   "DraftRow": {
+   "description": "One saved what-if draft and its constraints.",
    "properties": {
     "constraints": {
      "$ref": "#/definitions/WhatIfRequest",
@@ -1956,6 +1983,7 @@
    "type": "object"
   },
   "DraftSaveRequest": {
+   "description": "The body of ``POST /api/drafts``: a name and the what-if constraints to\nsave.",
    "properties": {
     "constraints": {
      "$ref": "#/definitions/WhatIfRequest",
@@ -2177,6 +2205,7 @@
    "type": "object"
   },
   "FixtureExplain": {
+   "description": "One fixture's expected points for a player, broken into its components.",
    "properties": {
     "calibration_delta": {
      "description": "The fitted EP calibration's adjustment for this position, 0.0 when\nthe frame carries no calibration column.",
@@ -2240,6 +2269,7 @@
    "type": "object"
   },
   "FixtureMatrixData": {
+   "description": "``GET /api/fixtures/matrix``: each team's attack and defence outlook\nover the coming gameweeks.",
    "properties": {
     "gws": {
      "description": "Every gameweek rated.",
@@ -2483,6 +2513,7 @@
    "type": "object"
   },
   "Freshness": {
+   "description": "``GET /api/meta/freshness``: how old each data source is.",
    "properties": {
     "rows": {
      "description": "One row per standing job (v12 W1 \u00a72.9, v19a \u00a72.2).",
@@ -2499,6 +2530,7 @@
    "type": "object"
   },
   "FreshnessRow": {
+   "description": "One data source's age against its expected cadence.",
    "properties": {
     "age_hours": {
      "anyOf": [
@@ -2565,6 +2597,7 @@
    "type": "object"
   },
   "GapPoint": {
+   "description": "The user's points gap to the leader after one gameweek.",
    "properties": {
     "gap": {
      "description": "Your total minus the leader's, negative when you are behind.",
@@ -2583,6 +2616,7 @@
    "type": "object"
   },
   "GwPoint": {
+   "description": "One gameweek of a manager's points, for the race chart.",
    "properties": {
     "gw": {
      "description": "The gameweek this point is for.",
@@ -2606,6 +2640,7 @@
    "type": "object"
   },
   "HeadMetrics": {
+   "description": "One probability head's log loss and reliability curve.",
    "properties": {
     "log_loss": {
      "anyOf": [
@@ -2634,6 +2669,7 @@
    "type": "object"
   },
   "HistoryRun": {
+   "description": "One saved advice run and its outcome, in the history.",
    "properties": {
     "actual_pts": {
      "anyOf": [
@@ -2695,6 +2731,7 @@
    "type": "object"
   },
   "JobAccepted": {
+   "description": "The accept body of the v6 job endpoints (``POST /api/whatif``,\n``/api/ladder``, ``/api/brief``, ``/api/drafts/compare``, ``/api/ask``):\nthe id to poll.",
    "properties": {
     "job_id": {
      "description": "The v6 ``JobRegistry`` id the caller polls at ``GET /api/jobs/{job_id}``.",
@@ -2775,6 +2812,7 @@
    "type": "object"
   },
   "JobRunView": {
+   "description": "One job run as ``GET`` and ``DELETE /api/jobs/current`` report it, for\nthe job log.",
    "properties": {
     "error": {
      "anyOf": [
@@ -2872,6 +2910,7 @@
    "type": "object"
   },
   "JournalData": {
+   "description": "``GET /api/journal``: the model's plan against the user's, week by week.",
    "properties": {
     "built_at": {
      "anyOf": [
@@ -2909,6 +2948,7 @@
    "type": "object"
   },
   "JournalPoint": {
+   "description": "One gameweek of the journal's cumulative points race.",
    "properties": {
     "actual": {
      "description": "Running total of the manager's actual points through this gameweek.",
@@ -2937,6 +2977,7 @@
    "type": "object"
   },
   "JournalRow": {
+   "description": "One gameweek of the journal: the model's plan against what the user did.",
    "properties": {
     "actual_captain": {
      "anyOf": [
@@ -3013,6 +3054,7 @@
    "type": "object"
   },
   "LadderCap": {
+   "description": "The hit and transfer cap the ladder applies.",
    "properties": {
     "max_hits": {
      "anyOf": [
@@ -3047,6 +3089,7 @@
    "type": "object"
   },
   "LadderPayload": {
+   "description": "``GET /api/ladder``: the ladder's rungs under the cap, and the one\nrecommended.",
    "properties": {
     "bar": {
      "anyOf": [
@@ -3614,6 +3657,7 @@
    "type": "object"
   },
   "LadderWeek": {
+   "description": "One gameweek of a ladder rung's plan.",
    "properties": {
     "bench": {
      "description": "The bench this week of the plan.",
@@ -3687,6 +3731,7 @@
    "type": "object"
   },
   "LaunchdHealth": {
+   "description": "One scheduled job's log and its last line, in the health report.",
    "properties": {
     "last_line": {
      "anyOf": [
@@ -3753,6 +3798,7 @@
    "type": "object"
   },
   "LeagueRaceData": {
+   "description": "``GET /api/league/race``: the standings, trajectories, gap and win odds\nof one league.",
    "properties": {
     "entry_id": {
      "description": "The configured manager's entry id.",
@@ -3840,6 +3886,7 @@
    "type": "object"
   },
   "LeagueSimData": {
+   "description": "``GET /api/league/sim``: the season simulation's finish odds for one\nleague.",
    "properties": {
     "entries": {
      "description": "How many entries in the league were simulated.",
@@ -3964,6 +4011,7 @@
    "type": "object"
   },
   "LeagueWhatIfPin": {
+   "description": "One player's points pinned for a gameweek in a league what-if.",
    "properties": {
     "code": {
      "description": "A gaffer player *code*, not a season element id \u2014 the explorer, the\nsquad table and the compare panel all speak codes, and the router maps to\nelements against the same snapshot they were rendered from.",
@@ -3983,6 +4031,7 @@
    "type": "object"
   },
   "LeagueWhatIfRequest": {
+   "description": "The body of ``POST /api/league/whatif``: the pins and captaincy changes\nto simulate.",
    "properties": {
     "cached_only": {
      "default": false,
@@ -4043,6 +4092,7 @@
    "type": "object"
   },
   "LeagueWhatIfResult": {
+   "description": "``POST /api/league/whatif``: the win odds and finish with the pins,\nagainst the baseline.",
    "properties": {
     "baseline_exp_finish": {
      "description": "The manager's mean simulated finish before the pins were applied.",
@@ -4097,6 +4147,7 @@
    "type": "object"
   },
   "LeagueWhatIfRow": {
+   "description": "One manager's line in the league what-if table.",
    "properties": {
     "entry": {
      "description": "FPL entry id.",
@@ -4143,6 +4194,7 @@
    "type": "object"
   },
   "LeaguesOverview": {
+   "description": "``GET /api/league/leagues``: every league the entry is in, and the focus\nleague's stance.",
    "properties": {
     "focus_lam": {
      "description": "The focus league's tilt as the next advise will see it: the solve\nstate's \u03bb with a manual stance applied (plan R2).",
@@ -4237,6 +4289,7 @@
    "type": "object"
   },
   "LivePlayer": {
+   "description": "One player in the user's live team during a gameweek, with points and\nownership.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -4456,6 +4509,7 @@
    "type": "object"
   },
   "LiveState": {
+   "description": "``GET /api/live``: the in-play gameweek's points, table and race for the\nLive hub.",
    "properties": {
     "active": {
      "description": "Whether any fixture in the gameweek is live or about to be.",
@@ -4594,6 +4648,7 @@
    "type": "object"
   },
   "LiveTableRow": {
+   "description": "One manager's line in the live league table.",
    "properties": {
     "delta": {
      "description": "``projected`` minus ``pre_total`` \u2014 this gameweek's projected gain.",
@@ -4671,6 +4726,7 @@
    "type": "object"
   },
   "MatrixCell": {
+   "description": "One team's fixture in one gameweek of the fixture matrix, with attack\nand defence ratings.",
    "properties": {
     "attack": {
      "description": "Difficulty for your attackers, 0 easiest to 1 hardest.\n\nDriven by the opponent's *defence* strength: a mean defence is a hard\nfixture to score in.",
@@ -4704,6 +4760,7 @@
    "type": "object"
   },
   "MatrixTeam": {
+   "description": "One team's row of the fixture matrix.",
    "properties": {
     "cells": {
      "description": "One cell per rated gameweek.",
@@ -4745,6 +4802,7 @@
    "type": "object"
   },
   "MinutesOutput": {
+   "description": "The minutes model's reading for one player in one fixture.",
    "properties": {
     "p60": {
      "anyOf": [
@@ -4851,6 +4909,7 @@
    "type": "object"
   },
   "MissesData": {
+   "description": "``GET /api/misses``: the biggest forecast misses of one graded gameweek.",
    "properties": {
     "gw": {
      "anyOf": [
@@ -4984,6 +5043,7 @@
    "type": "object"
   },
   "NewsPanelData": {
+   "description": "``GET /api/news/{gw}``: the players whose readings the news moved that\ngameweek.",
    "properties": {
     "gw": {
      "description": "The gameweek the panel is reporting on.",
@@ -5216,6 +5276,7 @@
    "type": "object"
   },
   "NewsShadowGw": {
+   "description": "One gameweek of the news shadow: the news-aware reading scored against\nthe flag-only one.",
    "properties": {
     "brier_flags": {
      "description": "Brier score of the official-flag-only reading, this gameweek alone.",
@@ -5361,6 +5422,7 @@
    "type": "object"
   },
   "OddsInfluence": {
+   "description": "How far the bookmaker odds moved one fixture's clean-sheet and goals-\nconceded readings.",
    "properties": {
     "e_gc_blended": {
      "description": "Expected goals conceded after blending with the odds market, or the\nmodel's own figure when there is no market weight.",
@@ -5433,6 +5495,7 @@
    "type": "object"
   },
   "OutlookWeek": {
+   "description": "One gameweek of the fixture outlook: its fixtures, doubles and blanks.",
    "properties": {
     "blanks": {
      "description": "Clubs with no fixture this gameweek.",
@@ -5513,6 +5576,7 @@
    "type": "object"
   },
   "OverrideRow": {
+   "description": "One active minutes override, beside the model's own reading.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -5595,6 +5659,7 @@
    "type": "object"
   },
   "OverridesPanel": {
+   "description": "``GET /api/overrides``: the manual minutes overrides in force.",
    "properties": {
     "active": {
      "default": true,
@@ -6018,6 +6083,7 @@
    "type": "object"
   },
   "PlanGw": {
+   "description": "One gameweek of the plan timeline: moves, captaincy, chip and expected\npoints.",
    "properties": {
     "bank": {
      "anyOf": [
@@ -6127,6 +6193,7 @@
    "type": "object"
   },
   "PlanMove": {
+   "description": "One buy or sell in a plan gameweek.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -6240,6 +6307,7 @@
    "type": "object"
   },
   "PlanSummary": {
+   "description": "One solved plan's first gameweek, as the what-if compares it.",
    "properties": {
     "bench": {
      "description": "The bench, in order.",
@@ -6530,6 +6598,7 @@
    "type": "object"
   },
   "PricePoint": {
+   "description": "One gameweek's price for a player.",
    "properties": {
     "gw": {
      "description": "The gameweek this price was recorded at.",
@@ -6548,6 +6617,7 @@
    "type": "object"
   },
   "PriceSeries": {
+   "description": "One player's price over the season.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -6886,6 +6956,7 @@
    "type": "object"
   },
   "ReliabilityBin": {
+   "description": "One bin of a reliability curve: predicted against observed rate.",
    "properties": {
     "n": {
      "description": "How many predictions fell in this bin.",
@@ -6909,6 +6980,7 @@
    "type": "object"
   },
   "ReviewAccuracyPoint": {
+   "description": "One gameweek's accuracy in the review.",
    "properties": {
     "accuracy": {
      "description": "That gameweek's ``ReviewGw.accuracy``.",
@@ -7382,6 +7454,7 @@
    "type": "object"
   },
   "ReviewLaneTotal": {
+   "description": "One review lane's season totals.",
    "properties": {
     "graded": {
      "default": 0,
@@ -7449,6 +7522,7 @@
    "type": "object"
   },
   "RivalBeat": {
+   "description": "The user's chance of finishing above one rival, from the season\nsimulation.",
    "properties": {
     "entry": {
      "description": "FPL entry id.",
@@ -7480,6 +7554,7 @@
    "type": "object"
   },
   "RivalDetailData": {
+   "description": "``GET /api/league/rivals/{entry_id}``: one rival's squad, chips and\ndifferentials against the user.",
    "properties": {
     "captain": {
      "anyOf": [
@@ -7582,6 +7657,7 @@
    "type": "object"
   },
   "RivalSummary": {
+   "description": "One rival in ``GET /api/league/rivals``, with the squad overlap and\ndifferentials.",
    "properties": {
     "differentials": {
      "description": "Players in the rival's squad the manager does not own.",
@@ -7630,6 +7706,7 @@
    "type": "object"
   },
   "SensitivityMove": {
+   "description": "One move and how often the sensitivity sweep's re-solves chose it.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -7674,6 +7751,7 @@
    "type": "object"
   },
   "SensitivityPlan": {
+   "description": "One plan the sensitivity sweep reached, and how often.",
    "properties": {
     "buys": {
      "description": "Players this plan buys.",
@@ -7728,6 +7806,7 @@
    "type": "object"
   },
   "SensitivityReport": {
+   "description": "``GET /api/sensitivity``: how often the sweep's re-solves reach each\nmove and plan.",
    "properties": {
     "available": {
      "default": false,
@@ -8541,6 +8620,7 @@
    "type": "object"
   },
   "SettingWrite": {
+   "description": "The body of ``POST /api/settings``: one key and its new value.",
    "properties": {
     "key": {
      "description": "The config field to write, dotted to its section.",
@@ -8560,6 +8640,7 @@
    "type": "object"
   },
   "SettingsPanel": {
+   "description": "``GET`` and ``POST /api/settings``: the editable settings and their\nvalues.",
    "properties": {
     "apply_note": {
      "description": "The standing note on when a saved change takes effect.",
@@ -8636,6 +8717,7 @@
    "type": "object"
   },
   "SourceHealth": {
+   "description": "One data source's file and age, in the health report.",
    "properties": {
     "age_hours": {
      "anyOf": [
@@ -8683,6 +8765,7 @@
    "type": "object"
   },
   "SourceRows": {
+   "description": "How many verdicts one presser source supplied.",
    "properties": {
     "rows": {
      "description": "How many verdicts came from this source.",
@@ -8770,6 +8853,7 @@
    "type": "object"
   },
   "SquadPlayer": {
+   "description": "One player in a rival's squad, as the rival page lists it.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -8813,6 +8897,7 @@
    "type": "object"
   },
   "SquadPlayerRef": {
+   "description": "One player in a wildcard squad diff on the chips workbench.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -8846,6 +8931,7 @@
    "type": "object"
   },
   "Staleness": {
+   "description": "How far the saved advice lags the deadline the user now faces.",
    "properties": {
     "advice_gw": {
      "description": "The gameweek the saved advice was solved for.",
@@ -8922,6 +9008,7 @@
    "type": "object"
   },
   "StandingRow": {
+   "description": "One manager's line in the league table on the League hub.",
    "properties": {
     "entry": {
      "description": "FPL entry id.",
@@ -8999,6 +9086,7 @@
    "type": "object"
   },
   "TickerCell": {
+   "description": "One team's fixture in one gameweek of the ticker.",
    "properties": {
     "difficulty": {
      "description": "The 0-1 rating, from bookmaker odds when available, else Elo.",
@@ -9027,6 +9115,7 @@
    "type": "object"
   },
   "TickerData": {
+   "description": "``GET /api/fixtures/ticker``: each team's fixture difficulty over the\ncoming gameweeks.",
    "properties": {
     "gws": {
      "description": "Every gameweek rated.",
@@ -9060,6 +9149,7 @@
    "type": "object"
   },
   "TickerTeam": {
+   "description": "One team's row of the fixture ticker.",
    "properties": {
     "cells": {
      "description": "One cell per rated gameweek.",
@@ -9096,6 +9186,7 @@
    "type": "object"
   },
   "Trajectory": {
+   "description": "One manager's season of gameweek points, for the race chart.",
    "properties": {
     "entry": {
      "description": "FPL entry id.",
@@ -9146,6 +9237,7 @@
    "type": "object"
   },
   "VerdictRow": {
+   "description": "One presser verdict and how many of its players started, in the presser\ngrades.",
    "properties": {
     "n": {
      "description": "How many verdicts of this kind were graded.",
@@ -9174,6 +9266,7 @@
    "type": "object"
   },
   "VerdictScore": {
+   "description": "One presser verdict's precision and recall, in the presser grades.",
    "properties": {
     "n": {
      "description": "How many verdicts of this kind were graded.",
@@ -9228,6 +9321,7 @@
    "type": "object"
   },
   "WatchRow": {
+   "description": "One watched player, with the user's note.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -9278,6 +9372,7 @@
    "type": "object"
   },
   "WhatIfRequest": {
+   "description": "The constraints of one what-if solve, posted to ``/api/whatif`` and\nsaved with a draft.",
    "properties": {
     "ban": {
      "description": "Player codes excluded from the candidate pool entirely, owned or not.",
@@ -9363,6 +9458,7 @@
    "type": "object"
   },
   "WhatIfResult": {
+   "description": "The summary of a ``POST /api/whatif`` job: the user's constrained plan\nagainst the baseline.",
    "properties": {
     "baseline": {
      "$ref": "#/definitions/PlanSummary",
@@ -9417,6 +9513,7 @@
    "type": "object"
   },
   "WinProb": {
+   "description": "One manager's chance of winning the league, from the simulation.",
    "properties": {
     "name": {
      "description": "The rival's team name.",
@@ -9440,6 +9537,7 @@
    "type": "object"
   },
   "WireAdviceLatest": {
+   "description": "``GET /api/advice/latest``: the saved advice for its gameweek, with its\nstaleness.",
    "properties": {
     "advice": {
      "additionalProperties": true,
@@ -9596,6 +9694,7 @@
    "type": "object"
   },
   "WireHealth": {
+   "description": "``GET /api/health``: the data, models, jobs and artifacts the health\npage checks.",
    "properties": {
     "arms": {
      "default": [],
@@ -9788,6 +9887,7 @@
    "type": "object"
   },
   "WireHistory": {
+   "description": "``GET /api/history``: past advice runs, price series and backtests.",
    "properties": {
     "backtests": {
      "description": "Banked backtest log rows, whatever shape the replay tooling wrote.",
@@ -9821,6 +9921,7 @@
    "type": "object"
   },
   "WireModelHealth": {
+   "description": "One saved model's timestamp and metrics, in the health report.",
    "properties": {
     "metrics": {
      "additionalProperties": true,
@@ -9852,6 +9953,7 @@
    "type": "object"
   },
   "WirePlanTimeline": {
+   "description": "``GET /api/plan/{gw}``: the multi-week plan and its alternatives.",
    "properties": {
     "alternatives": {
      "default": [],
@@ -9913,6 +10015,7 @@
    "type": "object"
   },
   "WirePlayerExplain": {
+   "description": "``GET /api/players/{code}/explain``: why a player's expected points are\nwhat they are.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -9985,6 +10088,7 @@
    "type": "object"
   },
   "WirePlayerRef": {
+   "description": "One player as a plan, a what-if or a ladder rung names them.",
    "properties": {
     "code": {
      "description": "FPL player code.",
@@ -10052,6 +10156,7 @@
    "type": "object"
   },
   "WirePlayerRow": {
+   "description": "One player in ``GET /api/players``, the Players hub's table.",
    "properties": {
     "available": {
      "description": "Whether his status is outside :data:`UNAVAILABLE_STATUS`.",
@@ -10334,6 +10439,7 @@
    "type": "object"
   },
   "WireReview": {
+   "description": "``GET /api/review``: each gameweek's graded decisions and the season\nsummary.",
    "properties": {
     "gws": {
      "description": "Every graded gameweek's own row.",
@@ -10363,6 +10469,7 @@
    "type": "object"
   },
   "WireReviewSummary": {
+   "description": "The season summary of the review: lanes, accuracy, bench points and\nhindsight gap.",
    "properties": {
     "accuracy": {
      "description": "The accuracy series across graded gameweeks.",

@@ -111,6 +111,8 @@ export interface AdviceDiff {
   sells_dropped: AdvicePlayer[]
 }
 /**
+ * One player named in an advice diff.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "AdvicePlayer".
  */
@@ -177,6 +179,8 @@ export interface ArmSwitch {
   value: string
 }
 /**
+ * One file under ``reports/`` and its size, in the health report.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ArtifactItem".
  */
@@ -242,6 +246,8 @@ export interface AskRequest {
   question: string
 }
 /**
+ * The latest backup file and its size, in the health report.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "BackupHealth".
  */
@@ -260,6 +266,9 @@ export interface BackupHealth {
   path: string
 }
 /**
+ * The benchmark evaluation against reference forecasts, in ``GET
+ * /api/quality``.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "BenchmarkEvaluation".
  */
@@ -314,6 +323,8 @@ export interface ReferenceMetrics {
   rmse: number
 }
 /**
+ * RMSE, MAE and count for one category of the evaluation.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "CategoryMetrics".
  */
@@ -390,6 +401,8 @@ export interface DigestPanel {
   digest: Digest | null
 }
 /**
+ * One banked digest, Friday's or Tuesday's.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "Digest".
  */
@@ -448,6 +461,8 @@ export interface DigestSection {
   title: string
 }
 /**
+ * One gameweek of the calibration report.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "CalibrationGw".
  */
@@ -501,6 +516,8 @@ export interface CalibrationHead {
   status: string
 }
 /**
+ * One bin of a reliability curve: predicted against observed rate.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ReliabilityBin".
  */
@@ -559,6 +576,8 @@ export interface CalibrationHealth {
   saved_at: string | null
 }
 /**
+ * ``GET /api/chips/plan``: when each unplayed chip is worth most.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ChipPlan".
  */
@@ -573,6 +592,8 @@ export interface ChipPlan {
   gw: number
 }
 /**
+ * One chip's best week and whether to play it now, in the chip plan.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ChipPlanRow".
  */
@@ -647,6 +668,8 @@ export interface ChipPlanRow {
   window: number[]
 }
 /**
+ * One gameweek's gain for a chip, in the chip plan.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ChipWeek".
  */
@@ -728,6 +751,8 @@ export interface ChipWorkbenchRow {
   threshold_source: string | null
 }
 /**
+ * ``GET /api/chips``: the chip-by-gameweek table and the wildcard squad.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ChipsWorkbench".
  */
@@ -786,6 +811,8 @@ export interface SquadDiff {
   threshold_source: string | null
 }
 /**
+ * One player in a wildcard squad diff on the chips workbench.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "SquadPlayerRef".
  */
@@ -813,6 +840,9 @@ export interface SquadPlayerRef {
   price: number
 }
 /**
+ * One labelled part of a player's expected points (appearance, goals,
+ * clean sheet and so on).
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "Component".
  */
@@ -904,6 +934,8 @@ export interface MinutesOutput {
   xmins: number | null
 }
 /**
+ * One player's expected points and spread in the components breakdown.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ComponentPlayer".
  */
@@ -968,6 +1000,9 @@ export interface ComponentPlayer {
   team_name: string
 }
 /**
+ * ``GET /api/components/{gw}``: each player's expected points by component
+ * for a gameweek.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ComponentsBreakdown".
  */
@@ -982,6 +1017,9 @@ export interface ComponentsBreakdown {
   players: ComponentPlayer[]
 }
 /**
+ * ``GET /api/confidence``: how often the model's captaincy calls have come
+ * good.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ConfidenceData".
  */
@@ -1076,6 +1114,9 @@ export interface ConfidenceTier1 {
   wins: number
 }
 /**
+ * Whether the core-insights collector has banked its tables for the
+ * season.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "CoreInsightsHealth".
  */
@@ -1101,6 +1142,8 @@ export interface CoreInsightsHealth {
   waiting_for: string | null
 }
 /**
+ * One core-insights table and how many rows the collector has banked.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "CoreInsightsTable".
  */
@@ -1122,6 +1165,8 @@ export interface CoreInsightsTable {
   table: string
 }
 /**
+ * The current models' holdout evaluation, in ``GET /api/quality``.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "CurrentEvaluation".
  */
@@ -1162,6 +1207,8 @@ export interface CurrentEvaluation {
   }
 }
 /**
+ * One probability head's log loss and reliability curve.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "HeadMetrics".
  */
@@ -1178,6 +1225,8 @@ export interface HeadMetrics {
   reliability: ReliabilityBin[]
 }
 /**
+ * How the review graded the gameweek a deviation note covers.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DecisionGrade".
  */
@@ -1257,6 +1306,9 @@ export interface DecisionRef {
   text: string
 }
 /**
+ * The body of ``POST /api/decisions/{gw}``: why the user went against the
+ * advice.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DecisionWrite".
  */
@@ -1271,6 +1323,8 @@ export interface DecisionWrite {
   text: string
 }
 /**
+ * One cell of the points decomposition: total, per gameweek and hits.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DecompositionCell".
  */
@@ -1289,6 +1343,9 @@ export interface DecompositionCell {
   total: number
 }
 /**
+ * The season's points decomposition, with the forecast gap and the
+ * planning ceiling, in ``GET /api/quality``.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DecompositionData".
  */
@@ -1325,6 +1382,9 @@ export interface DecompositionData {
   start_gw: number
 }
 /**
+ * The summary of a ``POST /api/drafts/compare`` job: the drafts' plans
+ * side by side.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DraftCompare".
  */
@@ -1344,6 +1404,8 @@ export interface DraftCompare {
   weeks: number
 }
 /**
+ * One draft's solved plan in the draft comparison.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DraftCompareRow".
  */
@@ -1406,6 +1468,8 @@ export interface DraftCompareRow {
   solved_at: string
 }
 /**
+ * One player as a plan, a what-if or a ladder rung names them.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WirePlayerRef".
  */
@@ -1476,6 +1540,9 @@ export interface NextFixture {
   opponent_short: string | null
 }
 /**
+ * The body of ``POST /api/drafts/compare``: the drafts to solve side by
+ * side.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DraftCompareRequest".
  */
@@ -1486,6 +1553,9 @@ export interface DraftCompareRequest {
   names: string[]
 }
 /**
+ * The saved drafts, as ``GET``, ``POST`` and ``DELETE /api/drafts`` return
+ * them.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DraftList".
  */
@@ -1496,6 +1566,8 @@ export interface DraftList {
   drafts: DraftRow[]
 }
 /**
+ * One saved what-if draft and its constraints.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DraftRow".
  */
@@ -1558,6 +1630,9 @@ export interface WhatIfRequest {
   max_transfers: number | null
 }
 /**
+ * The body of ``POST /api/drafts``: a name and the what-if constraints to
+ * save.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DraftSaveRequest".
  */
@@ -1723,6 +1798,8 @@ export interface FieldRank {
   waiting_for: string | null
 }
 /**
+ * One fixture's expected points for a player, broken into its components.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "FixtureExplain".
  */
@@ -1819,6 +1896,9 @@ export interface OddsInfluence {
   weight: number
 }
 /**
+ * ``GET /api/fixtures/matrix``: each team's attack and defence outlook
+ * over the coming gameweeks.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "FixtureMatrixData".
  */
@@ -1838,6 +1918,8 @@ export interface FixtureMatrixData {
   teams: MatrixTeam[]
 }
 /**
+ * One team's row of the fixture matrix.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "MatrixTeam".
  */
@@ -1868,6 +1950,9 @@ export interface MatrixTeam {
   short_name: string
 }
 /**
+ * One team's fixture in one gameweek of the fixture matrix, with attack
+ * and defence ratings.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "MatrixCell".
  */
@@ -1945,6 +2030,8 @@ export interface FixtureOutlook {
   weeks: OutlookWeek[]
 }
 /**
+ * One gameweek of the fixture outlook: its fixtures, doubles and blanks.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "OutlookWeek".
  */
@@ -2116,6 +2203,8 @@ export interface LeadBucket {
   started: number
 }
 /**
+ * ``GET /api/meta/freshness``: how old each data source is.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "Freshness".
  */
@@ -2126,6 +2215,8 @@ export interface Freshness {
   rows: FreshnessRow[]
 }
 /**
+ * One data source's age against its expected cadence.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "FreshnessRow".
  */
@@ -2161,6 +2252,8 @@ export interface FreshnessRow {
   source: 'refresh' | 'odds' | 'field' | 'advise' | 'backup' | 'prices' | 'snapshot'
 }
 /**
+ * The user's points gap to the leader after one gameweek.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "GapPoint".
  */
@@ -2175,6 +2268,8 @@ export interface GapPoint {
   gw: number
 }
 /**
+ * One gameweek of a manager's points, for the race chart.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "GwPoint".
  */
@@ -2193,6 +2288,8 @@ export interface GwPoint {
   total: number
 }
 /**
+ * One saved advice run and its outcome, in the history.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "HistoryRun".
  */
@@ -2232,6 +2329,10 @@ export interface HistoryRun {
   sells: string[]
 }
 /**
+ * The accept body of the v6 job endpoints (``POST /api/whatif``,
+ * ``/api/ladder``, ``/api/brief``, ``/api/drafts/compare``, ``/api/ask``):
+ * the id to poll.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "JobAccepted".
  */
@@ -2292,6 +2393,9 @@ export interface JobHealth {
   source: 'installed' | 'repo'
 }
 /**
+ * One job run as ``GET`` and ``DELETE /api/jobs/current`` report it, for
+ * the job log.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "JobRunView".
  */
@@ -2348,6 +2452,8 @@ export interface JobStarted {
   kind: string
 }
 /**
+ * ``GET /api/journal``: the model's plan against the user's, week by week.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "JournalData".
  */
@@ -2366,6 +2472,8 @@ export interface JournalData {
   rows: JournalRow[]
 }
 /**
+ * One gameweek of the journal's cumulative points race.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "JournalPoint".
  */
@@ -2388,6 +2496,8 @@ export interface JournalPoint {
   model: number
 }
 /**
+ * One gameweek of the journal: the model's plan against what the user did.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "JournalRow".
  */
@@ -2431,6 +2541,8 @@ export interface JournalRow {
   post_deadline: boolean
 }
 /**
+ * The hit and transfer cap the ladder applies.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LadderCap".
  */
@@ -2446,6 +2558,9 @@ export interface LadderCap {
   max_transfers: number | null
 }
 /**
+ * ``GET /api/ladder``: the ladder's rungs under the cap, and the one
+ * recommended.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LadderPayload".
  */
@@ -2654,6 +2769,8 @@ export interface LadderRung {
   week_pts: number | null
 }
 /**
+ * One gameweek of a ladder rung's plan.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LadderWeek".
  */
@@ -2778,6 +2895,8 @@ export interface LadderStep {
   taken: boolean
 }
 /**
+ * One scheduled job's log and its last line, in the health report.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LaunchdHealth".
  */
@@ -2801,6 +2920,9 @@ export interface LaunchdHealth {
   present: boolean
 }
 /**
+ * ``GET /api/league/race``: the standings, trajectories, gap and win odds
+ * of one league.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LeagueRaceData".
  */
@@ -2857,6 +2979,8 @@ export interface LeagueRaceData {
   win_probability: WinProb[]
 }
 /**
+ * One manager's line in the league table on the League hub.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "StandingRow".
  */
@@ -2891,6 +3015,8 @@ export interface StandingRow {
   total: number
 }
 /**
+ * One manager's season of gameweek points, for the race chart.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "Trajectory".
  */
@@ -2909,6 +3035,8 @@ export interface Trajectory {
   points: GwPoint[]
 }
 /**
+ * One manager's chance of winning the league, from the simulation.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WinProb".
  */
@@ -2928,6 +3056,9 @@ export interface WinProb {
   total: number
 }
 /**
+ * ``GET /api/league/sim``: the season simulation's finish odds for one
+ * league.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LeagueSimData".
  */
@@ -3033,6 +3164,9 @@ export interface SimPoint {
   run_at: string
 }
 /**
+ * The user's chance of finishing above one rival, from the season
+ * simulation.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "RivalBeat".
  */
@@ -3053,6 +3187,8 @@ export interface RivalBeat {
   p_beat: number | null
 }
 /**
+ * One player's points pinned for a gameweek in a league what-if.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LeagueWhatIfPin".
  */
@@ -3069,6 +3205,9 @@ export interface LeagueWhatIfPin {
   event: string
 }
 /**
+ * The body of ``POST /api/league/whatif``: the pins and captaincy changes
+ * to simulate.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LeagueWhatIfRequest".
  */
@@ -3101,6 +3240,9 @@ export interface LeagueWhatIfRequest {
   rival_captain_blanks: number | null
 }
 /**
+ * ``POST /api/league/whatif``: the win odds and finish with the pins,
+ * against the baseline.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LeagueWhatIfResult".
  */
@@ -3139,6 +3281,8 @@ export interface LeagueWhatIfResult {
   unknown_codes: number[]
 }
 /**
+ * One manager's line in the league what-if table.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LeagueWhatIfRow".
  */
@@ -3170,6 +3314,9 @@ export interface LeagueWhatIfRow {
   total: number
 }
 /**
+ * ``GET /api/league/leagues``: every league the entry is in, and the focus
+ * league's stance.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LeaguesOverview".
  */
@@ -3295,6 +3442,9 @@ export interface PublicLeagueRow {
   rank: number | null
 }
 /**
+ * One player in the user's live team during a gameweek, with points and
+ * ownership.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LivePlayer".
  */
@@ -3422,6 +3572,9 @@ export interface LiveSafety {
   role: 'above' | 'below' | 'leader'
 }
 /**
+ * ``GET /api/live``: the in-play gameweek's points, table and race for the
+ * Live hub.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LiveState".
  */
@@ -3487,6 +3640,8 @@ export interface LiveState {
   table: LiveTableRow[]
 }
 /**
+ * One manager's line in the live league table.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LiveTableRow".
  */
@@ -3529,6 +3684,8 @@ export interface LiveTableRow {
   remaining_ep: number | null
 }
 /**
+ * The minutes model's reading for one player in one fixture.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "MinutesOutput".
  */
@@ -3602,6 +3759,8 @@ export interface MissRow {
   price: number | null
 }
 /**
+ * ``GET /api/misses``: the biggest forecast misses of one graded gameweek.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "MissesData".
  */
@@ -3704,6 +3863,9 @@ export interface NamedPlayer {
   position: string
 }
 /**
+ * ``GET /api/news/{gw}``: the players whose readings the news moved that
+ * gameweek.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "NewsPanelData".
  */
@@ -3844,6 +4006,9 @@ export interface NewsShadowData {
   run_at: string
 }
 /**
+ * One gameweek of the news shadow: the news-aware reading scored against
+ * the flag-only one.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "NewsShadowGw".
  */
@@ -3923,6 +4088,9 @@ export interface NewsShadowSummary {
   rows: number
 }
 /**
+ * How far the bookmaker odds moved one fixture's clean-sheet and goals-
+ * conceded readings.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "OddsInfluence".
  */
@@ -3980,6 +4148,8 @@ export interface OverrideRequest {
   p_play: number | null
 }
 /**
+ * One active minutes override, beside the model's own reading.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "OverrideRow".
  */
@@ -4020,6 +4190,8 @@ export interface OverrideRow {
   set_at: string
 }
 /**
+ * ``GET /api/overrides``: the manual minutes overrides in force.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "OverridesPanel".
  */
@@ -4263,6 +4435,9 @@ export interface PlanAlternative {
   weeks: PlanGw[]
 }
 /**
+ * One gameweek of the plan timeline: moves, captaincy, chip and expected
+ * points.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "PlanGw".
  */
@@ -4326,6 +4501,8 @@ export interface PlanGw {
   vice: PlanMove | null
 }
 /**
+ * One buy or sell in a plan gameweek.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "PlanMove".
  */
@@ -4402,6 +4579,8 @@ export interface PlanMoveTrace {
   sell_name: string
 }
 /**
+ * One solved plan's first gameweek, as the what-if compares it.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "PlanSummary".
  */
@@ -4511,6 +4690,8 @@ export interface PresserGradesData {
   verdicts_banked: number
 }
 /**
+ * How many verdicts one presser source supplied.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "SourceRows".
  */
@@ -4525,6 +4706,9 @@ export interface SourceRows {
   source: string
 }
 /**
+ * One presser verdict and how many of its players started, in the presser
+ * grades.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "VerdictRow".
  */
@@ -4547,6 +4731,8 @@ export interface VerdictRow {
   verdict: string
 }
 /**
+ * One presser verdict's precision and recall, in the presser grades.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "VerdictScore".
  */
@@ -4570,6 +4756,8 @@ export interface VerdictScore {
   verdict: string
 }
 /**
+ * One gameweek's price for a player.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "PricePoint".
  */
@@ -4584,6 +4772,8 @@ export interface PricePoint {
   price: number
 }
 /**
+ * One player's price over the season.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "PriceSeries".
  */
@@ -4655,6 +4845,8 @@ export interface ReasonTally {
   reason: string
 }
 /**
+ * One gameweek's accuracy in the review.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ReviewAccuracyPoint".
  */
@@ -4932,6 +5124,8 @@ export interface ReviewHindsight1 {
   xi: number[]
 }
 /**
+ * One review lane's season totals.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "ReviewLaneTotal".
  */
@@ -4964,6 +5158,9 @@ export interface ReviewLaneTotal {
   wins: number
 }
 /**
+ * ``GET /api/league/rivals/{entry_id}``: one rival's squad, chips and
+ * differentials against the user.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "RivalDetailData".
  */
@@ -5023,6 +5220,8 @@ export interface RivalDetailData {
   your_differentials: SquadPlayer[]
 }
 /**
+ * One player in a rival's squad, as the rival page lists it.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "SquadPlayer".
  */
@@ -5058,6 +5257,9 @@ export interface SquadPlayer {
   price: number
 }
 /**
+ * One rival in ``GET /api/league/rivals``, with the squad overlap and
+ * differentials.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "RivalSummary".
  */
@@ -5096,6 +5298,8 @@ export interface RivalSummary {
   total: number
 }
 /**
+ * One move and how often the sensitivity sweep's re-solves chose it.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "SensitivityMove".
  */
@@ -5130,6 +5334,8 @@ export interface SensitivityMove {
   name: string
 }
 /**
+ * One plan the sensitivity sweep reached, and how often.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "SensitivityPlan".
  */
@@ -5161,6 +5367,9 @@ export interface SensitivityPlan {
   value: number
 }
 /**
+ * ``GET /api/sensitivity``: how often the sweep's re-solves reach each
+ * move and plan.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "SensitivityReport".
  */
@@ -5437,6 +5646,8 @@ export interface SettingRow {
   value: unknown
 }
 /**
+ * The body of ``POST /api/settings``: one key and its new value.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "SettingWrite".
  */
@@ -5452,6 +5663,9 @@ export interface SettingWrite {
   value: unknown
 }
 /**
+ * ``GET`` and ``POST /api/settings``: the editable settings and their
+ * values.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "SettingsPanel".
  */
@@ -5478,6 +5692,8 @@ export interface SettingsPanel {
   unavailable: string[]
 }
 /**
+ * One data source's file and age, in the health report.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "SourceHealth".
  */
@@ -5504,6 +5720,8 @@ export interface SourceHealth {
   source: string
 }
 /**
+ * How far the saved advice lags the deadline the user now faces.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "Staleness".
  */
@@ -5590,6 +5808,8 @@ export interface TeamModelHealth {
   zero_odds_fixtures: number
 }
 /**
+ * One team's fixture in one gameweek of the ticker.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "TickerCell".
  */
@@ -5612,6 +5832,9 @@ export interface TickerCell {
   opponent: string
 }
 /**
+ * ``GET /api/fixtures/ticker``: each team's fixture difficulty over the
+ * coming gameweeks.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "TickerData".
  */
@@ -5630,6 +5853,8 @@ export interface TickerData {
   teams: TickerTeam[]
 }
 /**
+ * One team's row of the fixture ticker.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "TickerTeam".
  */
@@ -5707,6 +5932,8 @@ export interface WatchRequest {
   note?: string | null
 }
 /**
+ * One watched player, with the user's note.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WatchRow".
  */
@@ -5752,6 +5979,9 @@ export interface WatchlistPanel {
   rows: WatchRow[]
 }
 /**
+ * The constraints of one what-if solve, posted to ``/api/whatif`` and
+ * saved with a draft.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WhatIfRequest".
  */
@@ -5800,6 +6030,9 @@ export interface WhatIfRequest2 {
   max_transfers: number | null
 }
 /**
+ * The summary of a ``POST /api/whatif`` job: the user's constrained plan
+ * against the baseline.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WhatIfResult".
  */
@@ -5924,6 +6157,9 @@ export interface PlanSummary2 {
   xi: WirePlayerRef[]
 }
 /**
+ * ``GET /api/advice/latest``: the saved advice for its gameweek, with its
+ * staleness.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WireAdviceLatest".
  */
@@ -6064,6 +6300,9 @@ export interface WireCalibrationReport {
   season: string | null
 }
 /**
+ * ``GET /api/health``: the data, models, jobs and artifacts the health
+ * page checks.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WireHealth".
  */
@@ -6190,6 +6429,8 @@ export interface LaunchdHealth1 {
   present: boolean
 }
 /**
+ * One saved model's timestamp and metrics, in the health report.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WireModelHealth".
  */
@@ -6210,6 +6451,8 @@ export interface WireModelHealth {
   saved_at: string | null
 }
 /**
+ * ``GET /api/history``: past advice runs, price series and backtests.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WireHistory".
  */
@@ -6230,6 +6473,8 @@ export interface WireHistory {
   runs: HistoryRun[]
 }
 /**
+ * ``GET /api/plan/{gw}``: the multi-week plan and its alternatives.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WirePlanTimeline".
  */
@@ -6268,6 +6513,9 @@ export interface WirePlanTimeline {
   weeks: PlanGw[]
 }
 /**
+ * ``GET /api/players/{code}/explain``: why a player's expected points are
+ * what they are.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WirePlayerExplain".
  */
@@ -6318,6 +6566,8 @@ export interface WirePlayerExplain {
   team_name: string
 }
 /**
+ * One player in ``GET /api/players``, the Players hub's table.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WirePlayerRow".
  */
@@ -6497,6 +6747,9 @@ export interface WirePlayerRow {
   team_name: string
 }
 /**
+ * ``GET /api/review``: each gameweek's graded decisions and the season
+ * summary.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WireReview".
  */
@@ -6511,6 +6764,9 @@ export interface WireReview {
   summary: WireReviewSummary | null
 }
 /**
+ * The season summary of the review: lanes, accuracy, bench points and
+ * hindsight gap.
+ *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WireReviewSummary".
  */

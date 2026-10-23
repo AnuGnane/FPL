@@ -34,6 +34,9 @@ generated names."""
 
 
 class JobAccepted(BaseModel):
+    """The accept body of the v6 job endpoints (``POST /api/whatif``,
+    ``/api/ladder``, ``/api/brief``, ``/api/drafts/compare``, ``/api/ask``):
+    the id to poll."""
     job_id: str
     """The v6 ``JobRegistry`` id the caller polls at ``GET /api/jobs/{job_id}``."""
 
@@ -49,6 +52,8 @@ class JobStarted(BaseModel):
 
 
 class JobRunView(BaseModel):
+    """One job run as ``GET`` and ``DELETE /api/jobs/current`` report it, for
+    the job log."""
     id: str
     """The run's id, as minted by ``JobRunner.start``."""
     kind: str
@@ -72,6 +77,7 @@ class JobRunView(BaseModel):
 
 
 class Staleness(BaseModel):
+    """How far the saved advice lags the deadline the user now faces."""
     advice_gw: int
     """The gameweek the saved advice was solved for."""
     current_gw: int | None
@@ -101,6 +107,8 @@ class Staleness(BaseModel):
 
 
 class AdviceLatest(BaseModel):
+    """``GET /api/advice/latest``: the saved advice for its gameweek, with its
+    staleness."""
     gw: int
     """The gameweek this advice was solved for, from ``latest_gw()``."""
     mode: str
@@ -125,6 +133,8 @@ CHIP_CODES = {"wc": "wildcard", "bb": "bboost", "fh": "freehit",
 
 
 class WhatIfRequest(BaseModel):
+    """The constraints of one what-if solve, posted to ``/api/whatif`` and
+    saved with a draft."""
     lock: list[int] = Field(default_factory=list)
     """Owned player codes the solve may not sell."""
     ban: list[int] = Field(default_factory=list)
@@ -183,6 +193,7 @@ class NextFixture(BaseModel):
 
 
 class PlayerRef(BaseModel):
+    """One player as a plan, a what-if or a ladder rung names them."""
     code: int
     """FPL player code."""
     name: str
@@ -206,6 +217,7 @@ class PlayerRef(BaseModel):
 
 
 class PlanSummary(BaseModel):
+    """One solved plan's first gameweek, as the what-if compares it."""
     gw: int
     """The gameweek this plan is for."""
     xi: list[PlayerRef]
@@ -230,6 +242,8 @@ class PlanSummary(BaseModel):
 
 
 class WhatIfResult(BaseModel):
+    """The summary of a ``POST /api/whatif`` job: the user's constrained plan
+    against the baseline."""
     baseline: PlanSummary
     """The served advice's own plan."""
     yours: PlanSummary
@@ -252,6 +266,7 @@ class WhatIfResult(BaseModel):
 
 
 class StandingRow(BaseModel):
+    """One manager's line in the league table on the League hub."""
     entry: int
     """FPL entry id."""
     name: str
@@ -269,6 +284,7 @@ class StandingRow(BaseModel):
 
 
 class GwPoint(BaseModel):
+    """One gameweek of a manager's points, for the race chart."""
     gw: int
     """The gameweek this point is for."""
     points: int
@@ -278,6 +294,7 @@ class GwPoint(BaseModel):
 
 
 class Trajectory(BaseModel):
+    """One manager's season of gameweek points, for the race chart."""
     entry: int
     """FPL entry id."""
     name: str
@@ -287,6 +304,7 @@ class Trajectory(BaseModel):
 
 
 class GapPoint(BaseModel):
+    """The user's points gap to the leader after one gameweek."""
     gw: int
     """The gameweek this gap is measured at."""
     gap: int
@@ -294,6 +312,7 @@ class GapPoint(BaseModel):
 
 
 class WinProb(BaseModel):
+    """One manager's chance of winning the league, from the simulation."""
     name: str
     """The rival's team name."""
     total: int
@@ -304,6 +323,8 @@ class WinProb(BaseModel):
 
 
 class LeagueRace(BaseModel):
+    """``GET /api/league/race``: the standings, trajectories, gap and win odds
+    of one league."""
     league_id: int
     """The league this race is for."""
     entry_id: int
@@ -378,6 +399,8 @@ class PublicLeagueRow(BaseModel):
 
 
 class LeaguesOverview(BaseModel):
+    """``GET /api/league/leagues``: every league the entry is in, and the focus
+    league's stance."""
     focus_league_id: int
     """``[league] league_id`` as configured."""
     focus_name: str | None = None
@@ -401,6 +424,8 @@ class LeaguesOverview(BaseModel):
 
 
 class RivalBeat(BaseModel):
+    """The user's chance of finishing above one rival, from the season
+    simulation."""
     entry: int
     """FPL entry id."""
     name: str
@@ -498,6 +523,8 @@ class FieldRank(BaseModel):
 
 
 class LeagueSimData(BaseModel):
+    """``GET /api/league/sim``: the season simulation's finish odds for one
+    league."""
     gw: int
     """The gameweek the simulation was run from."""
     entries: int
@@ -538,6 +565,7 @@ class LeagueSimData(BaseModel):
 
 
 class LeagueWhatIfPin(BaseModel):
+    """One player's points pinned for a gameweek in a league what-if."""
     code: int
     """A gaffer player *code*, not a season element id — the explorer, the
     squad table and the compare panel all speak codes, and the router maps to
@@ -547,6 +575,8 @@ class LeagueWhatIfPin(BaseModel):
 
 
 class LeagueWhatIfRequest(BaseModel):
+    """The body of ``POST /api/league/whatif``: the pins and captaincy changes
+    to simulate."""
     pins: list[LeagueWhatIfPin] = Field(default_factory=list)
     """Player outcomes to pin before re-running the simulation."""
     captain_override: int | None = None
@@ -566,6 +596,7 @@ class LeagueWhatIfRequest(BaseModel):
 
 
 class LeagueWhatIfRow(BaseModel):
+    """One manager's line in the league what-if table."""
     entry: int
     """FPL entry id."""
     name: str
@@ -582,6 +613,8 @@ class LeagueWhatIfRow(BaseModel):
 
 
 class LeagueWhatIfResult(BaseModel):
+    """``POST /api/league/whatif``: the win odds and finish with the pins,
+    against the baseline."""
     baseline_p_win: float
     """The manager's P(win) before the pins were applied."""
     p_win: float
@@ -601,6 +634,8 @@ class LeagueWhatIfResult(BaseModel):
 
 
 class RivalSummary(BaseModel):
+    """One rival in ``GET /api/league/rivals``, with the squad overlap and
+    differentials."""
     entry: int
     """FPL entry id."""
     name: str
@@ -620,6 +655,7 @@ class RivalSummary(BaseModel):
 
 
 class SquadPlayer(BaseModel):
+    """One player in a rival's squad, as the rival page lists it."""
     code: int
     """FPL player code."""
     element: int
@@ -638,6 +674,8 @@ class SquadPlayer(BaseModel):
 
 
 class RivalDetail(BaseModel):
+    """``GET /api/league/rivals/{entry_id}``: one rival's squad, chips and
+    differentials against the user."""
     entry: int
     """FPL entry id."""
     name: str
@@ -673,6 +711,8 @@ class RivalDetail(BaseModel):
 
 
 class LivePlayer(BaseModel):
+    """One player in the user's live team during a gameweek, with points and
+    ownership."""
     element: int
     """FPL's own element id."""
     code: int
@@ -718,6 +758,7 @@ class LivePlayer(BaseModel):
 
 
 class LiveTableRow(BaseModel):
+    """One manager's line in the live league table."""
     entry: int
     """FPL entry id."""
     name: str
@@ -770,6 +811,8 @@ class LiveRacePoint(BaseModel):
 
 
 class LiveState(BaseModel):
+    """``GET /api/live``: the in-play gameweek's points, table and race for the
+    Live hub."""
     active: bool
     """Whether any fixture in the gameweek is live or about to be."""
     gw: int | None
@@ -807,6 +850,7 @@ class LiveState(BaseModel):
 
 
 class PlayerRow(BaseModel):
+    """One player in ``GET /api/players``, the Players hub's table."""
     code: int
     """FPL player code."""
     element: int
@@ -926,6 +970,8 @@ class PlayerRow(BaseModel):
 
 
 class Component(BaseModel):
+    """One labelled part of a player's expected points (appearance, goals,
+    clean sheet and so on)."""
     label: str
     """The scoring category this term covers (e.g. minutes, goals, saves)."""
     points: float
@@ -934,6 +980,7 @@ class Component(BaseModel):
 
 
 class MinutesOutput(BaseModel):
+    """The minutes model's reading for one player in one fixture."""
     p_play: float | None = None
     """``None`` — never 0.0 — for a frame banked without a minutes model. Zero
     here reads as "expected not to play", which is the strongest claim this
@@ -952,6 +999,8 @@ class MinutesOutput(BaseModel):
 
 
 class OddsInfluence(BaseModel):
+    """How far the bookmaker odds moved one fixture's clean-sheet and goals-
+    conceded readings."""
     weight: float
     """How much the bookmaker odds blend counts for this fixture, 0-1;
     0.0 for a frame banked before the blend existed."""
@@ -970,6 +1019,7 @@ class OddsInfluence(BaseModel):
 
 
 class FixtureExplain(BaseModel):
+    """One fixture's expected points for a player, broken into its components."""
     gw: int
     """The gameweek this fixture falls in."""
     opponent: str
@@ -1013,6 +1063,8 @@ class UpcomingFixture(BaseModel):
 
 
 class PlayerExplain(BaseModel):
+    """``GET /api/players/{code}/explain``: why a player's expected points are
+    what they are."""
     code: int
     """FPL player code."""
     name: str
@@ -1043,6 +1095,7 @@ class PlayerExplain(BaseModel):
 
 
 class ChipWeek(BaseModel):
+    """One gameweek's gain for a chip, in the chip plan."""
     gw: int
     """A gameweek the chip could be played in."""
     gain: float
@@ -1054,6 +1107,7 @@ class ChipWeek(BaseModel):
 
 
 class ChipPlanRow(BaseModel):
+    """One chip's best week and whether to play it now, in the chip plan."""
     chip: str
     """The chip this row is about: wildcard, bench boost, free hit or triple
     captain."""
@@ -1104,6 +1158,7 @@ class ChipPlanRow(BaseModel):
 
 
 class ChipPlan(BaseModel):
+    """``GET /api/chips/plan``: when each unplayed chip is worth most."""
     gw: int
     """The gameweek the plan was solved from."""
     chips: list[ChipPlanRow]
@@ -1154,6 +1209,7 @@ class ChipWorkbenchRow(BaseModel):
 
 
 class SquadPlayerRef(BaseModel):
+    """One player in a wildcard squad diff on the chips workbench."""
     code: int
     """FPL player code."""
     name: str
@@ -1192,6 +1248,7 @@ class SquadDiff(BaseModel):
 
 
 class ChipsWorkbench(BaseModel):
+    """``GET /api/chips``: the chip-by-gameweek table and the wildcard squad."""
     gw: int
     """The gameweek the workbench is showing."""
     chips: list[ChipWorkbenchRow]
@@ -1241,6 +1298,7 @@ class ComponentFixture(BaseModel):
 
 
 class ComponentPlayer(BaseModel):
+    """One player's expected points and spread in the components breakdown."""
     code: int
     """FPL player code."""
     name: str
@@ -1278,6 +1336,8 @@ class ComponentPlayer(BaseModel):
 
 
 class ComponentsBreakdown(BaseModel):
+    """``GET /api/components/{gw}``: each player's expected points by component
+    for a gameweek."""
     gw: int
     """The gameweek this breakdown was requested for."""
     players: list[ComponentPlayer]
@@ -1288,6 +1348,7 @@ class ComponentsBreakdown(BaseModel):
 
 
 class AdvicePlayer(BaseModel):
+    """One player named in an advice diff."""
     code: int
     """FPL player code."""
     name: str
@@ -1418,6 +1479,8 @@ class NewsRow(BaseModel):
 
 
 class NewsPanelData(BaseModel):
+    """``GET /api/news/{gw}``: the players whose readings the news moved that
+    gameweek."""
     gw: int
     """The gameweek the panel is reporting on."""
     moved: int
@@ -1431,6 +1494,7 @@ class NewsPanelData(BaseModel):
 
 
 class HistoryRun(BaseModel):
+    """One saved advice run and its outcome, in the history."""
     gw: int
     """The gameweek this run advised for."""
     deadline: str
@@ -1451,6 +1515,7 @@ class HistoryRun(BaseModel):
 
 
 class PricePoint(BaseModel):
+    """One gameweek's price for a player."""
     gw: int
     """The gameweek this price was recorded at."""
     price: float
@@ -1458,6 +1523,7 @@ class PricePoint(BaseModel):
 
 
 class PriceSeries(BaseModel):
+    """One player's price over the season."""
     code: int
     """FPL player code."""
     name: str
@@ -1467,6 +1533,7 @@ class PriceSeries(BaseModel):
 
 
 class History(BaseModel):
+    """``GET /api/history``: past advice runs, price series and backtests."""
     runs: list[HistoryRun]
     """Every advised gameweek, newest first."""
     prices: list[PriceSeries]
@@ -1479,6 +1546,7 @@ class History(BaseModel):
 
 
 class SourceHealth(BaseModel):
+    """One data source's file and age, in the health report."""
     source: str
     """The ingested source's name, from ``DATA_SOURCES`` or the odds bank."""
     path: str
@@ -1492,6 +1560,7 @@ class SourceHealth(BaseModel):
 
 
 class ModelHealth(BaseModel):
+    """One saved model's timestamp and metrics, in the health report."""
     name: str
     """The model's filename stem, from its ``.meta.json`` sidecar."""
     saved_at: str | None
@@ -1559,6 +1628,7 @@ class TeamModelHealth(BaseModel):
 
 
 class LaunchdHealth(BaseModel):
+    """One scheduled job's log and its last line, in the health report."""
     log: str
     """Path to the advise job's redirect log."""
     present: bool
@@ -1603,6 +1673,7 @@ class JobHealth(BaseModel):
 
 
 class ArtifactItem(BaseModel):
+    """One file under ``reports/`` and its size, in the health report."""
     name: str
     """The file's path under ``reports/``, e.g. ``reports/health.json``."""
     bytes: int
@@ -1610,6 +1681,7 @@ class ArtifactItem(BaseModel):
 
 
 class FreshnessRow(BaseModel):
+    """One data source's age against its expected cadence."""
     source: Literal["refresh", "odds", "field", "advise", "backup",
                     "prices", "snapshot"]
     """Which of the seven standing jobs this row reports on."""
@@ -1635,11 +1707,13 @@ class FreshnessRow(BaseModel):
 
 
 class Freshness(BaseModel):
+    """``GET /api/meta/freshness``: how old each data source is."""
     rows: list[FreshnessRow] = Field(default_factory=list)
     """One row per standing job (v12 W1 §2.9, v19a §2.2)."""
 
 
 class BackupHealth(BaseModel):
+    """The latest backup file and its size, in the health report."""
     path: str
     """The newest backup archive's path, from ``gaffer.backup.latest_backup``."""
     modified_at: str
@@ -1649,6 +1723,7 @@ class BackupHealth(BaseModel):
 
 
 class CoreInsightsTable(BaseModel):
+    """One core-insights table and how many rows the collector has banked."""
     table: str
     """The core-insights table's name."""
     rows: int
@@ -1661,6 +1736,8 @@ class CoreInsightsTable(BaseModel):
 
 
 class CoreInsightsHealth(BaseModel):
+    """Whether the core-insights collector has banked its tables for the
+    season."""
     season: str
     """The season the collector fetches for, from config or its default."""
     collected: bool
@@ -1690,6 +1767,8 @@ class ArmSwitch(BaseModel):
 
 
 class Health(BaseModel):
+    """``GET /api/health``: the data, models, jobs and artifacts the health
+    page checks."""
     data: list[SourceHealth]
     """One row per ingested source, from ``DATA_SOURCES`` plus the odds bank."""
     # File mtimes say when the ingest ran; this says what it got.
@@ -1764,6 +1843,7 @@ class Health(BaseModel):
 
 
 class TickerCell(BaseModel):
+    """One team's fixture in one gameweek of the ticker."""
     gw: int
     """The gameweek this cell rates."""
     opponent: str
@@ -1775,6 +1855,7 @@ class TickerCell(BaseModel):
 
 
 class TickerTeam(BaseModel):
+    """One team's row of the fixture ticker."""
     code: int
     """The club's code."""
     name: str
@@ -1788,6 +1869,8 @@ class TickerTeam(BaseModel):
 
 
 class Ticker(BaseModel):
+    """``GET /api/fixtures/ticker``: each team's fixture difficulty over the
+    coming gameweeks."""
     gws: list[int]
     """Every gameweek rated."""
     source: Literal["odds", "elo"]
@@ -1800,6 +1883,7 @@ class Ticker(BaseModel):
 
 
 class CategoryMetrics(BaseModel):
+    """RMSE, MAE and count for one category of the evaluation."""
     rmse: float
     """Root-mean-square error on this category's held-out rows."""
     mae: float
@@ -1818,6 +1902,7 @@ class ReferenceMetrics(BaseModel):
 
 
 class ReliabilityBin(BaseModel):
+    """One bin of a reliability curve: predicted against observed rate."""
     n: int
     """How many predictions fell in this bin."""
     pred: float
@@ -1828,6 +1913,7 @@ class ReliabilityBin(BaseModel):
 
 
 class HeadMetrics(BaseModel):
+    """One probability head's log loss and reliability curve."""
     log_loss: float | None
     """``None`` for a head with nothing to score — see
     :func:`gaffer.evaluation.head_metrics`. Nullable rather than NaN because
@@ -1837,6 +1923,7 @@ class HeadMetrics(BaseModel):
 
 
 class CurrentEvaluation(BaseModel):
+    """The current models' holdout evaluation, in ``GET /api/quality``."""
     run_at: str
     """When this evaluation was run."""
     git_sha: str
@@ -1852,6 +1939,8 @@ class CurrentEvaluation(BaseModel):
 
 
 class BenchmarkEvaluation(BaseModel):
+    """The benchmark evaluation against reference forecasts, in ``GET
+    /api/quality``."""
     run_at: str
     """When this benchmark was run."""
     git_sha: str
@@ -1867,6 +1956,7 @@ class BenchmarkEvaluation(BaseModel):
 
 
 class DecompositionCell(BaseModel):
+    """One cell of the points decomposition: total, per gameweek and hits."""
     total: int
     """Total points over the replay window."""
     per_gw: float
@@ -1876,6 +1966,8 @@ class DecompositionCell(BaseModel):
 
 
 class Decomposition(BaseModel):
+    """The season's points decomposition, with the forecast gap and the
+    planning ceiling, in ``GET /api/quality``."""
     run_at: str
     """When this decomposition was run."""
     git_sha: str
@@ -1909,6 +2001,8 @@ class NewsShadowSummary(BaseModel):
 
 
 class NewsShadowGw(BaseModel):
+    """One gameweek of the news shadow: the news-aware reading scored against
+    the flag-only one."""
     gw: int
     """The gameweek this row scores."""
     brier_news: float
@@ -2036,6 +2130,8 @@ class FlagLatency(BaseModel):
 
 
 class VerdictRow(BaseModel):
+    """One presser verdict and how many of its players started, in the presser
+    grades."""
     verdict: str
     """The presser verdict this row scores (e.g. "doubtful", "OUT")."""
     n: int
@@ -2047,6 +2143,7 @@ class VerdictRow(BaseModel):
 
 
 class VerdictScore(BaseModel):
+    """One presser verdict's precision and recall, in the presser grades."""
     verdict: str
     """The presser verdict this row scores."""
     n: int
@@ -2059,6 +2156,7 @@ class VerdictScore(BaseModel):
 
 
 class SourceRows(BaseModel):
+    """How many verdicts one presser source supplied."""
     source: str
     """The presser source's name."""
     rows: int
@@ -2145,6 +2243,7 @@ class CalibrationHead(BaseModel):
 
 
 class CalibrationGw(BaseModel):
+    """One gameweek of the calibration report."""
     gw: int
     """The gameweek this row scores."""
     n: int
@@ -2193,6 +2292,7 @@ class CalibrationReport(BaseModel):
 
 
 class PlanMove(BaseModel):
+    """One buy or sell in a plan gameweek."""
     code: int
     """FPL player code."""
     name: str
@@ -2206,6 +2306,8 @@ class PlanMove(BaseModel):
 
 
 class PlanGw(BaseModel):
+    """One gameweek of the plan timeline: moves, captaincy, chip and expected
+    points."""
     gw: int
     """The gameweek this week of the plan is for."""
     buys: list[PlanMove]
@@ -2265,6 +2367,7 @@ class PlanAlternative(BaseModel):
 
 
 class PlanTimeline(BaseModel):
+    """``GET /api/plan/{gw}``: the multi-week plan and its alternatives."""
     gw: int
     """The gameweek the plan was solved for."""
     generated_at: str
@@ -2294,6 +2397,8 @@ class PlanTimeline(BaseModel):
 
 
 class MatrixCell(BaseModel):
+    """One team's fixture in one gameweek of the fixture matrix, with attack
+    and defence ratings."""
     gw: int
     """The gameweek this cell rates."""
     opponent: str
@@ -2314,6 +2419,7 @@ class MatrixCell(BaseModel):
 
 
 class MatrixTeam(BaseModel):
+    """One team's row of the fixture matrix."""
     code: int
     """The club's code."""
     name: str
@@ -2329,6 +2435,8 @@ class MatrixTeam(BaseModel):
 
 
 class FixtureMatrix(BaseModel):
+    """``GET /api/fixtures/matrix``: each team's attack and defence outlook
+    over the coming gameweeks."""
     gws: list[int]
     """Every gameweek rated."""
     teams: list[MatrixTeam]
@@ -2351,6 +2459,7 @@ class OutlookTeam(BaseModel):
 
 
 class OutlookWeek(BaseModel):
+    """One gameweek of the fixture outlook: its fixtures, doubles and blanks."""
     gw: int
     """The gameweek this row is about."""
     fixtures: int
@@ -2399,6 +2508,7 @@ class FixtureOutlook(BaseModel):
 
 
 class JournalRow(BaseModel):
+    """One gameweek of the journal: the model's plan against what the user did."""
     gw: int
     """The gameweek this row compares."""
     model_pts: int
@@ -2421,6 +2531,7 @@ class JournalRow(BaseModel):
 
 
 class JournalPoint(BaseModel):
+    """One gameweek of the journal's cumulative points race."""
     gw: int
     """The gameweek this cumulative point is through."""
     model: int
@@ -2432,6 +2543,7 @@ class JournalPoint(BaseModel):
 
 
 class Journal(BaseModel):
+    """``GET /api/journal``: the model's plan against the user's, week by week."""
     rows: list[JournalRow] = Field(default_factory=list)
     """One row per gameweek compared, newest first."""
     cumulative: list[JournalPoint] = Field(default_factory=list)
@@ -2710,6 +2822,7 @@ class ReviewGw(BaseModel):
 
 
 class ReviewLaneTotal(BaseModel):
+    """One review lane's season totals."""
     pts: float = 0.0
     """Total points delta on this lane, summed over graded gameweeks."""
     pwin: float = 0.0
@@ -2730,6 +2843,7 @@ class ReviewLaneTotal(BaseModel):
 
 
 class ReviewAccuracyPoint(BaseModel):
+    """One gameweek's accuracy in the review."""
     gw: int
     """The gameweek this accuracy point is for."""
     accuracy: int
@@ -2737,6 +2851,8 @@ class ReviewAccuracyPoint(BaseModel):
 
 
 class ReviewSummary(BaseModel):
+    """The season summary of the review: lanes, accuracy, bench points and
+    hindsight gap."""
     gws: list[int] = Field(default_factory=list)
     """Every graded gameweek the summary covers."""
     lanes: dict[str, ReviewLaneTotal] = Field(default_factory=dict)
@@ -2770,6 +2886,8 @@ class ReviewSummary(BaseModel):
 
 
 class Review(BaseModel):
+    """``GET /api/review``: each gameweek's graded decisions and the season
+    summary."""
     gws: list[ReviewGw] = Field(default_factory=list)
     """Every graded gameweek's own row."""
     summary: ReviewSummary | None = None
@@ -2793,6 +2911,7 @@ class OverrideRequest(BaseModel):
 
 
 class OverrideRow(BaseModel):
+    """One active minutes override, beside the model's own reading."""
     code: int
     """FPL player code."""
     name: str
@@ -2814,6 +2933,7 @@ class OverrideRow(BaseModel):
 
 
 class OverridesPanel(BaseModel):
+    """``GET /api/overrides``: the manual minutes overrides in force."""
     active: bool = True
     """``[news] overrides``. False means the pins are stored and *not* being
     applied, which the panel says out loud rather than showing nothing."""
@@ -2842,6 +2962,7 @@ class NamedPlayer(BaseModel):
 
 
 class SensitivityMove(BaseModel):
+    """One move and how often the sensitivity sweep's re-solves chose it."""
     kind: str
     """Which decision this move is: a buy, a sell or the captaincy."""
     code: int
@@ -2859,6 +2980,7 @@ class SensitivityMove(BaseModel):
 
 
 class SensitivityPlan(BaseModel):
+    """One plan the sensitivity sweep reached, and how often."""
     count: int
     """How many of the sweep's re-solves reached this exact plan."""
     buys: list[NamedPlayer] = Field(default_factory=list)
@@ -2875,6 +2997,8 @@ class SensitivityPlan(BaseModel):
 
 
 class SensitivityReport(BaseModel):
+    """``GET /api/sensitivity``: how often the sweep's re-solves reach each
+    move and plan."""
     available: bool = False
     """Whether a sweep for this gameweek was found and is current."""
     gw: int | None = None
@@ -2950,6 +3074,7 @@ class LadderVsBelow(BaseModel):
 
 
 class LadderWeek(BaseModel):
+    """One gameweek of a ladder rung's plan."""
     gw: int
     """The gameweek this week of the rung's plan is for."""
     hits: int
@@ -3049,6 +3174,7 @@ class LadderStep(BaseModel):
 
 
 class LadderCap(BaseModel):
+    """The hit and transfer cap the ladder applies."""
     max_hits: int | None = None
     """The hit cap the ladder solved every rung under, or ``None`` for none."""
     max_transfers: int | None = None
@@ -3057,6 +3183,8 @@ class LadderCap(BaseModel):
 
 
 class LadderPayload(BaseModel):
+    """``GET /api/ladder``: the ladder's rungs under the cap, and the one
+    recommended."""
     gw: int | None = None
     """The gameweek the ladder was built for."""
     gws: list[int] = Field(default_factory=list)
@@ -3115,6 +3243,7 @@ class LadderPayload(BaseModel):
 
 
 class DraftRow(BaseModel):
+    """One saved what-if draft and its constraints."""
     name: str
     """The draft's name, as the manager saved it."""
     created_at: str = ""
@@ -3124,11 +3253,15 @@ class DraftRow(BaseModel):
 
 
 class DraftList(BaseModel):
+    """The saved drafts, as ``GET``, ``POST`` and ``DELETE /api/drafts`` return
+    them."""
     drafts: list[DraftRow] = Field(default_factory=list)
     """Every saved draft."""
 
 
 class DraftSaveRequest(BaseModel):
+    """The body of ``POST /api/drafts``: a name and the what-if constraints to
+    save."""
     name: str
     """The name to save this draft under."""
     constraints: WhatIfRequest = Field(default_factory=WhatIfRequest)
@@ -3136,11 +3269,14 @@ class DraftSaveRequest(BaseModel):
 
 
 class DraftCompareRequest(BaseModel):
+    """The body of ``POST /api/drafts/compare``: the drafts to solve side by
+    side."""
     names: list[str] = Field(default_factory=list)
     """Which saved drafts to compare, up to :data:`MAX_COMPARE`."""
 
 
 class DraftCompareRow(BaseModel):
+    """One draft's solved plan in the draft comparison."""
     name: str
     """The draft's name, or the reference row's own label."""
     is_reference: bool = False
@@ -3174,6 +3310,8 @@ class DraftCompareRow(BaseModel):
 
 
 class DraftCompare(BaseModel):
+    """The summary of a ``POST /api/drafts/compare`` job: the drafts' plans
+    side by side."""
     gw: int
     """The gameweek the comparison was solved from."""
     weeks: int
@@ -3218,6 +3356,8 @@ class ConfidenceTier(BaseModel):
 
 
 class Confidence(BaseModel):
+    """``GET /api/confidence``: how often the model's captaincy calls have come
+    good."""
     captain: ConfidenceTier = Field(default_factory=ConfidenceTier)
     """The captaincy record's own tier and counts — the only lane the card
     reports today."""
@@ -3255,6 +3395,7 @@ class MissRow(BaseModel):
 
 
 class Misses(BaseModel):
+    """``GET /api/misses``: the biggest forecast misses of one graded gameweek."""
     gw: int | None = None
     """``None`` when no gameweek has both a banked forecast and a banked
     result. That is an absent card, not a card of zeros (spec D1)."""
@@ -3282,6 +3423,7 @@ class WatchRequest(BaseModel):
 
 
 class WatchRow(BaseModel):
+    """One watched player, with the user's note."""
     code: int
     """FPL player code."""
     name: str
@@ -3374,6 +3516,7 @@ class DigestSection(BaseModel):
 
 
 class Digest(BaseModel):
+    """One banked digest, Friday's or Tuesday's."""
     kind: str
     """``"friday"`` or ``"tuesday"`` — which of the two banked digests this
     is, from ``DIGEST_KINDS``."""
@@ -3431,6 +3574,7 @@ class BriefPanel(BaseModel):
 
 
 class DecisionGrade(BaseModel):
+    """How the review graded the gameweek a deviation note covers."""
     lane: str = "transfers"
     """Always ``"transfers"``: the one review lane a deviation note grades
     against."""
@@ -3464,6 +3608,8 @@ class DecisionNote(BaseModel):
 
 
 class DecisionWrite(BaseModel):
+    """The body of ``POST /api/decisions/{gw}``: why the user went against the
+    advice."""
     reason: str
     """One of ``decisions.REASONS``; refused with ``unknown_reason`` otherwise."""
     text: str = ""
@@ -3519,6 +3665,8 @@ class SettingRow(BaseModel):
 
 
 class SettingsPanel(BaseModel):
+    """``GET`` and ``POST /api/settings``: the editable settings and their
+    values."""
     rows: list[SettingRow] = Field(default_factory=list)
     """Every whitelisted setting this build has, one row each, as the Model
     hub's Settings tab lists them."""
@@ -3534,6 +3682,7 @@ class SettingsPanel(BaseModel):
 
 
 class SettingWrite(BaseModel):
+    """The body of ``POST /api/settings``: one key and its new value."""
     key: str
     """The config field to write, dotted to its section."""
     value: Any = None
