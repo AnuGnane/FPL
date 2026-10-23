@@ -59,6 +59,8 @@ was free" — a different sentence from "we did not charge for this"."""
 
 @dataclass(frozen=True)
 class MoveTrace:
+    """One planned swap's own terms of the objective, accounting and not a
+    counterfactual (v12 W5 §6.5)."""
     gw: int
     buy_code: int | None
     buy_name: str

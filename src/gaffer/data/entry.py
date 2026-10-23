@@ -45,6 +45,9 @@ def compute_free_transfers(
 
 @dataclass
 class MyTeam:
+    """The manager's squad as the solver starts from it: picks with exact sell
+    prices, bank, free transfers and chips."""
+
     entry_id: int
     bank: int                      # 0.1m units
     free_transfers: int

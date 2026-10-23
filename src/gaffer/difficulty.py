@@ -28,6 +28,7 @@ from gaffer.data.odds import poisson_win_prob
 
 @dataclass(frozen=True)
 class FixtureCell:
+    """One team's fixture in one gameweek, rated on the one scale (v18d §2)."""
     gw: int
     opponent: str
     home: bool
@@ -36,6 +37,7 @@ class FixtureCell:
 
 @dataclass(frozen=True)
 class TeamDifficulty:
+    """A team's row of the ticker: its fixture cells and their mean rating."""
     code: int
     name: str
     short_name: str
@@ -45,6 +47,8 @@ class TeamDifficulty:
 
 @dataclass(frozen=True)
 class FixtureDifficulty:
+    """The whole ticker, the one answer the route and the core callers share
+    (v18d §2)."""
     gws: list[int] = field(default_factory=list)
     source: str = "elo"
     teams: list[TeamDifficulty] = field(default_factory=list)
