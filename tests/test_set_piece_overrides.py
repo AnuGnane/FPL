@@ -12,7 +12,7 @@ from gaffer.data.set_piece_overrides import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def clone(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data").mkdir()

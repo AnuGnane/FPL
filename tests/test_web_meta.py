@@ -64,7 +64,7 @@ ADVICE = {"gw": 2, "deadline": "2026-09-04T17:30:00Z", "buys": [],
           "win_probs": [], "mode": "weekly"}
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(

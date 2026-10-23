@@ -18,7 +18,7 @@ def _pool():
                         columns=POOL_COLS)
 
 
-@pytest.fixture()
+@pytest.fixture
 def graded(tmp_path, monkeypatch):
     """A gameweek that grades, with the snapshot writing left to the test."""
     monkeypatch.chdir(tmp_path)

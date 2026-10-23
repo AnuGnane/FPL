@@ -46,7 +46,7 @@ SENSITIVITY = {
     "margin": 0.6, "verdict": "…"}
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "reports").mkdir()

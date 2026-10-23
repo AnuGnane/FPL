@@ -87,7 +87,7 @@ def _config(tmp_path):
     players.to_parquet(tmp_path / "data/live/players.parquet", index=False)
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _config(tmp_path)

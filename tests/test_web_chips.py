@@ -41,7 +41,7 @@ def _pool() -> pd.DataFrame:
     return pd.DataFrame(rows, columns=POOL_COLS)
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     return TestClient(create_app(), raise_server_exceptions=False)

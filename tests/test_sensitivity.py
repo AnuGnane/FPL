@@ -76,7 +76,7 @@ def _components(tmp_path) -> None:
         tmp_path / "reports/components_gw5.parquet", index=False)
 
 
-@pytest.fixture()
+@pytest.fixture
 def board(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "reports").mkdir()

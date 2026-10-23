@@ -11,7 +11,7 @@ from gaffer.web.app import create_app
 from tests.test_web_review import ROW
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     REPORTS.mkdir()

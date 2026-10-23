@@ -37,7 +37,7 @@ def _wait(runner, job_id, timeout=5.0):
     raise AssertionError(f"job {job_id} never finished")
 
 
-@pytest.fixture()
+@pytest.fixture
 def sleeper():
     """A job body that blocks until the test releases it."""
     release = threading.Event()
@@ -154,7 +154,7 @@ def test_a_normal_run_is_unaffected_end_to_end():
 
 # --- 6-7, 9-10: the HTTP surface ------------------------------------
 
-@pytest.fixture()
+@pytest.fixture
 def client_and_release(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     release = threading.Event()

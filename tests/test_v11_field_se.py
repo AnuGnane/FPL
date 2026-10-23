@@ -31,7 +31,7 @@ from gaffer.web.app import create_app
 from tests.test_web_league_sim import _artifacts
 
 
-@pytest.fixture()
+@pytest.fixture
 def players_client(tmp_path, monkeypatch):
     """``GET /api/players`` over the shipped artifact fixture."""
     monkeypatch.chdir(tmp_path)
@@ -56,7 +56,7 @@ def players_client(tmp_path, monkeypatch):
     return get
 
 
-@pytest.fixture()
+@pytest.fixture
 def logged(players_client):
     """One scrape, one element measured, from three hundred entries.
 

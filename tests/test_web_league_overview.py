@@ -81,12 +81,12 @@ def _artifacts(tmp_path, league_id=5, lam=0.4):
             players, [100], {(100, 6): 6.4}, [6])))
 
 
-@pytest.fixture()
+@pytest.fixture
 def fake():
     return FakeClient()
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch, fake):
     monkeypatch.chdir(tmp_path)
     _artifacts(tmp_path)

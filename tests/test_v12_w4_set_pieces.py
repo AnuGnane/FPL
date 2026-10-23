@@ -23,7 +23,7 @@ TWO_CLUBS_PLAYERS = pd.DataFrame(
      "penalties_order": [1, None, 1, None]})
 
 
-@pytest.fixture()
+@pytest.fixture
 def clone(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data").mkdir()

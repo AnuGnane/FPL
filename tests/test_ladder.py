@@ -45,7 +45,7 @@ def save_state(opt_extra=None, star=9.0, second=7.0, gws=(1, 2)):
     return ep_by
 
 
-@pytest.fixture()
+@pytest.fixture
 def board(tmp_path, monkeypatch):
     """The saved board, with the serve-time config cache dropped either side.
 

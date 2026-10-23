@@ -442,7 +442,7 @@ def test_the_router_helper_on_a_cold_clone_is_empty_and_named(monkeypatch):
 
 # --- and the same three sources over a real banked log, unmonkeypatched ---
 
-@pytest.fixture()
+@pytest.fixture
 def eo_store(tmp_path, monkeypatch):
     """A field EO log in a temporary store, and nothing else."""
     monkeypatch.chdir(tmp_path)

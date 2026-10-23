@@ -247,7 +247,7 @@ def test_the_old_readers_and_serving_config_are_gone():
 SETTINGS_BASE = "[fpl]\nentry_id = 111\nleague_id = 222\n[optimizer]\nhorizon = 3\n"
 
 
-@pytest.fixture()
+@pytest.fixture
 def settings_client(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 

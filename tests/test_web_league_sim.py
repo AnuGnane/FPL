@@ -122,14 +122,14 @@ def _artifacts(tmp_path):
             players, [100], {(100, 3): 6.4}, [3])))
 
 
-@pytest.fixture()
+@pytest.fixture
 def fake():
     """The one client the app is handed, so a test can read what it asked
     the FPL API for — which league, which page."""
     return FakeClient()
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch, fake):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
@@ -561,7 +561,7 @@ def test_the_history_is_written_once_per_run_not_once_per_refresh(client):
 # --- the cache swap --------------------------------------------------------
 
 
-@pytest.fixture()
+@pytest.fixture
 def cache(monkeypatch):
     """The two module containers, empty, for the swap's own tests."""
     from gaffer.web.routers import league_sim

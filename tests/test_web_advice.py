@@ -64,7 +64,7 @@ def _write_artifacts(root, deadlines=(PAST, FUTURE)):
     events.to_parquet(root / "data" / "live" / "events.parquet", index=False)
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _write_artifacts(tmp_path)

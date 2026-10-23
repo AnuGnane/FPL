@@ -18,7 +18,7 @@ BODY = {"name": "Salah route",
                         "chip": "none", "horizon": 2}}
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\n'

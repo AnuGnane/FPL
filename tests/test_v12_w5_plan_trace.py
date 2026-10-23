@@ -43,7 +43,7 @@ def _week(gw, buys=(), sells=(), hits=0):
             "expected_pts": 60.0}
 
 
-@pytest.fixture()
+@pytest.fixture
 def wired(monkeypatch):
     def install(weeks, chips=(), lam=0.0, cover=None, alts=(), opt=None):
         monkeypatch.setattr("gaffer.artifacts.load_advice",

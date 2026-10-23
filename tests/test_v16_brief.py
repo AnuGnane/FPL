@@ -130,7 +130,7 @@ def _fake(tmp_path: Path, text: str, exit_code: int = 0, sleep: float = 0.0) -> 
     return f"{sys.executable} {script}"
 
 
-@pytest.fixture()
+@pytest.fixture
 def artifacts_on_disk(tmp_path, monkeypatch):
     """A GW4 advice, ladder and solve state of the real shape, no trace."""
     monkeypatch.chdir(tmp_path)

@@ -57,12 +57,12 @@ def _bank(tmp_path, monkeypatch, row):
     return tmp_path
 
 
-@pytest.fixture()
+@pytest.fixture
 def banked_entry(tmp_path, monkeypatch):
     return _bank(tmp_path, monkeypatch, ROW)
 
 
-@pytest.fixture()
+@pytest.fixture
 def banked_entry_no_rank(tmp_path, monkeypatch):
     return _bank(tmp_path, monkeypatch,
                  {k: v for k, v in ROW.items() if k != "overall_rank"})

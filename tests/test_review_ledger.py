@@ -91,7 +91,7 @@ class FakeClient:
         raise RuntimeError("no league in this fixture")
 
 
-@pytest.fixture()
+@pytest.fixture
 def here(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     # v19h §2.2: the ledger is keyed by the season in force, and the cached

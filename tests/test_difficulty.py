@@ -34,7 +34,7 @@ FIXTURES = pd.DataFrame({
 })
 
 
-@pytest.fixture()
+@pytest.fixture
 def tiny(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")

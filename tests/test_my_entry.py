@@ -84,7 +84,7 @@ class FakeClient:
         return TRANSFERS
 
 
-@pytest.fixture()
+@pytest.fixture
 def here(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("gaffer.data.my_entry.RAW_LEAGUE",

@@ -52,7 +52,7 @@ class _Client:
         return self.payload
 
 
-@pytest.fixture()
+@pytest.fixture
 def here(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "DATA_DIR", tmp_path)
     monkeypatch.setattr("gaffer.data.top_threshold.snap_date",

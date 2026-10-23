@@ -38,7 +38,7 @@ REPORT = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     # artifacts.REPORTS is the relative Path("reports"), so chdir is the whole
     # of the redirection — the same fixture tests/test_web_quality.py uses.

@@ -89,7 +89,7 @@ def test_top_truncates_and_is_not_passed_to_the_router(monkeypatch):
     assert len(mcp_server.TOOLS["projections"](top=3)) == 3
 
 
-@pytest.fixture()
+@pytest.fixture
 def accepts_anything(monkeypatch):
     """A saved state that exists and a validator that passes it.
 

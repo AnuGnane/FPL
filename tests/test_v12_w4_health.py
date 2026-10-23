@@ -11,7 +11,7 @@ from gaffer.data.core_insights import CI_FIXTURE_COLS, CI_PLAYER_COLS, ci_path
 from gaffer.web.app import create_app
 
 
-@pytest.fixture()
+@pytest.fixture
 def clone(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data" / "live").mkdir(parents=True)

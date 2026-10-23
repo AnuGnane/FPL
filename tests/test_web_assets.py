@@ -54,7 +54,7 @@ class FakeResponse:
             raise RuntimeError(f"HTTP {self.status_code}")
 
 
-@pytest.fixture()
+@pytest.fixture
 def wired(tmp_path, monkeypatch):
     """A clone with a banked bootstrap, an empty cache and a counted CDN."""
     monkeypatch.chdir(tmp_path)

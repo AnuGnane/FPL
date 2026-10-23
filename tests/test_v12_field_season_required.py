@@ -20,7 +20,7 @@ from gaffer.data import store
 from gaffer.data.field import FIELD_EO_COLS, latest_field_eo, load_field_eo
 
 
-@pytest.fixture()
+@pytest.fixture
 def two_seasons(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data" / "live").mkdir(parents=True)

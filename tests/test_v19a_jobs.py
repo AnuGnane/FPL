@@ -63,7 +63,7 @@ def _age(root: Path, log: str, hours: float) -> None:
     os.utime(path, (stamp, stamp))
 
 
-@pytest.fixture()
+@pytest.fixture
 def scripts(tmp_path):
     return tmp_path / "scripts"
 

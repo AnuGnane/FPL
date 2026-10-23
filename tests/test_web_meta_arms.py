@@ -24,7 +24,7 @@ NAMES = ["models.components.BONUS_SEES_ATTACK",
          "models.train.PPLAY_TOP_BIN_STEP"]
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     return TestClient(create_app())

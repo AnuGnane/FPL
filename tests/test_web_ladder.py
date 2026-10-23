@@ -9,7 +9,7 @@ from gaffer.web.jobs import JobQueueFull
 from tests.test_ladder import save_state
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     from gaffer.config import invalidate
 

@@ -43,7 +43,7 @@ ADVICE = {"gw": GW, "buys": [{"code": 22, "name": "Haaland"}],
           "vice": {"code": 22, "name": "Haaland"}}
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data" / "live").mkdir(parents=True)

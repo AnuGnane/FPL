@@ -27,7 +27,7 @@ import pytest
 from gaffer import tidy
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data" / "live").mkdir(parents=True)

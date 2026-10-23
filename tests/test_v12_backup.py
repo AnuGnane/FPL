@@ -25,7 +25,7 @@ import pytest
 from gaffer import backup
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(tmp_path, monkeypatch):
     """A miniature of the real layout, with one file in every archived root."""
     monkeypatch.chdir(tmp_path)

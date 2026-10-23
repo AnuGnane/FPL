@@ -22,7 +22,7 @@ import typer
 from gaffer import cli
 
 
-@pytest.fixture()
+@pytest.fixture
 def clone(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "reports").mkdir()

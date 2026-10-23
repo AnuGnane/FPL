@@ -110,7 +110,7 @@ def _artifacts(tmp_path):
             players, [100], {(100, 3): 6.4}, [3])))
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     from gaffer.config import invalidate
 

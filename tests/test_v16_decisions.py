@@ -22,7 +22,7 @@ from gaffer.web.app import create_app
 NOW = pd.Timestamp("2026-09-05T12:00:00Z")
 
 
-@pytest.fixture()
+@pytest.fixture
 def reports(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     artifacts.REPORTS.mkdir()
@@ -103,7 +103,7 @@ def test_the_by_reason_tally(reports):
 
 # --- the routes -----------------------------------------------------------
 
-@pytest.fixture()
+@pytest.fixture
 def client(reports, monkeypatch):
     monkeypatch.setattr("gaffer.web.routers.decisions.upcoming_gw", lambda: 5)
     monkeypatch.setattr("gaffer.web.routers.decisions._now",

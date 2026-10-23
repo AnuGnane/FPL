@@ -37,7 +37,7 @@ def _advice(gw, xi_codes, captain_code, buys=()):
     }
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")

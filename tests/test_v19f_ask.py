@@ -15,7 +15,7 @@ ANSWER = {"gw": 4, "question": "Why bank?", "answer": "The ladder chose the bank
           "at": "2026-09-16T09:00:00+00:00"}
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     artifacts.REPORTS.mkdir()

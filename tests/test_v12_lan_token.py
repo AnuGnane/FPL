@@ -24,7 +24,7 @@ from fastapi.testclient import TestClient
 from gaffer.web.app import create_app
 
 
-@pytest.fixture()
+@pytest.fixture
 def clone(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     return tmp_path

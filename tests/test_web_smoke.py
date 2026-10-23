@@ -116,7 +116,7 @@ class FakeClient:
                  "team_h": 1, "team_a": 2, "stats": []}]
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(

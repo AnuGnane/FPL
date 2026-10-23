@@ -39,7 +39,7 @@ lambda_cap = 0.3
 """
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(tmp_path):
     """A config.toml on disk and a writer for its overlay."""
     base = tmp_path / "config.toml"

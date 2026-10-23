@@ -79,7 +79,7 @@ def _ticker(*cells):
         for code, gw, diff in cells])
 
 
-@pytest.fixture()
+@pytest.fixture
 def banked(tmp_path, monkeypatch):
     from gaffer import difficulty
 

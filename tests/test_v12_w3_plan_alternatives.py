@@ -32,7 +32,7 @@ def _advice(weeks, alternatives=None):
     return out
 
 
-@pytest.fixture()
+@pytest.fixture
 def wired(monkeypatch):
     import pandas as pd
 
