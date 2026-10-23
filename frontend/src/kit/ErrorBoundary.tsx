@@ -30,25 +30,25 @@ interface ErrorBoundaryState {
  */
 export default class ErrorBoundary
   extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { error: null }
+  override state: ErrorBoundaryState = { error: null }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error }
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo): void {
+  override componentDidCatch(error: Error, info: ErrorInfo): void {
     // The one place the component stack is available at all; the browser
     // console is where a user is asked to look when reporting this.
     console.error('render error', error, info.componentStack)
   }
 
-  componentDidUpdate(prev: ErrorBoundaryProps): void {
+  override componentDidUpdate(prev: ErrorBoundaryProps): void {
     if (prev.resetKey !== this.props.resetKey && this.state.error !== null) {
       this.setState({ error: null })
     }
   }
 
-  render(): ReactNode {
+  override render(): ReactNode {
     const { error } = this.state
     if (error === null) return this.props.children
     return (
