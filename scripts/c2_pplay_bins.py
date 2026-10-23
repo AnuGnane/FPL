@@ -44,9 +44,9 @@ traceback, because the night shift transcribes the line whatever it says.
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
 import numpy as np
-import pandas as pd
 from lightgbm.basic import LightGBMError
 from sklearn.isotonic import IsotonicRegression
 
@@ -63,6 +63,9 @@ from gaffer.models.train import (
     MINUTES_FEATURES,
     load_training_frame,
 )
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 N_BINS = 10
 LOG_GAIN = 0.001

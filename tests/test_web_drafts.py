@@ -21,8 +21,8 @@ BODY = {"name": "Salah route",
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\n'
-                                          'league_id = 5\n')
+    (tmp_path / "config.toml").write_text("[fpl]\nentry_id = 1\n"
+                                          "league_id = 5\n")
     (tmp_path / "reports").mkdir()
     _save(tmp_path)
     _components(tmp_path)
@@ -132,8 +132,8 @@ def test_a_free_hit_draft_is_scored_over_the_week_it_actually_covers(
     board's, and every row carries the horizon it was actually solved over.
     """
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\n'
-                                          'league_id = 5\n')
+    (tmp_path / "config.toml").write_text("[fpl]\nentry_id = 1\n"
+                                          "league_id = 5\n")
     (tmp_path / "reports").mkdir()
     _save(tmp_path, chips=["freehit"])
     _components(tmp_path)
@@ -173,8 +173,8 @@ def test_too_many_drafts_in_one_comparison_is_a_422(client):
 
 def test_no_solve_state_is_a_readable_422(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\n'
-                                          'league_id = 5\n')
+    (tmp_path / "config.toml").write_text("[fpl]\nentry_id = 1\n"
+                                          "league_id = 5\n")
     (tmp_path / "reports").mkdir()
     client = TestClient(create_app())
     response = client.post("/api/drafts/compare", json={"names": []})

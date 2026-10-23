@@ -42,7 +42,7 @@ def test_cli_help_lists_commands():
 def test_advise_fails_cleanly_without_models(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 0\n')
+        "[fpl]\nentry_id = 1\nleague_id = 0\n")
     result = runner.invoke(app, ["advise"])
     assert result.exit_code != 0
     assert "gaffer train" in result.output
@@ -60,7 +60,7 @@ def test_every_command_help_renders():
 
 def test_league_without_league_id_fails_cleanly(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\nleague_id = 0\n')
+    (tmp_path / "config.toml").write_text("[fpl]\nentry_id = 1\nleague_id = 0\n")
     result = runner.invoke(app, ["league"])
     assert result.exit_code != 0
     assert "league_id" in result.output
@@ -71,7 +71,7 @@ def test_live_between_gameweeks_says_so_without_a_traceback(tmp_path,
     from gaffer.errors import GafferError
 
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\nleague_id = 5\n')
+    (tmp_path / "config.toml").write_text("[fpl]\nentry_id = 1\nleague_id = 5\n")
 
     def _boom(cfg, client):
         raise GafferError("no gameweek in progress — nothing to track")
@@ -87,7 +87,7 @@ def test_live_between_gameweeks_says_so_without_a_traceback(tmp_path,
 
 def test_live_without_entry_id_fails_cleanly(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 0\nleague_id = 5\n')
+    (tmp_path / "config.toml").write_text("[fpl]\nentry_id = 0\nleague_id = 5\n")
     result = runner.invoke(app, ["live"])
     assert result.exit_code != 0
     assert "entry_id" in result.output
@@ -99,7 +99,7 @@ def test_league_reports_empty_league(tmp_path, monkeypatch):
     from gaffer.data import league as league_mod
 
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\nleague_id = 5\n')
+    (tmp_path / "config.toml").write_text("[fpl]\nentry_id = 1\nleague_id = 5\n")
     monkeypatch.setattr(
         league_mod, "fetch_rival_entries",
         lambda *a, **k: pd.DataFrame(columns=league_mod.STANDINGS_COLS))
@@ -158,7 +158,7 @@ def _stub_advice(**kw):
 def _advise_run(tmp_path, monkeypatch, advice):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 0\n')
+        "[fpl]\nentry_id = 1\nleague_id = 0\n")
     monkeypatch.setattr("gaffer.advise.run_advise", lambda cfg, client=None: advice)
     monkeypatch.setattr("gaffer.report.render.render_report",
                         lambda a, model_health=None: "reports/gw2.md")
@@ -201,7 +201,7 @@ def test_advise_prints_the_unwritten_brief_note_exactly_once(tmp_path,
     ``cli.advise`` used to echo ``result.brief["note"]`` again, doubling it."""
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 0\n')
+        "[fpl]\nentry_id = 1\nleague_id = 0\n")
     advice = _stub_advice(data_through_gw=1, data_warning=None)
     monkeypatch.setattr("gaffer.advise.run_advise", lambda cfg, client=None: advice)
     monkeypatch.setattr("gaffer.report.render.render_report",
@@ -335,7 +335,7 @@ def test_advise_prints_the_captain_note_and_the_demoted_pick(tmp_path,
     advice.demoted_captain = {"code": 9, "name": "Mohamed Salah", "ep": 8.8}
 
     cfg_path = tmp_path / "config.toml"
-    cfg_path.write_text('[fpl]\nentry_id = 1\nleague_id = 2\n')
+    cfg_path.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n")
     real_load = config_mod.load_config
     monkeypatch.setattr(config_mod, "load_config",
                         lambda path="config.toml": real_load(cfg_path))
@@ -579,7 +579,7 @@ def _fast_run(tmp_path, monkeypatch, seen, argv):
     """
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 0\n\n[scenarios]\nn = 40\n')
+        "[fpl]\nentry_id = 1\nleague_id = 0\n\n[scenarios]\nn = 40\n")
 
     def _run(cfg, client=None):
         seen["scenarios_n"] = cfg.scenarios_n

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from gaffer.api.client import FPLClient
 from gaffer.errors import GafferError
+
+if TYPE_CHECKING:
+    from gaffer.api.client import FPLClient
 
 FT_CAP = 5
 FT_START_GW = 2

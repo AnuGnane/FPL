@@ -587,7 +587,7 @@ def test_fetch_lineups_keeps_the_code_join_when_the_name_batch_is_discarded(
               '<img src="https://resources.premierleague.com/premierleague25'
               '/photos/players/110x140/100.png"></li></ul>'
               '<ul class="story-parts"><li class="headers">'
-              "<strong>Out:</strong><ul class=\"players\">"
+              '<strong>Out:</strong><ul class="players">'
               + "".join(f"<li>Nobody {i}</li>" for i in range(5))
               + "</ul></li></ul>")
     client = httpx.Client(transport=_transport([], markup))

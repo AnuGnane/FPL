@@ -7,7 +7,7 @@ from pathlib import Path
 
 from gaffer.config import Config, load_config
 
-BASE = '[fpl]\nentry_id = 1\nleague_id = 5\n'
+BASE = "[fpl]\nentry_id = 1\nleague_id = 5\n"
 
 
 def _cfg(tmp_path, extra=""):

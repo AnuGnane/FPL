@@ -9,11 +9,14 @@ from __future__ import annotations
 
 from dataclasses import asdict
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from jinja2 import Environment, FileSystemLoader
 
-from gaffer.advise import Advice
 from gaffer.config import Config
+
+if TYPE_CHECKING:
+    from gaffer.advise import Advice
 
 
 def render_report(advice: Advice, out_dir: Path | str = "reports",

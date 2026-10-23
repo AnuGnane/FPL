@@ -50,7 +50,7 @@ def test_config_reads_the_new_v4b_switches(tmp_path):
 
 def _write(tmp_path, body: str):
     p = tmp_path / "config.toml"
-    p.write_text('[fpl]\nentry_id = 1\nleague_id = 2\n' + body)
+    p.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n" + body)
     return p
 
 
@@ -136,7 +136,7 @@ bench_curve = [0.21, 0.06, 0.002]
 
 def _league_cfg(tmp_path, body: str = ""):
     p = tmp_path / "config.toml"
-    p.write_text('[fpl]\nentry_id = 1\nleague_id = 2\n' + body)
+    p.write_text("[fpl]\nentry_id = 1\nleague_id = 2\n" + body)
     return p
 
 

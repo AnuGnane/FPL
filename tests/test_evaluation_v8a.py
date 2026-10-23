@@ -41,9 +41,9 @@ def test_the_head_block_names_p_start(monkeypatch):
     from gaffer.evaluation import evaluate_current
 
     src = inspect.getsource(evaluate_current)
-    assert 'predict_modes(hold)' in src
+    assert "predict_modes(hold)" in src
     assert '"p_start": head_metrics(' in src
-    assert 'start_truth(hold)' in src
+    assert "start_truth(hold)" in src
 
 
 # --- the zeros diagnostic's mode cut ---------------------------------------

@@ -52,7 +52,7 @@ def test_an_unnamed_script_fails_the_check(tmp_path):
         "test": "vitest", "stray": "node stray.js", "types": "node gen.ts",
         "self": "npm run self"}}))
     scripts = json.loads(package.read_text())["scripts"]
-    docs = ["cd frontend && npm run check\nnpm test\nnpm run types -- --check\n"
-            "npm run typescript"]
+    docs = [("cd frontend && npm run check\nnpm test\nnpm run types -- --check\n"
+             "npm run typescript")]
     assert unnamed(scripts, docs) == ["stray", "self"]
     assert unnamed(scripts, []) == ["check", "test", "stray", "types", "self"]

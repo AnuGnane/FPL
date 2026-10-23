@@ -84,7 +84,7 @@ def test_a_tag_no_arm_claims_goes_under_unclaimed(logs):
 def test_files_are_ordered_by_modification_time(logs):
     os.utime(logs / "b.log", (NEW + 60, NEW + 60))
     os.utime(logs / "c.log", (OLD, OLD))
-    (logs / "c.log").write_text(C_LOG + "V20B_HEAD {\"late\": true}\n")
+    (logs / "c.log").write_text(C_LOG + 'V20B_HEAD {"late": true}\n')
     os.utime(logs / "c.log", (OLD, OLD))
     g = ap.collect([logs])
     assert [f.name for f, _, _ in g["v20b"]] == ["c.log", "b.log"]

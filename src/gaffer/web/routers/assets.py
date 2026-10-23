@@ -36,13 +36,16 @@ here redistributes anything.
 from __future__ import annotations
 
 from importlib.resources import files
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Response
 
 from gaffer.data import store
 from gaffer.io import atomic_write
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 router = APIRouter(prefix="/api/assets", tags=["assets"])
 

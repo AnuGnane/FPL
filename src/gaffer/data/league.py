@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from gaffer.api.client import FPLClient
+if TYPE_CHECKING:
+    from gaffer.api.client import FPLClient
 
 STANDINGS_COLS = ["entry", "entry_name", "player_name", "rank",
                   "last_rank", "total", "event_total"]

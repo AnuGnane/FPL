@@ -36,8 +36,8 @@ REPORT = {
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\n'
-                                          'league_id = 5\n')
+    (tmp_path / "config.toml").write_text("[fpl]\nentry_id = 1\n"
+                                          "league_id = 5\n")
     (tmp_path / "reports").mkdir()
     return TestClient(create_app())
 

@@ -20,10 +20,12 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-
-import pandas as pd
+from typing import TYPE_CHECKING
 
 from gaffer.optimize.milp import SolveInput, solve_plan
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 PHASE_BOUNDS = {"early": (1, 12), "mid": (13, 25), "late": (26, 38)}
 """Season thirds.

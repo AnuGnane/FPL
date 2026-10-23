@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -22,6 +22,9 @@ from gaffer.brief import (
     run_brief,
     season_names,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 FACTS = {
     "gw": 4, "horizon": [4, 5, 6], "expected_pts": 61.2, "hits": 0, "hit_points": 0,

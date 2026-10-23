@@ -135,7 +135,7 @@ def test_an_unquoted_header_is_named_by_line_and_column(clone, capsys):
     """One bad header discards the *whole* file, so the printed line has to
     say where to look — otherwise a user whose Arsenal table is fine cannot
     tell that his Man City table three lines down killed both."""
-    _write(clone, '[Arsenal]\npenalties = [1]\n\n[Man City]\ncorners = [2]\n')
+    _write(clone, "[Arsenal]\npenalties = [1]\n\n[Man City]\ncorners = [2]\n")
     assert load_set_piece_overrides() == {}
     out = capsys.readouterr().out
     assert "line 4" in out

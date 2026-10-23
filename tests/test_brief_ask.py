@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -15,6 +15,9 @@ from gaffer.brief import (
     check_question,
 )
 from tests.test_v16_brief import FACTS
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _fake(tmp_path: Path, text: str, exit_code: int = 0) -> str:

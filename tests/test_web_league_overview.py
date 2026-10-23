@@ -247,7 +247,7 @@ def test_the_rows_are_cached_for_five_minutes_per_entry(client, fake):
 
 def test_the_cache_does_not_hold_the_focus_or_the_stance(client, tmp_path):
     client.get("/api/league/leagues")
-    (tmp_path / LOCAL_OVERLAY).write_text('[league]\nfocus = 9\n')
+    (tmp_path / LOCAL_OVERLAY).write_text("[league]\nfocus = 9\n")
     invalidate()
     body = client.get("/api/league/leagues").json()
     assert body["focus_league_id"] == 9 and body["focus_name"] == "NLT"

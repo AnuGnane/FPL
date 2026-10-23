@@ -41,7 +41,7 @@ SHADOW = pd.DataFrame([
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 5\n\n[news]\noverrides = true\n')
+        "[fpl]\nentry_id = 1\nleague_id = 5\n\n[news]\noverrides = true\n")
     invalidate()
     (tmp_path / "data" / "live").mkdir(parents=True)
     PLAYERS.to_parquet(tmp_path / "data/live/players.parquet", index=False)
@@ -113,7 +113,7 @@ def test_the_panel_says_when_the_flag_is_off(client, tmp_path):
     silent nothing."""
     client.post("/api/overrides", json={"code": 11, "p_play": 1.0})
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 5\n\n[news]\noverrides = false\n')
+        "[fpl]\nentry_id = 1\nleague_id = 5\n\n[news]\noverrides = false\n")
     invalidate()
     body = client.get("/api/overrides").json()
     assert body["active"] is False

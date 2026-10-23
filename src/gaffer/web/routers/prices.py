@@ -25,7 +25,8 @@ the whole claim the card makes is about *tonight*.
 
 from __future__ import annotations
 
-import pandas as pd
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter
 
 from gaffer.digest import freshest_prices
@@ -33,6 +34,9 @@ from gaffer.prices import price_alerts
 from gaffer.watchlist import watch_targets
 from gaffer.web.coerce import finite
 from gaffer.web.schemas import MoverRow, MoversPanel
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 router = APIRouter(prefix="/api/prices", tags=["prices"])
 

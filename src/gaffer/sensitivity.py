@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 import time
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from gaffer import artifacts
 from gaffer.artifacts import (
@@ -40,6 +40,9 @@ from gaffer.io import atomic_write
 from gaffer.league_mode import cover_from_eo, tilt_ep
 from gaffer.optimize.milp import SolveInput
 from gaffer.optimize.scenarios import move_frequencies, run_scenarios, xmins_by_player_gw
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 SENSITIVITY_K = 20
 """Scenarios per sweep (spec D3).
@@ -143,9 +146,9 @@ def _xmins(gw: int, ep_by: dict) -> tuple[dict, str | None]:
     if table:
         return table, None
     return (dict.fromkeys(ep_by, FALLBACK_XMINS),
-            f"no expected minutes on disk — every player was perturbed at a "
-            f"flat {FALLBACK_XMINS:.0f}-minute assumption, so the "
-            f"frequencies below rank moves rather than measure them")
+            (f"no expected minutes on disk — every player was perturbed at a "
+             f"flat {FALLBACK_XMINS:.0f}-minute assumption, so the "
+             f"frequencies below rank moves rather than measure them"))
 
 
 def _refs(codes, meta: dict) -> list[dict]:

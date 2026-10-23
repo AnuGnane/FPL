@@ -83,7 +83,7 @@ def _comp() -> pd.DataFrame:
 
 def _artifacts(tmp_path):
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 5\n\n[league]\nsim_n = 200\n')
+        "[fpl]\nentry_id = 1\nleague_id = 5\n\n[league]\nsim_n = 200\n")
     players = pd.DataFrame([
         {"code": 100, "element": 7, "name": "Salah", "position": "MID",
          "team_id": 1, "team_code": 300, "now_cost": 130, "status": "a",
@@ -213,7 +213,7 @@ def test_no_league_id_is_a_422(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
     _artifacts(tmp_path)
-    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\nleague_id = 0\n')
+    (tmp_path / "config.toml").write_text("[fpl]\nentry_id = 1\nleague_id = 0\n")
     monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
     res = TestClient(create_app()).get("/api/league/sim")
     assert res.status_code == 422
@@ -223,7 +223,7 @@ def test_no_league_id_is_a_422(tmp_path, monkeypatch):
 def test_no_advice_on_disk_is_a_422(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
-    (tmp_path / "config.toml").write_text('[fpl]\nentry_id = 1\nleague_id = 5\n')
+    (tmp_path / "config.toml").write_text("[fpl]\nentry_id = 1\nleague_id = 5\n")
     monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
     res = TestClient(create_app()).get("/api/league/sim")
     assert res.status_code == 422

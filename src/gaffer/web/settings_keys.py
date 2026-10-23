@@ -39,10 +39,13 @@ shorter is a setting nobody can find and nobody knows is gone.
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from gaffer.config import BOUNDS, NO_CAP, Config
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass(frozen=True)
@@ -144,7 +147,7 @@ WHITELIST: tuple[SettingKey, ...] = (
     SettingKey("draw_availability", "scenarios", "draw_availability",
                "Draw availability in the sweep", "bool",
                "Each scenario draws whether each player is available, so "
-               "\"bought in N%\" reflects availability risk."),
+               '"bought in N%" reflects availability risk.'),
     # v13 §2.3 (specs/2026-09-04-gaffer-v13-transfer-ladder-design.md). The
     # appetite. Also editable from the ladder card on the This Week hub,
     # which writes through this same endpoint.

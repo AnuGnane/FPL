@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -22,6 +22,9 @@ from gaffer.data.news.classifier import (
     classify_news,
     text_hash,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _SHIPPED_BACKOFF_S = RETRY_BACKOFF_S
 

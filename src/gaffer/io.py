@@ -41,11 +41,14 @@ Two things the copies this replaces did not all do, stated once here:
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import pandas as pd
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    import pandas as pd
 
 
 @contextmanager

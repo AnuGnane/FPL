@@ -10,12 +10,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-
-import pandas as pd
+from typing import TYPE_CHECKING
 
 from gaffer.data.fixtures import season_outlook
 from gaffer.io import atomic_write
 from gaffer.optimize.chip_policy import CHIP_SCENARIOS_PATH
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 def write_chip_scenarios(fixtures: pd.DataFrame | None,

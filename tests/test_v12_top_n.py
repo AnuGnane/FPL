@@ -65,7 +65,7 @@ def test_an_unknown_position_is_dropped_rather_than_added(tmp_path):
     unknown key contributes an empty frame — harmless, and a typo that reads
     as harmless is a typo nobody finds. Dropped, so the pool is exactly the
     four positions that exist."""
-    body = '[optimizer]\ntop_n = {GKP = 4, MIDD = 99}\n'
+    body = "[optimizer]\ntop_n = {GKP = 4, MIDD = 99}\n"
     assert set(load_config(_cfg(tmp_path, body)).solver_top_n()) == {"GKP", "DEF", "MID",
                                                           "FWD"}
 

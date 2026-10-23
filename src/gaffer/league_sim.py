@@ -33,7 +33,7 @@ import json
 import math
 import threading
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -49,6 +49,9 @@ from gaffer.optimize.scenarios import (
     sigma_for,
     xmins_by_player_gw,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 SIM_N = 2000
 SIM_SEED = 20260831
@@ -1341,8 +1344,8 @@ def build_inputs(cfg, client, *, gw: int | None = None,
 
 def format_multi_seed(report: dict, league_id: int) -> str:
     """The printed multi-seed table. One line per seed, then the aggregate."""
-    lines = [f"League simulation — league {league_id}, "
-             f"n={report['n']} per seed, drift={report['rival_drift']}",
+    lines = [(f"League simulation — league {league_id}, "
+              f"n={report['n']} per seed, drift={report['rival_drift']}"),
              f"{'seed':>10}  {'P(win)':>8}"]
     for seed, value in zip(report["seeds"], report["p_win"]):
         lines.append(f"{'seed ' + str(seed):>10}  {value:>8.3f}")

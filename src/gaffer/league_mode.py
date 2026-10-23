@@ -10,8 +10,10 @@ from __future__ import annotations
 import math
 import statistics
 from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING
 
-import pandas as pd
+if TYPE_CHECKING:
+    import pandas as pd
 
 SIGMA_FALLBACK = 18.0
 """Per-GW margin sigma when the league has no history at all (GW1)."""

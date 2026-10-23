@@ -23,11 +23,14 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from gaffer import artifacts
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 MAX_WATCHED = 100
 """Stars beyond which this stopped being a shortlist.

@@ -15,16 +15,20 @@ from __future__ import annotations
 
 import html
 import re
-from datetime import datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import httpx
 import pandas as pd
 
 from gaffer.config import config_in_force
 from gaffer.data.news import NEWS_CACHE, cache_path, cached_text, fetched_at
 from gaffer.data.news.classifier import NewsText, classify_news
 from gaffer.data.news.normalize import NEWS_MIN_COVERAGE, match_codes
+
+if TYPE_CHECKING:
+    from datetime import datetime
+    from pathlib import Path
+
+    import httpx
 
 PI_URL = "https://www.premierinjuries.com/injury-table.php"
 
