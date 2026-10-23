@@ -97,7 +97,7 @@ def verdict(base: dict, arm: dict) -> dict:
 
 def main() -> None:
     """Run each arm on the benchmark and print a ``V8A_ARM_DONE`` line per
-    arm."""
+    arm, a ``V8A_VERDICT`` per non-baseline arm and the ``V8A_KEEP`` list."""
     tr.load_training_frame = _memoised
     shipped = list(tr.MINUTES_FEATURES)
     results: dict[str, dict] = {}
