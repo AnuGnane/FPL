@@ -608,9 +608,9 @@ def test_the_training_frame_populates_both_arms_from_the_archive(
 # --- Task 10: the arm driver's pure parts --------------------------------
 
 import importlib.util as _ilu  # noqa: E402
-from pathlib import Path as _P  # noqa: E402
+from pathlib import Path  # noqa: E402
 
-_SCRIPTS = _P(__file__).resolve().parent.parent / "scripts"
+_SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 """Resolved from this file rather than from the working directory: a dozen
 test modules ``monkeypatch.chdir`` into a tmp tree, and a relative
 ``scripts/...`` here would load or fail to load depending on which of them ran

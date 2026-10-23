@@ -267,7 +267,7 @@ def test_the_priced_squad_is_exactly_the_squad_the_lane_grades(b1,
     must score exactly ``my_points - delta_pts``. A pricing pass that skipped
     my own transfer would hand over a fifteen with the player I *bought* in
     it and the identity would not hold."""
-    from gaffer import review as R
+    from gaffer import review
 
     seen = {}
 
@@ -275,8 +275,8 @@ def test_the_priced_squad_is_exactly_the_squad_the_lane_grades(b1,
         seen.update(counterfactuals)
         return {}, None
 
-    monkeypatch.setattr(R, "price_lanes_for_gw", _capture)
-    row = R.grade_gw(1, cfg=B1_CFG, client=object())
+    monkeypatch.setattr(review, "price_lanes_for_gw", _capture)
+    row = review.grade_gw(1, cfg=B1_CFG, client=object())
     lane = next(ln for ln in row["lanes"] if ln["lane"] == "transfers")
     assert lane["delta_pts"] is not None
     cf = seen["transfers"]
@@ -284,7 +284,7 @@ def test_the_priced_squad_is_exactly_the_squad_the_lane_grades(b1,
     # The fifteen I owned at the deadline had 115 in it, not 105.
     assert 115 in cf["xi"] + cf["bench"]
     assert 105 not in cf["xi"] + cf["bench"]
-    assert R.score_squad(R.actuals_for_gw(1), **cf) \
+    assert review.score_squad(review.actuals_for_gw(1), **cf) \
         == row["my_points"] - lane["delta_pts"]
 
 
@@ -292,11 +292,11 @@ def test_the_graded_row_names_my_own_transfer_rather_than_its_codes(b1,
                                                                     monkeypatch):
     """The model names the players it touched; mine come from the live
     players table, the same place every other name in the app comes from."""
-    from gaffer import review as R
+    from gaffer import review
 
-    monkeypatch.setattr(R, "price_lanes_for_gw",
+    monkeypatch.setattr(review, "price_lanes_for_gw",
                         lambda *a, **kw: ({}, None))
-    row = R.grade_gw(1, cfg=B1_CFG, client=object())
+    row = review.grade_gw(1, cfg=B1_CFG, client=object())
     lane = next(ln for ln in row["lanes"] if ln["lane"] == "transfers")
     assert lane["mine"] == "Sold->P5"
     assert lane["model"] == "P2->Wanted"

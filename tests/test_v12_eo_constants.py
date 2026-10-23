@@ -41,7 +41,7 @@ def test_the_three_hold_the_values_they_always_held():
     assert (DIFFERENTIAL_EO, ALTERNATIVE_EO, TEMPLATE_EO) == (0.30, 0.20, 0.70)
 
 
-def test_no_other_module_defines_an_EO_threshold():
+def test_no_other_module_defines_an_eo_threshold():
     """§2.2's grep. Matches a name ending in _EO assigned a numeric literal, so
     FIELD_EO_PATH (a string) and FIELD_EO_COLS (a list) do not count and the
     parameter default `min_eo=50.0` does not either — it is a parameter, not a

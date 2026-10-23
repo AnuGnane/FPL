@@ -112,7 +112,7 @@ def test_the_starting_bank_survives_a_broken_trajectory(wired):
     assert out.weeks[0].bank is None
 
 
-def test_a_solve_state_with_no_usable_bank_is_None_and_not_zero(wired):
+def test_a_solve_state_with_no_usable_bank_is_none_and_not_zero(wired):
     """0.0 is "he is fully invested", which is a real and different state."""
     wired([_week(5)], bank=None)
     out = plan_router.plan(5)

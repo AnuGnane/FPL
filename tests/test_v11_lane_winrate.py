@@ -72,7 +72,7 @@ def test_every_lane_reports_the_pair_even_when_it_never_played():
             out["lanes"][name])
 
 
-def test_an_empty_ledger_is_still_None():
+def test_an_empty_ledger_is_still_none():
     """``season_summary``'s oldest contract: a season nobody reviewed has no
     summary, and a summary of zeros would read as a season of flawless
     decisions."""

@@ -65,7 +65,7 @@ def test_a_gameweek_whose_every_run_was_late_is_flagged(graded):
     assert row["projection_post_deadline"] is True
 
 
-def test_no_snapshot_is_None_and_the_row_still_grades(graded):
+def test_no_snapshot_is_none_and_the_row_still_grades(graded):
     """Every row already in the ledger is in this state and always will be:
     grades are banked and never re-derived (review.py:24-26)."""
     row = review.grade_gw(5, cfg=graded)
@@ -92,7 +92,7 @@ def test_a_missing_deadline_takes_the_newest_and_flags_it(graded, monkeypatch):
     assert row["projection_post_deadline"] is True
 
 
-def test_a_payload_that_predates_the_deadline_field_reads_as_None(monkeypatch):
+def test_a_payload_that_predates_the_deadline_field_reads_as_none(monkeypatch):
     """model_decisions carries whatever the run banked and does not invent
     one. An artifact written before ``deadline`` was saved into the payload
     has no deadline, and ``None`` is what sends grade_gw down its late

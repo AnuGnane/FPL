@@ -69,7 +69,7 @@ def test_an_unpaired_buy_gets_no_gain_and_says_why():
     assert "pair" in move.note
 
 
-def test_an_unpaired_side_is_named_with_a_dash_and_not_the_word_None():
+def test_an_unpaired_side_is_named_with_a_dash_and_not_the_word_none():
     """``names.get(None, str(None))`` prints the string "None" on the board,
     where it reads as a player. The missing half of a swap is an em dash, the
     same as every other unknown this UI prints."""
@@ -78,7 +78,7 @@ def test_an_unpaired_side_is_named_with_a_dash_and_not_the_word_None():
     assert out[0].moves[0].buy_name == "In"
 
 
-def test_a_code_with_no_ep_in_the_pool_is_None_and_not_zero():
+def test_a_code_with_no_ep_in_the_pool_is_none_and_not_zero():
     out = run([week(5, buys=[999], sells=[200])], positions={**POS, 999: "MID"},
               names={**NAMES, 999: "Ghost"})
     assert out[0].moves[0].ep_gain is None

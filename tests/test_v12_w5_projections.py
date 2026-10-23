@@ -144,7 +144,7 @@ def test_a_snapshot_one_second_earlier_is_in_time(here):
     assert chosen.post_deadline is False
 
 
-def test_no_snapshot_at_all_is_None_and_not_an_exception(here):
+def test_no_snapshot_at_all_is_none_and_not_an_exception(here):
     assert latest_projection_before("2026-27", 5,
                                     "2026-09-04T17:30:00+00:00") is None
 

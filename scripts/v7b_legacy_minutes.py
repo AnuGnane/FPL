@@ -40,10 +40,10 @@ class LegacyMinutesModel:
         self.min_reg = LGBMRegressor(**LGB_KW)
 
     def fit(self, df: pd.DataFrame) -> LegacyMinutesModel:
-        X = df[self.feature_cols]
-        self.play_clf.fit(X, (df["minutes"] > 0).astype(int))
-        self.sixty_clf.fit(X, (df["minutes"] >= 60).astype(int))
-        self.min_reg.fit(X, df["minutes"])
+        features = df[self.feature_cols]
+        self.play_clf.fit(features, (df["minutes"] > 0).astype(int))
+        self.sixty_clf.fit(features, (df["minutes"] >= 60).astype(int))
+        self.min_reg.fit(features, df["minutes"])
         return self
 
     def predict(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -53,10 +53,10 @@ class LegacyMinutesModel:
         p_play — an incoherent p60 > p_play would inflate appearance
         points downstream.
         """
-        X = df[self.feature_cols]
+        features = df[self.feature_cols]
         out = df[["code", "season_idx", "gw"]].copy()
-        out["p_play"] = self.play_clf.predict_proba(X)[:, 1]
-        out["p60"] = self.sixty_clf.predict_proba(X)[:, 1].clip(0, 1)
+        out["p_play"] = self.play_clf.predict_proba(features)[:, 1]
+        out["p60"] = self.sixty_clf.predict_proba(features)[:, 1].clip(0, 1)
         out["p60"] = out[["p60", "p_play"]].min(axis=1)
-        out["e_min"] = self.min_reg.predict(X).clip(0, 90)
+        out["e_min"] = self.min_reg.predict(features).clip(0, 90)
         return out

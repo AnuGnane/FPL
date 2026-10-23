@@ -106,7 +106,7 @@ def test_a_negative_gap_survives_to_the_wire(wired):
     assert plan_router.plan(5).alternatives[0].gap == -1.2
 
 
-def test_a_gap_that_is_not_a_number_is_None_and_not_zero(wired):
+def test_a_gap_that_is_not_a_number_is_none_and_not_zero(wired):
     """0.0 is "exactly level", which is a real and different claim."""
     wired(_advice([_week(5)], [{"gap": "eh", "plan_by_gw": [_week(5)]}]))
     assert plan_router.plan(5).alternatives[0].gap is None

@@ -54,12 +54,12 @@ def test_an_unparseable_deadline_is_skipped_rather_than_fatal():
         _events("not a date", "2026-08-14T17:30:00Z")) == "2026-27"
 
 
-def test_no_parseable_deadline_at_all_is_None_and_not_a_guess():
+def test_no_parseable_deadline_at_all_is_none_and_not_a_guess():
     assert season_from_events(_events("not a date")) is None
     assert season_from_events(_events()) is None
 
 
-def test_a_frame_without_the_column_is_None():
+def test_a_frame_without_the_column_is_none():
     assert season_from_events(pd.DataFrame({"gw": [1]})) is None
 
 

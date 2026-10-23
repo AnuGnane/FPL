@@ -71,7 +71,7 @@ def test_solve_names_highs_when_it_runs_and_cbc_when_it_falls_back(monkeypatch):
         def __init__(self, *a, **kw):
             pass
 
-        def actualSolve(self, *a, **kw):
+        def actualSolve(self, *a, **kw):  # noqa: N802 — PuLP calls a solver by this name
             raise RuntimeError("no shared library")
 
     monkeypatch.setattr(pulp, "HiGHS", Broken)

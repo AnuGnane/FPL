@@ -75,7 +75,7 @@ def test_my_decisions_carries_the_overall_rank(banked_entry):
     assert mine["overall_rank"] == 412_233
 
 
-def test_a_history_row_without_the_key_is_None_not_zero(banked_entry_no_rank):
+def test_a_history_row_without_the_key_is_none_not_zero(banked_entry_no_rank):
     mine = my_decisions(1, season="2026-27", entry_id=1)
     assert mine["overall_rank"] is None
 
