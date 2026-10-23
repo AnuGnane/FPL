@@ -50,11 +50,13 @@ def _panel() -> WatchlistPanel:
 
 @router.get("/watchlist", response_model=WatchlistPanel)
 def watchlist() -> WatchlistPanel:
+    """The starred players."""
     return _panel()
 
 
 @router.post("/watchlist", response_model=WatchlistPanel)
 def star(req: WatchRequest) -> WatchlistPanel:
+    """Star a known player, refusing one when no player snapshot is on disk."""
     known = names()
     if not known:
         raise fail("no_player_list",
@@ -73,6 +75,7 @@ def star(req: WatchRequest) -> WatchlistPanel:
 
 @router.delete("/watchlist/{code}", response_model=WatchlistPanel)
 def unstar(code: int) -> WatchlistPanel:
+    """Unstar a player; 404 when they were not starred."""
     if not unwatch(int(code)):
         raise HTTPException(status_code=404,
                             detail=f"player {code} is not starred")

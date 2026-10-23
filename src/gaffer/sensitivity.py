@@ -64,6 +64,7 @@ assumption carried on the report, not a silent default.
 
 
 def sensitivity_path(gw: int) -> Path:
+    """Where one gameweek's sensitivity report is written under ``artifacts.REPORTS``."""
     return artifacts.REPORTS / f"sensitivity_gw{gw}.json"
 
 

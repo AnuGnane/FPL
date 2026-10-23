@@ -62,6 +62,8 @@ def save_params(name: str, params: dict) -> Path:
 
 
 def params_exist(name: str) -> bool:
+    """Whether a model's ``<name>.params.json`` is saved, so a caller can fall back before
+    loading."""
     return (MODELS_DIR / f"{name}.params.json").exists()
 
 

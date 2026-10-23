@@ -103,6 +103,8 @@ def decision_sigma(payload: dict, gw: int) -> float | None:
 
 @router.get("/sensitivity", response_model=SensitivityReport)
 def sensitivity(gw: int | None = Query(default=None)) -> SensitivityReport:
+    """How sensitive the plan for ``gw`` (the latest by default) is to its inputs; empty when
+    no report is written."""
     current = latest_gw()
     wanted = current if gw is None else int(gw)
     if wanted is None:

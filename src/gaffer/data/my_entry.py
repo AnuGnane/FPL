@@ -63,12 +63,14 @@ def my_picks_path(season: str, entry_id: int, gw: int,
 
 def my_history_path(season: str, entry_id: int,
                     raw_dir: Path | str | None = None) -> Path:
+    """Where the entry's season history is banked, beside its picks."""
     base = Path(raw_dir) if raw_dir is not None else RAW_LEAGUE
     return base / str(season) / f"{int(entry_id)}-history.json"
 
 
 def my_transfers_path(season: str, entry_id: int,
                       raw_dir: Path | str | None = None) -> Path:
+    """Where the entry's transfer list is banked, beside its picks."""
     base = Path(raw_dir) if raw_dir is not None else RAW_LEAGUE
     return base / str(season) / f"{int(entry_id)}-transfers.json"
 
@@ -129,6 +131,7 @@ def bank_my_gw(client, entry_id: int, season: str, gw: int,
 
 def load_my_history(season: str, entry_id: int,
                     raw_dir: Path | str | None = None) -> dict | None:
+    """The banked season history, or ``None`` when it is missing or not a JSON object."""
     out = _read_json(my_history_path(season, entry_id, raw_dir))
     return out if isinstance(out, dict) else None
 
@@ -153,6 +156,7 @@ def bank_my_history(client, entry_id: int, season: str,
 
 def load_my_transfers(season: str, entry_id: int,
                       raw_dir: Path | str | None = None) -> list[dict] | None:
+    """The banked transfer list, or ``None`` when it is missing or not a JSON list."""
     out = _read_json(my_transfers_path(season, entry_id, raw_dir))
     return list(out) if isinstance(out, list) else None
 

@@ -83,6 +83,8 @@ def generate_token() -> str:
 
 
 def create_app(*, token: str | None = None) -> FastAPI:
+    """Build the FastAPI app: the job registry and runner, every router, and
+    the LAN token check on writes when ``token`` is set (v12 W1 §2.8)."""
     app = FastAPI(title="gaffer", docs_url=None, redoc_url=None)
     app.state.jobs = JobRegistry()
     app.state.job_runner = JobRunner(JOB_KINDS)

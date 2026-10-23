@@ -23,6 +23,7 @@ def misses(gw: int | None = Query(
         default=None,
         description="Gameweek to score; the newest scoreable one when "
                     "omitted.")) -> Misses:
+    """The biggest misses of a scored gameweek; an empty card rather than a failed page."""
     try:
         wanted = scoreable_gw() if gw is None else int(gw)
         rows = [] if wanted is None else biggest_misses(wanted)

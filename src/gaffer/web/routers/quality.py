@@ -31,6 +31,7 @@ state say it in these words.
 
 @router.get("/quality", response_model=Quality)
 def quality() -> Quality:
+    """The model quality page: the stored evaluation, read against today's schema."""
     # load_evaluation raises GafferError when the artifact is missing, which
     # the app-wide handler turns into a 422 carrying the "run gaffer
     # evaluate" sentence the empty state prints verbatim.

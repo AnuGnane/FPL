@@ -641,6 +641,7 @@ def multi_seed(inputs: SimInputs, seeds: list[int], *, n: int = SIM_N,
 
 
 def history_path() -> Path:
+    """The league simulation history under ``artifacts.REPORTS``, resolved at call time."""
     return artifacts.REPORTS / SIM_HISTORY
 
 

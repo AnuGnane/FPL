@@ -42,6 +42,8 @@ be silently ignored later at a worse moment.
 
 
 def drafts_path() -> Path:
+    """The drafts file under ``artifacts.REPORTS``, resolved at call time so a redirected
+    reports directory moves it too."""
     return artifacts.REPORTS / "drafts.json"
 
 
@@ -124,6 +126,7 @@ def add_draft(name: str, constraints: dict | None) -> dict:
 
 
 def delete_draft(name: str) -> bool:
+    """Remove the draft called ``name``; ``False`` when there was none, so the route can 404."""
     rows = load_drafts()
     kept = [r for r in rows if r["name"] != str(name)]
     if len(kept) == len(rows):

@@ -35,6 +35,8 @@ _LOCK = threading.Lock()
 
 
 def decisions_path():
+    """The decision notes file under ``artifacts.REPORTS``, resolved at call time so a
+    redirected reports directory moves it too."""
     return artifacts.REPORTS / DECISIONS
 
 

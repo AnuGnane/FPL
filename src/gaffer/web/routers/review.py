@@ -25,6 +25,7 @@ EMPTY = Review()
 
 @router.get("/review", response_model=Review)
 def review() -> Review:
+    """The graded decisions from the ledger, each with the reader's note joined on."""
     try:
         ledger = load_ledger()
         if not ledger:

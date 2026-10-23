@@ -218,6 +218,8 @@ def _project(picks: list[dict], points_of: dict[int, int],
 
 @router.get("/live", response_model=LiveState)
 def live() -> LiveState:
+    """The entry's live gameweek: its squad and points so far, and the league
+    table projected live."""
     cfg = load_config()
     if not cfg.entry_id:
         raise GafferError("set fpl.entry_id in config.toml to use this page")

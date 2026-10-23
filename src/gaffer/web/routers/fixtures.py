@@ -93,6 +93,8 @@ def _team_model():
 @router.get("/fixtures/matrix", response_model=FixtureMatrix)
 def matrix(from_: int | None = Query(None, alias="from"),
            n: int = Query(6, ge=1, le=20)) -> FixtureMatrix:
+    """The fixture difficulty matrix from the team model, ``n`` gameweeks from ``from``; empty
+    without the live snapshots."""
     if not (store.exists("live/teams.parquet")
             and store.exists("live/fixtures_all.parquet")):
         return EMPTY

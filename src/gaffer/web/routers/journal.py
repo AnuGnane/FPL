@@ -37,6 +37,7 @@ def entry_id() -> int | None:
 
 @router.get("/journal", response_model=Journal)
 def journal() -> Journal:
+    """The entry's season journal from FPL; empty without an entry id or when the fetch fails."""
     who = entry_id()
     if not who:
         return EMPTY

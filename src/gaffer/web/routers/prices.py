@@ -63,6 +63,7 @@ def _cost(value) -> float:
 
 @router.get("/movers", response_model=MoversPanel)
 def movers() -> MoversPanel:
+    """The price movers among the watched players, from the latest snapshot."""
     players, as_of = _snapshot()
     if players is None or players.empty:
         return MoversPanel(available=False, as_of=as_of)

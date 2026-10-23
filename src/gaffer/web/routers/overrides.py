@@ -160,11 +160,13 @@ def _panel() -> OverridesPanel:
 
 @router.get("/overrides", response_model=OverridesPanel)
 def overrides() -> OverridesPanel:
+    """The reader's pinned player overrides."""
     return _panel()
 
 
 @router.post("/overrides", response_model=OverridesPanel)
 def pin(req: OverrideRequest) -> OverridesPanel:
+    """Pin an override on a known player, refusing one when no player snapshot is on disk."""
     known = _names()
     if not known:
         raise fail("no_player_list",
@@ -188,6 +190,7 @@ def pin(req: OverrideRequest) -> OverridesPanel:
 
 @router.delete("/overrides/{code}", response_model=OverridesPanel)
 def unpin(code: int) -> OverridesPanel:
+    """Remove a player's override; 404 when there was none."""
     if not delete_override(int(code)):
         raise HTTPException(status_code=404,
                             detail=f"no override for player {code}")

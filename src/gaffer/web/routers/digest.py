@@ -22,6 +22,7 @@ router = APIRouter(prefix="/api", tags=["digest"])
 
 @router.get("/digest", response_model=DigestPanel)
 def digest(kind: str | None = None) -> DigestPanel:
+    """The newest written digest, of ``kind`` when given (friday or tuesday)."""
     if kind is not None and kind not in DIGEST_KINDS:
         raise GafferError(
             f"unknown digest kind {kind!r} — expected one of "

@@ -71,6 +71,7 @@ def _list() -> DraftList:
 
 @router.get("/drafts", response_model=DraftList)
 def drafts() -> DraftList:
+    """The saved drafts."""
     return _list()
 
 
@@ -109,6 +110,7 @@ def save(req: DraftSaveRequest) -> DraftList:
 
 @router.delete("/drafts/{name}", response_model=DraftList)
 def remove(name: str) -> DraftList:
+    """Delete a saved draft and return the drafts left; 404 when there is no such draft."""
     if not delete_draft(name):
         raise HTTPException(status_code=404, detail=f"no draft called {name}")
     return _list()
@@ -226,6 +228,7 @@ def compare_drafts(names: list[str], gw: int) -> dict:
 
 @router.post("/drafts/compare", status_code=202, response_model=JobAccepted)
 def compare(req: DraftCompareRequest, request: Request):
+    """Queue a comparison of up to ``MAX_COMPARE`` saved drafts against the latest solve."""
     gw = latest_gw()
     if gw is None:
         raise GafferError(NO_RUN)

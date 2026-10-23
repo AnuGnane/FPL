@@ -19,6 +19,7 @@ BRIEF_TIMEOUT_MARGIN_S = 60.0
 
 @router.get("/brief", response_model=BriefPanel)
 def brief() -> BriefPanel:
+    """The latest LLM brief with its truth-check stamp, or an empty panel when none is written."""
     payload = latest_brief()
     if payload is not None:
         return BriefPanel(gw=payload.get("gw"), prose=payload.get("prose"),
@@ -31,6 +32,7 @@ def brief() -> BriefPanel:
 
 @router.post("/brief", status_code=202, response_model=JobAccepted)
 def write(request: Request):
+    """Queue a rewrite of the brief as an anonymous job, with the LLM timeout plus a margin."""
     from gaffer.config import config_in_force
 
     timeout = float(config_in_force().news_llm_timeout_s) + BRIEF_TIMEOUT_MARGIN_S

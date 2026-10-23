@@ -54,6 +54,7 @@ def _refs(codes, meta: dict[int, dict],
 
 @router.get("/chips", response_model=ChipsWorkbench)
 def chips() -> ChipsWorkbench:
+    """The chips workbench for the latest solve: what each remaining chip is worth and when."""
     gw = latest_gw()
     if gw is None:
         raise HTTPException(status_code=404, detail=NO_RUN)
