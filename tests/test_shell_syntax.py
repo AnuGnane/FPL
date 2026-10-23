@@ -32,5 +32,6 @@ def test_there_are_bash_scripts_to_parse():
 
 @pytest.mark.parametrize("script", _bash_scripts(), ids=lambda p: p.name)
 def test_every_live_bash_script_parses_under_bash_n(script):
-    run = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
+    run = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True,
+                         check=False)
     assert run.returncode == 0, run.stderr

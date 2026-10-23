@@ -139,7 +139,7 @@ def run_backup(*, to: Path | str, rsync: str | None = None,
         # `--` before the paths: an rsync target is a user-supplied string and
         # one beginning with a dash would otherwise be read as an option.
         result = subprocess.run(["rsync", "-a", "--", str(path), rsync],
-                                capture_output=True, text=True)
+                                capture_output=True, text=True, check=False)
         if result.returncode != 0:
             # Never fatal. The local archive exists and is the thing that
             # matters; raising here would tell the user nothing was backed up,

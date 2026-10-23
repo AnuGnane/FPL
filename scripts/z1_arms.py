@@ -32,15 +32,14 @@ ZEROS_TARGET = 1.042
 HAULERS_CEILING = 5.171
 ALL_CEILING = 1.996
 
-_cached = None
+_cached: dict = {}  # holiday F-207: a memo mutated in place, no ``global``
 _real_load = tr.load_training_frame
 
 
 def _memoised():
-    global _cached
-    if _cached is None:
-        _cached = _real_load()
-    df, tg, elo = _cached
+    if "load" not in _cached:
+        _cached["load"] = _real_load()
+    df, tg, elo = _cached["load"]
     return df.copy(), tg.copy(), elo
 
 

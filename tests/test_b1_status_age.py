@@ -139,8 +139,8 @@ def _big(young_share: float, old_share: float):
     spec, codes = {}, []
     for code in range(100, 160):
         start = 11 if code < 130 else 3
-        spec[code] = (lambda s: lambda d: ("a", None) if d < s
-                      else ("d", 75.0))(start)
+        # the default binds this player's start now, not the loop's last
+        spec[code] = lambda d, s=start: ("a", None) if d < s else ("d", 75.0)
         codes.append(code)
     young = int(round(young_share * 30))
     old = int(round(old_share * 30))

@@ -203,7 +203,7 @@ def git_sha() -> str:
     """
     try:
         done = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
-                              capture_output=True, text=True, timeout=5)
+                              capture_output=True, text=True, timeout=5, check=False)
     except (OSError, subprocess.SubprocessError):
         return "unknown"
     return done.stdout.strip() if done.returncode == 0 else "unknown"

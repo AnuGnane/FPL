@@ -58,8 +58,8 @@ def test_every_club_date_is_covered_by_exactly_one_spell(tenures):
 
 
 def test_no_two_spells_at_one_club_overlap(tenures):
-    for club, part in tenures.groupby("team_code"):
-        part = part.sort_values("start_date")
+    for club, group in tenures.groupby("team_code"):
+        part = group.sort_values("start_date")
         ends = part["end_date"].tolist()
         starts = part["start_date"].tolist()
         for i in range(len(part) - 1):

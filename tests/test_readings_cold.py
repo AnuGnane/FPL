@@ -95,6 +95,7 @@ def _run_cold(script: str, tmp_path: Path) -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
         timeout=120,
+        check=False,
     )
     assert done.returncode == 0, done.stderr
     assert "Traceback" not in done.stderr, done.stderr

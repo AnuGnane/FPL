@@ -406,7 +406,8 @@ def _week_one(entry: Entry, ins: SimInputs, pins: Pins) -> tuple[float, float]:
                      and pins.rival_captain_blanks is not None
                      and int(pins.rival_captain_blanks) == int(entry.entry))
     mean, var = 0.0, 0.0
-    for element, mult in picks:
+    for element, picked in picks:
+        mult = picked
         if swap_captain:
             # One armband, moved: the incumbent drops to a single share and
             # the named player takes the double. A bench player named as

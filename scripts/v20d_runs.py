@@ -100,8 +100,8 @@ def log_runs(text: str | None) -> dict[int, list[dict]]:
     """
     out: dict[int, list[dict]] = {}
     failure = banked = banked_day = None
-    for line in (text or "").splitlines():
-        line = line.strip()
+    for raw in (text or "").splitlines():
+        line = raw.strip()
         if any(f in line for f in FAILURES):
             failure = failure or line
             continue
