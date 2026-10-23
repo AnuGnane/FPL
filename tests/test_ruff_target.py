@@ -69,3 +69,12 @@ def test_ruff_selects_the_c4_pie_ret_and_era_families():
     data = tomllib.loads(Path("pyproject.toml").read_text())
     select = data["tool"]["ruff"]["lint"]["select"]
     assert {"C4", "PIE", "RET", "ERA"} <= set(select)
+
+
+def test_ruff_selects_the_ble_family_and_strikes_unused_noqa():
+    """Holiday F-204 turned ``BLE`` on, so the ``# noqa: BLE001`` marks
+    ``CLAUDE.md`` asks for are read by ruff rather than being comments, and
+    ``RUF100`` with it, so a mark that guards nothing fails the gate."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    select = data["tool"]["ruff"]["lint"]["select"]
+    assert {"BLE", "RUF100"} <= set(select)
