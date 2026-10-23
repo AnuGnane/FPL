@@ -6,6 +6,11 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
     "noEmit": true,
     "skipLibCheck": true,
     "types": ["node", "vitest/globals", "@testing-library/jest-dom"]
