@@ -61,3 +61,11 @@ def test_ruff_selects_the_simplify_family():
     selected or this fails, so it cannot be dropped silently."""
     data = tomllib.loads(Path("pyproject.toml").read_text())
     assert "SIM" in data["tool"]["ruff"]["lint"]["select"]
+
+
+def test_ruff_selects_the_c4_pie_ret_and_era_families():
+    """Holiday F-201 turned ``C4``, ``PIE``, ``RET`` and ``ERA`` on, in
+    F-188's shape: each family stays selected or this fails."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    select = data["tool"]["ruff"]["lint"]["select"]
+    assert {"C4", "PIE", "RET", "ERA"} <= set(select)
