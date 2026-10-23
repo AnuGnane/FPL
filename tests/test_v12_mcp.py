@@ -202,7 +202,7 @@ def test_the_dependency_is_pinned_in_the_project_metadata():
 
     text = pathlib.Path(__file__).parents[1].joinpath("pyproject.toml") \
         .read_text()
-    assert re.search(r"^\s*[\"']mcp\s*>=\s*\d", text, re.M)
+    assert re.search(r"^\s*[\"']mcp\s*>=\s*\d", text, re.MULTILINE)
 
 
 def test_a_failing_tool_writes_the_traceback_to_stderr(tmp_path, monkeypatch,

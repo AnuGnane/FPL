@@ -69,10 +69,10 @@ def _section(text: str, heading: str | None) -> str:
     """The text from ``heading`` to the next ``## `` heading (all if None)."""
     if heading is None:
         return text
-    m = re.search(heading, text, re.M)
+    m = re.search(heading, text, re.MULTILINE)
     assert m, f"no heading matching {heading!r}"
     rest = text[m.end():]
-    nxt = re.search(r"^## ", rest, re.M)
+    nxt = re.search(r"^## ", rest, re.MULTILINE)
     return rest[: nxt.start()] if nxt else rest
 
 
@@ -81,7 +81,7 @@ def doc_pin_mismatch(
 ) -> str | None:
     """None when ``text`` (the doc ``name``) quotes ``rails``; else why not."""
     heading, pattern = _DOCS[name]
-    m = re.search(pattern, _section(text, heading), re.S)
+    m = re.search(pattern, _section(text, heading), re.DOTALL)
     if m is None:
         return f"{name}: its pins line was not found"
     quoted = tuple(int(g) for g in m.groups())

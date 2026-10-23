@@ -43,7 +43,7 @@ def code_files() -> list[Path]:
     return sorted(py + ts)
 
 _ID = re.compile(r"\bF-(\d+)\b")
-_BOX = re.compile(r"^- \[([ x])\] \*\*F-(\d+)\b", re.M)
+_BOX = re.compile(r"^- \[([ x])\] \*\*F-(\d+)\b", re.MULTILINE)
 
 
 def boxes(text: str) -> dict[int, bool]:
@@ -64,7 +64,7 @@ def struck_cites(text: str) -> set[int]:
     alone would read nothing.
     """
     out: set[int] = set()
-    for span, after in re.findall(r"~~(.+?)~~(\s*\([^)]*\))?", text, re.S):
+    for span, after in re.findall(r"~~(.+?)~~(\s*\([^)]*\))?", text, re.DOTALL):
         out |= cited(span) | cited(after)
     return out
 
@@ -75,15 +75,15 @@ def closed_cites(guide: str) -> set[int]:
     A struck span records a line closed; a readings-table row records a
     script that shipped. Both must point at a ticked box.
     """
-    section = re.search(r"^### 12\.4 .*?(?=^## 13\.)", guide, re.M | re.S)
+    section = re.search(r"^### 12\.4 .*?(?=^## 13\.)", guide, re.MULTILINE | re.DOTALL)
     assert section, "GUIDE §12.4 to §12.5 not found"
     body = section.group(0)
     out: set[int] = set()
     out |= struck_cites(body)
     readings = re.search(r"^#### The readings\n.*?(?=^#|\Z)", body,
-                         re.M | re.S)
+                         re.MULTILINE | re.DOTALL)
     assert readings, "GUIDE §12.5 has no readings table"
-    for row in re.findall(r"^\|.*\|$", readings.group(0), re.M):
+    for row in re.findall(r"^\|.*\|$", readings.group(0), re.MULTILINE):
         out |= cited(row)
     return out
 

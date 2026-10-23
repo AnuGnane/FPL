@@ -46,7 +46,7 @@ def return_prob(curves: dict | None, injury_type, h: int) -> float | None:
     if not curves:
         return None
     typed = (curves.get("curves") or {}).get(str(injury_type or ""))
-    curve = typed if typed else curves.get("pooled")
+    curve = typed or curves.get("pooled")
     if not curve:
         return None
     return float(curve[min(int(h), len(curve) - 1)])

@@ -20,9 +20,9 @@ GUIDE = Path("docs/GUIDE.md")
 
 def _health_bullet(text: str) -> str:
     """GUIDE §5's ``- *Health*:`` bullet, up to the next bullet."""
-    section = re.search(r"^## 5\..*?(?=^## 6\.)", text, re.M | re.S)
+    section = re.search(r"^## 5\..*?(?=^## 6\.)", text, re.MULTILINE | re.DOTALL)
     assert section, "GUIDE §5 not found"
-    bullet = re.search(r"^- \*Health\*:.*?(?=^- )", section.group(0), re.M | re.S)
+    bullet = re.search(r"^- \*Health\*:.*?(?=^- )", section.group(0), re.MULTILINE | re.DOTALL)
     assert bullet, "GUIDE §5 has no *Health* bullet"
     return bullet.group(0)
 

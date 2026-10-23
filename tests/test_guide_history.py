@@ -20,8 +20,8 @@ ROADMAP = _ROOT / "docs/superpowers/ROADMAP.md"
 GUIDE = _ROOT / "docs/GUIDE.md"
 
 _CYCLE = re.compile(r"v(\d+)([a-z]?)(?![a-z])")
-_HEADING = re.compile(r"^### (v\S*)", re.M)
-_OPENER = re.compile(r"^\*\*(v[^ *]+) —", re.M)
+_HEADING = re.compile(r"^### (v\S*)", re.MULTILINE)
+_OPENER = re.compile(r"^\*\*(v[^ *]+) —", re.MULTILINE)
 
 
 def shipped(roadmap: str) -> set[str]:

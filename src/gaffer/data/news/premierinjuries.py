@@ -80,8 +80,8 @@ way reads as a doubt: the binding claims are the return date and the
 percentage, and neither is in this word."""
 
 _TAG = re.compile(r"<[^>]+>")
-_ROW = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S | re.I)
-_CELL = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S | re.I)
+_ROW = re.compile(r"<tr[^>]*>(.*?)</tr>", re.DOTALL | re.IGNORECASE)
+_CELL = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.DOTALL | re.IGNORECASE)
 _PCT = re.compile(r"^(\d{1,3}(?:\.\d+)?)\s*%$")
 
 
