@@ -682,7 +682,7 @@ def test_a_write_that_dies_mid_parquet_leaves_the_previous_one_whole(
         raise OSError("disk full")
 
     monkeypatch.setattr(store, "save", _explode)
-    with pytest.raises(OSError):
+    with pytest.raises(OSError, match="disk full"):
         download_core_insights(["2026-27"], {"2026-27": 3}, tree=ARCHIVE_TREE,
                                client=_FakeHTTP(ARCHIVE))
     # Restored by hand rather than with ``monkeypatch.undo``, which would also

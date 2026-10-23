@@ -149,7 +149,7 @@ def test_a_lever_line_with_no_v20_replay_falls_back_by_its_prefix():
                    "LEVER": "unclaimed"}
 
 
-@pytest.mark.parametrize("tag, arm", [("v20c0-harness-main", "v20c0"),
+@pytest.mark.parametrize(("tag", "arm"), [("v20c0-harness-main", "v20c0"),
                                       ("v20c-clip-main", "v20c"),
                                       ("v20c", "v20c"),
                                       ("v20cx-thing", "unclaimed"),
@@ -235,7 +235,7 @@ def test_a_log_with_only_presser_serve_prints_that_group_alone(
     assert out.split("```\n", 1)[1].rsplit("\n```", 1)[0] == line
 
 
-@pytest.mark.parametrize("line, group", [
+@pytest.mark.parametrize(("line", "group"), [
     ("C1_BUCKETS {}", "scripts/c1_news_buckets.py"),
     ("C2_PPLAY {}", "scripts/c2_pplay_bins.py"),
     ("C3_HOME_AWAY {}", "scripts/c3_home_away.py"),

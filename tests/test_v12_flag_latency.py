@@ -308,7 +308,7 @@ def test_both_scorers_survive_a_row_shaped_like_the_real_log():
     assert grades["by_source"] == [{"source": "", "rows": 1}]
 
 
-@pytest.mark.parametrize("snap_date, lead_days", [
+@pytest.mark.parametrize(("snap_date", "lead_days"), [
     ("2026-09-01", 3),
     ("2026-09-01T10:30:00Z", 2),
 ])

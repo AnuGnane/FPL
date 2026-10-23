@@ -139,7 +139,7 @@ def _flat_table(sigma: float) -> dict:
             "ep_marginal": {}, "global": sigma}
 
 
-@pytest.mark.parametrize("ep_value, sigma", [
+@pytest.mark.parametrize(("ep_value", "sigma"), [
     (0.05, 0.83), (0.3, 0.83), (1.0, 0.83), (4.5, 3.45)])
 def test_the_calibrated_arm_preserves_the_mean_across_the_zero_clip(
         ep_value, sigma):

@@ -56,7 +56,7 @@ def _log(gw=2, table=None):
         gw, "2026-27", day="2026-09-12"))
 
 
-@pytest.mark.parametrize("owned,eo,expected", [
+@pytest.mark.parametrize(("owned", "eo", "expected"), [
     (True, 78.0, "shield"),
     (True, 4.0, "sword"),
     (False, 78.0, "threat"),

@@ -167,7 +167,7 @@ def test_each_adapter_satisfies_its_protocol():
     assert isinstance(MilpSolver(), Solver)
 
 
-@pytest.mark.parametrize("method, target, args", [
+@pytest.mark.parametrize(("method", "target", "args"), [
     ("solve", "solve_plan", ("POOL", "STATE")),
     ("coherent", "coherent_plan", ("POOL", "STATE", "DECISION")),
     ("scenarios", "run_scenarios", ("POOL", "STATE", "XMINS")),
@@ -201,7 +201,7 @@ def test_live_models_hands_the_five_arguments_to_predict_components(
     assert seen["kw"] == {"cfg": "CFG"}
 
 
-@pytest.mark.parametrize("exists, expected", [(False, None), (True, "cal")])
+@pytest.mark.parametrize(("exists", "expected"), [(False, None), (True, "cal")])
 def test_the_calibration_map_is_optional(monkeypatch, exists, expected):
     """A models directory trained before calibration existed has no such
     file, and None is the identity map, not an error."""

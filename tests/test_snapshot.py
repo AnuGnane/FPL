@@ -156,7 +156,7 @@ def test_a_write_that_dies_leaves_the_banked_log_untouched(tmp_path,
         raise OSError("the disk filled up")
 
     monkeypatch.setattr(store_mod, "save", half_written)
-    with pytest.raises(OSError):
+    with pytest.raises(OSError, match="the disk filled up"):
         append_snapshot(snapshot_rows(_avail(), gw=2, season="2026-27",
                                       day="2026-08-31"))
     monkeypatch.setattr(store_mod, "save", real_save)

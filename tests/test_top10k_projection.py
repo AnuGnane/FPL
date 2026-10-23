@@ -82,7 +82,7 @@ def test_three_banked_weeks_wait_on_the_newest_unless_it_is_included():
     assert tp.reading({1: 60, 2: 120, 3: 190}, include_latest=True)["n"] == 1
 
 
-@pytest.mark.parametrize("other, verdict", [
+@pytest.mark.parametrize(("other", "verdict"), [
     (9.0, "ruling: last_rise beats f6"),     # 10 % below: clears the bar
     (8.0, "ruling: last_rise beats f6"),
     (9.5, "f6 stays"),                       # 5 % below: does not

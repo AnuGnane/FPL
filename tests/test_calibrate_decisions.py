@@ -173,13 +173,13 @@ def test_write_priors_round_trips_through_the_asset_schema(tmp_path):
 def test_write_priors_refuses_a_payload_missing_a_required_key(tmp_path):
     """A half-written asset is worse than none: it would silently produce a
     lambda table from three samples."""
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(ValueError, match="payload is missing") as exc:
         write_priors({"version": 1}, tmp_path / "x.json")
     assert "transfer_surplus" in str(exc.value)
 
 
 def test_write_priors_refuses_an_empty_transfer_distribution(tmp_path):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="no transfer surplus samples"):
         write_priors({"version": 1, "generated_at": "x", "seasons": [],
                       "transfer_surplus": {"early": [], "mid": [], "late": []},
                       "chip_surplus": {}}, tmp_path / "x.json")
