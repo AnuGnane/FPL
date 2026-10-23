@@ -35,8 +35,9 @@ def decision(gw: int) -> DecisionNote:
 
 @router.post("/decisions/{gw}", response_model=DecisionNote)
 def save(gw: int, req: DecisionWrite) -> DecisionNote:
-    """Store the reader's note on a gameweek's decision, refusing an unknown reason or an
-    over-long text."""
+    """Store the reader's note on a gameweek's decision, while its window is
+    open: refused for an unknown reason, an over-long text, a future gameweek,
+    before the deadline or once the gameweek is graded."""
     if req.reason not in REASONS:
         raise fail("unknown_reason",
                    f"the reason is one of {', '.join(REASONS)}")

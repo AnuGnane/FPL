@@ -19,7 +19,8 @@ BRIEF_TIMEOUT_MARGIN_S = 60.0
 
 @router.get("/brief", response_model=BriefPanel)
 def brief() -> BriefPanel:
-    """The latest LLM brief with its truth-check stamp, or an empty panel when none is written."""
+    """The latest LLM brief with its truth-check stamp; without one, the last
+    note and the digest as a fallback."""
     payload = latest_brief()
     if payload is not None:
         return BriefPanel(gw=payload.get("gw"), prose=payload.get("prose"),
