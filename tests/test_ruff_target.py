@@ -88,3 +88,12 @@ def test_ruff_selects_the_pytest_style_family_without_the_composite_assert():
     lint = data["tool"]["ruff"]["lint"]
     assert "PT" in lint["select"]
     assert "PT018" in lint["ignore"]
+
+
+def test_ruff_selects_the_perf_furb_and_pyi_families():
+    """Holiday F-206 turned ``PERF``, ``FURB`` and ``PYI`` on, in F-188's
+    shape: each family stays selected or this fails, so a loop that appends
+    or a ``re.I`` alias cannot come back silently."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    select = data["tool"]["ruff"]["lint"]["select"]
+    assert {"PERF", "FURB", "PYI"} <= set(select)
