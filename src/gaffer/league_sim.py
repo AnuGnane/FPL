@@ -505,7 +505,7 @@ def simulate_league(inputs: SimInputs, *, n: int = SIM_N, seed: int = SIM_SEED,
     entries = list(inputs.entries)
     if not entries:
         return LeagueSim(p_win=0.0, p_top3=0.0, exp_finish=0.0, per_rival=[],
-                         margin_quantiles={k: 0.0 for k in MARGIN_KEYS},
+                         margin_quantiles=dict.fromkeys(MARGIN_KEYS, 0.0),
                          n=int(n), seed=int(seed),
                          weeks_left=int(inputs.weeks_left),
                          rival_drift=float(rival_drift),

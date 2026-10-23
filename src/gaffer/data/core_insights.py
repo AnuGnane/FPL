@@ -683,7 +683,7 @@ def download_core_insights(seasons: list[str],
         if not reachable:
             print(f"core-insights: {season} — the archive published nothing "
                   f"reachable; leaving any previous collection alone")
-            out[season] = {t: 0 for t in CI_TABLES}
+            out[season] = dict.fromkeys(CI_TABLES, 0)
             continue
         # The element map changes all season as players are added, so it is
         # never served cold from the cache.

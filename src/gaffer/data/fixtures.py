@@ -89,7 +89,7 @@ def _counts(parsed: tuple[pd.DataFrame, set[int]],
     out: dict[int, dict[int, int]] = {}
     for gw in sorted({int(g) for g in frame["gw"]}):
         week = frame[frame["gw"].astype(int) == gw]
-        counts = {k: 0 for k in known.values()}
+        counts = dict.fromkeys(known.values(), 0)
         for side in ("home_id", "away_id"):
             for team_id in week[side]:
                 k = known.get(int(team_id))

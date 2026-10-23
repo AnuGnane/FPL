@@ -130,7 +130,7 @@ def gather(monkeypatch, *, cfg: Config | None = None, my: bool = True,
 
         def calibration(self):
             order.append("Predictions.calibration")
-            return None
+            return
 
     squad = pd.DataFrame([{"code": 100 + i, "sell": 50} for i in range(4)])
     team = MyTeam(entry_id=1, bank=0, free_transfers=1, current_gw=GW,

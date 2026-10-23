@@ -23,7 +23,7 @@ SQUAD = list(POS)
 
 
 def frame(points: dict, minutes: dict | None = None) -> pd.DataFrame:
-    minutes = minutes or {code: 90 for code in POS}
+    minutes = minutes or dict.fromkeys(POS, 90)
     return pd.DataFrame([{"code": code, "total_points": points.get(code, 0),
                           "minutes": minutes.get(code, 0),
                           "position": POS[code]}
@@ -34,7 +34,7 @@ def test_the_best_eleven_is_legal_by_formation():
     """Not simply the eleven highest scorers: FPL needs one keeper, three
     defenders and a forward, and an unconstrained pick would field five
     midfielders and no goalkeeper the moment midfielders had a good week."""
-    points = {code: 10 for code in (8, 9, 10, 11, 12)}
+    points = dict.fromkeys((8, 9, 10, 11, 12), 10)
     xi, _, _ = hindsight_xi(SQUAD, frame(points))
     kinds = [POS[c] for c in xi]
     assert kinds.count("GKP") == 1
@@ -54,7 +54,7 @@ def test_the_armband_goes_to_the_best_scorer_in_the_chosen_eleven():
 def test_the_total_counts_the_captain_twice():
     """One goalkeeper at 5 and everyone else at 1: the best legal eleven is
     5 + ten ones, and the armband on the keeper adds his five again."""
-    points = {code: 1 for code in SQUAD}
+    points = dict.fromkeys(SQUAD, 1)
     points[1] = 5
     _, captain, total = hindsight_xi(SQUAD, frame(points))
     assert captain == 1
@@ -73,7 +73,7 @@ def test_minutes_do_not_constrain_the_hindsight_pick():
     """No autosubs here, deliberately. Autosubs are a *consequence* of a
     bench order; this measures the selection I could have made at the
     deadline, when a blank was still avoidable by picking somebody else."""
-    points = {code: 1 for code in SQUAD}
+    points = dict.fromkeys(SQUAD, 1)
     points[13] = 20
     _, captain, _ = hindsight_xi(SQUAD, frame(points, minutes={13: 0}))
     assert captain == 13

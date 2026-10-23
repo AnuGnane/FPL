@@ -24,13 +24,13 @@ from gaffer.models.calibrate import CalibrationModel
 
 SCORING = {
     "goals_scored": {"GKP": 10, "DEF": 6, "MID": 5, "FWD": 4},
-    "assists": {p: 3 for p in ["GKP", "DEF", "MID", "FWD"]},
+    "assists": dict.fromkeys(["GKP", "DEF", "MID", "FWD"], 3),
     "clean_sheets": {"GKP": 4, "DEF": 4, "MID": 1, "FWD": 0},
     "goals_conceded": {"GKP": -0.5, "DEF": -0.5, "MID": 0, "FWD": 0},
     "saves": {p: 1 / 3 if p == "GKP" else 0 for p in ["GKP", "DEF", "MID", "FWD"]},
     "defensive_contribution": {"GKP": 0, "DEF": 2, "MID": 2, "FWD": 2},
-    "minutes_0_59": {p: 1 for p in ["GKP", "DEF", "MID", "FWD"]},
-    "minutes_60_plus": {p: 2 for p in ["GKP", "DEF", "MID", "FWD"]},
+    "minutes_0_59": dict.fromkeys(["GKP", "DEF", "MID", "FWD"], 1),
+    "minutes_60_plus": dict.fromkeys(["GKP", "DEF", "MID", "FWD"], 2),
 }
 
 

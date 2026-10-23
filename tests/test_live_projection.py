@@ -43,8 +43,8 @@ def _minutes(overrides=None):
     Takes a plain dict rather than keywords: the elements are ints and
     ``**{11: 0}`` is not legal Python.
     """
-    mins = {e: 90 for e in range(1, 12)}
-    mins.update({e: 0 for e in range(12, 16)})
+    mins = dict.fromkeys(range(1, 12), 90)
+    mins.update(dict.fromkeys(range(12, 16), 0))
     mins.update(overrides or {})
     return mins
 
@@ -167,10 +167,10 @@ def test_projected_points_scores_the_substituted_eleven():
     picks = _picks(captain=9, vice=10)
     minutes = _minutes({11: 0})
     finished = _finished(11)
-    points = {e: 2 for e in range(1, 16)}
+    points = dict.fromkeys(range(1, 16), 2)
     points[9] = 10          # the captain
     points[11] = 0          # the blank
-    bonus = {e: 0 for e in range(1, 16)}
+    bonus = dict.fromkeys(range(1, 16), 0)
     subs = projected_subs(picks, minutes, finished, POS)
     mult = projected_multipliers(picks, subs, minutes, finished)
     # Nine ordinary starters on 2, the doubled captain, and 13 on for 11.
@@ -182,8 +182,8 @@ def test_projected_points_scores_the_substituted_eleven():
 
 def test_projected_points_matches_live_points_when_nothing_is_projected():
     picks = _picks()
-    points = {e: 3 for e in range(1, 16)}
-    bonus = {e: 1 for e in range(1, 16)}
+    points = dict.fromkeys(range(1, 16), 3)
+    bonus = dict.fromkeys(range(1, 16), 1)
     mult = projected_multipliers(picks, [], _minutes(), _finished())
     assert (projected_points(points, bonus, mult)
             == entry_live_points(picks, points, bonus))

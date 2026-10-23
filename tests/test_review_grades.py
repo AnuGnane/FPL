@@ -35,7 +35,7 @@ POS = {1: "GKP", 2: "GKP",
 PTS = {1: 6, 2: 1, 3: 2, 4: 5, 5: 1, 6: 0, 7: 9, 8: 12, 9: 3, 10: 2,
        11: 4, 12: 1, 13: 8, 14: 0, 15: 2, 16: 15, 17: 0}
 
-MINS = {code: 90 for code in POS}
+MINS = dict.fromkeys(POS, 90)
 MINS[6] = 0          # a blank starter, so autosubs have something to do
 MINS[14] = 0         # and a blank bench player, so they cannot use him
 MINS[17] = 0
@@ -196,7 +196,7 @@ def test_the_bench_lane_prices_the_order_the_autosubs_walked():
 def test_a_bench_order_that_changes_nothing_is_a_zero_lane_not_a_null_one():
     """Nobody blanked, so no autosub fired. Zero is a real grade here: the
     ordering was tested and cost nothing."""
-    lane = lane_bench(squad(), MODEL, actuals(minutes={c: 90 for c in POS}))
+    lane = lane_bench(squad(), MODEL, actuals(minutes=dict.fromkeys(POS, 90)))
     assert lane["delta_pts"] == 0
     assert lane["note"] is None
 

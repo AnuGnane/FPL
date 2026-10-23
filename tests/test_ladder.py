@@ -803,7 +803,7 @@ def test_every_rung_solves_with_the_price_falls_it_was_handed(tmp_path,
     from gaffer import ladder as ladder_mod
 
     state = _saved_state(tmp_path, monkeypatch)
-    falls = {c: 0.9 for c in OWNED}
+    falls = dict.fromkeys(OWNED, 0.9)
     real, seen = ladder_mod.solve_plan, []
     monkeypatch.setattr(
         ladder_mod, "solve_plan",
@@ -847,7 +847,7 @@ def test_ladder_payload_reads_nothing_it_was_not_handed(tmp_path, monkeypatch):
 
     state = _saved_state(tmp_path, monkeypatch)
     patch_view(monkeypatch, lambda: _cfg(max_hits=2, max_transfers=15))
-    ctx = ladder_mod.StepContext(price_fall={c: 0.9 for c in OWNED})
+    ctx = ladder_mod.StepContext(price_fall=dict.fromkeys(OWNED, 0.9))
     kw = _payload_kw(state, caps=(1, None), cap_source="state", ctx=ctx)
 
     def refuse(*a, **k):

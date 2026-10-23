@@ -326,7 +326,7 @@ def test_ensemble_rows_falls_back_when_member_zero_has_no_feature_cols(monkeypat
     # attacking_features() itself only has to be *callable*, not truthful —
     # if the local import were still missing, referencing its bare name
     # would raise NameError before this stub is ever consulted.
-    monkeypatch.setattr(train_mod, "attacking_features", lambda: [])
+    monkeypatch.setattr(train_mod, "attacking_features", list)
     monkeypatch.setattr(assets_mod, "load_bootstrap_sample", lambda: None)
     monkeypatch.setattr(bootstrap_mod, "scoring_table", lambda *a, **k: None)
     monkeypatch.setattr(train_mod, "predict_components_simple",

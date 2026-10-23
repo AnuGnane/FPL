@@ -32,7 +32,7 @@ def test_adjust_bps_applies_the_cbi_rebalance_to_old_seasons():
 
 
 def test_adjust_bps_delta_is_never_positive():
-    frame = _rows([(0, 30.0, float(c)) for c in range(0, 25)])
+    frame = _rows([(0, 30.0, float(c)) for c in range(25)])
     delta = adjust_bps(frame, current_idx=3) - frame["bps"]
     assert (delta <= 0).all()
 

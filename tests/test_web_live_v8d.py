@@ -26,14 +26,14 @@ POSITION_OF = {1: "GKP", 2: "DEF", 3: "DEF", 4: "DEF",
                5: "MID", 6: "MID", 7: "MID", 8: "MID",
                9: "FWD", 10: "FWD", 11: "FWD",
                12: "GKP", 13: "DEF", 14: "MID", 15: "FWD"}
-TEAM_OF = {**{e: 1 for e in range(1, 11)}, 11: 3, 12: 1,
+TEAM_OF = {**dict.fromkeys(range(1, 11), 1), 11: 3, 12: 1,
            13: 2, 14: 2, 15: 2}
 FIXTURE_OF = {1: 11, 2: 12, 3: 13}                  # team -> fixture id
-MINUTES_OF = {**{e: 90 for e in range(1, 11)}, 11: 0, 12: 0, 13: 60,
+MINUTES_OF = {**dict.fromkeys(range(1, 11), 90), 11: 0, 12: 0, 13: 60,
               14: 0, 15: 0}
-POINTS_OF = {**{e: 2 for e in range(1, 11)}, 9: 9, 11: 0, 12: 0, 13: 4,
+POINTS_OF = {**dict.fromkeys(range(1, 11), 2), 9: 9, 11: 0, 12: 0, 13: 4,
              14: 0, 15: 0}
-EP_OF = {**{e: 1.0 for e in range(1, 16)}, 9: 6.0, 13: 3.0}
+EP_OF = {**dict.fromkeys(range(1, 16), 1.0), 9: 6.0, 13: 3.0}
 
 LIVE = {"elements": [
     {"id": e,
