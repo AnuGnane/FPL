@@ -82,7 +82,7 @@ def test_a_richer_surplus_distribution_raises_every_lambda():
 def test_an_empty_surplus_distribution_raises():
     """A table built from nothing would silently price every FT at zero and
     turn the objective into 'always take the hit'."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="non-empty surplus distribution"):
         lambda_table([], weeks=10)
 
 

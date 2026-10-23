@@ -41,26 +41,26 @@ def test_the_request_carries_force_out_and_defaults_it_empty():
 
 
 def test_an_unknown_code_is_refused_like_every_other_list():
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(Exception, match="unknown_player") as exc:
         wf.validate(_req(force_out=[99]), _State())
     assert exc.value.detail["constraint"] == "unknown_player"
 
 
 def test_forcing_out_a_player_you_do_not_own_is_refused():
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(Exception, match="force_out_not_owned") as exc:
         wf.validate(_req(force_out=[4]), _State())
     assert exc.value.detail["constraint"] == "force_out_not_owned"
     assert "use ban" in exc.value.detail["error"]
 
 
 def test_locking_and_forcing_out_the_same_player_is_refused():
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(Exception, match="force_out_and_lock") as exc:
         wf.validate(_req(lock=[1], force_out=[1]), _State())
     assert exc.value.detail["constraint"] == "force_out_and_lock"
 
 
 def test_banning_and_forcing_out_the_same_player_is_refused():
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(Exception, match="force_out_and_ban") as exc:
         wf.validate(_req(ban=[1], force_out=[1]), _State())
     assert exc.value.detail["constraint"] == "force_out_and_ban"
 
@@ -68,7 +68,7 @@ def test_banning_and_forcing_out_the_same_player_is_refused():
 def test_force_out_on_a_free_hit_is_refused_rather_than_ignored():
     """The FH branch builds ``owned_codes=[]``, so the constraint would apply
     to nobody and the user would read an answer that looked like it applied."""
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(Exception, match="force_out_on_free_hit") as exc:
         wf.validate(_req(force_out=[1], chip="fh"), _State())
     assert exc.value.detail["constraint"] == "force_out_on_free_hit"
 
@@ -81,7 +81,7 @@ def test_buying_and_selling_the_same_player_is_refused_as_that(code):
     keep him") for an owned player, or as ``force_out_not_owned`` ("use ban")
     for one he does not own. Both true, neither the point.
     """
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(Exception, match="force_in_and_force_out") as exc:
         wf.validate(_req(force_in=[code], force_out=[code]), _State())
     assert exc.value.detail["constraint"] == "force_in_and_force_out"
     assert exc.value.detail["players"] == [code]
@@ -106,7 +106,7 @@ def test_a_free_hit_draft_cannot_bank_a_force_out_on_a_cold_clone(
     monkeypatch.setattr(dr, "latest_gw", lambda: None)
     req = DraftSaveRequest(name="fh route",
                            constraints=_req(force_out=[1], chip="fh"))
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(Exception, match="force_out_on_free_hit") as exc:
         dr.save(req)
     assert exc.value.detail["constraint"] == "force_out_on_free_hit"
 

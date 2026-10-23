@@ -150,7 +150,7 @@ def test_a_corrupt_ledger_is_rebuilt_rather_than_crashing_anything(here):
 def test_a_nan_never_reaches_the_ledger(here):
     """``allow_nan=False``: NaN is not JSON, and a file the browser cannot
     parse is a Model hub that shows nothing at all."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not JSON compliant"):
         append_ledger({"gw": 3, "my_points": float("nan")})
 
 

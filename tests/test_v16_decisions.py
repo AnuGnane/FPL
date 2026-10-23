@@ -126,7 +126,7 @@ def test_post_saves_and_get_reads_it_back(client, reports):
     assert body["state"] == "open" and body["deadline"] == "2026-09-06T17:30:00Z"
 
 
-@pytest.mark.parametrize("payload, constraint", [
+@pytest.mark.parametrize(("payload", "constraint"), [
     ({"reason": "vibes", "text": ""}, "unknown_reason"),
     ({"reason": "gut", "text": "x" * 281}, "text_too_long"),
 ])

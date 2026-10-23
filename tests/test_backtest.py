@@ -443,7 +443,7 @@ def test_oracle_replay_never_builds_horizon_feature_rows(monkeypatch):
 
 def test_backtest_rejects_an_unknown_ep_source(monkeypatch):
     _install_stubs(monkeypatch, _season_rows([1, 2, 3]))
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(ValueError, match="unknown ep_source") as exc:
         run_backtest(season="2025-26", start_gw=1, ep_source="crystal ball")
     assert "crystal ball" in str(exc.value)
 

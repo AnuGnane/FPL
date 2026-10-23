@@ -91,7 +91,7 @@ def test_parse_football_data_accepts_four_digit_years_too():
     assert out.loc[0, "date"] == pd.Timestamp("2024-08-16").date()
 
 
-@pytest.mark.parametrize("raw, expected", [
+@pytest.mark.parametrize(("raw", "expected"), [
     ("16/08/24", pd.Timestamp("2024-08-16").date()),
     ("05/01/2025", pd.Timestamp("2025-01-05").date()),
 ])

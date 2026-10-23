@@ -137,7 +137,7 @@ def test_no_private_league_prints_a_reason():
                    "reason": "no started private league with a rival in it"}
 
 
-@pytest.mark.parametrize("cfg, needle", [
+@pytest.mark.parametrize(("cfg", "needle"), [
     (None, "no readable config.toml"),
     (SimpleNamespace(entry_id=0, league_id=0), "no fpl.entry_id"),
 ])

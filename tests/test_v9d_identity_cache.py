@@ -56,7 +56,7 @@ def wired(tmp_path, monkeypatch):
     real = store.load
     monkeypatch.setattr(store, "load",
                         lambda rel: (reads.append(rel), real(rel))[1])
-    yield tmp_path, reads
+    return tmp_path, reads
 
 
 IDENTITY_PATHS = {"live/teams.parquet", "live/players.parquet",

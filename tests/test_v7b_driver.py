@@ -81,7 +81,7 @@ def test_every_default_toggle_patches_nothing():
         undo()
 
 
-@pytest.mark.parametrize("flag,value,module,name", [
+@pytest.mark.parametrize(("flag", "value", "module", "name"), [
     (["--minutes", "legacy"], LegacyMinutesModel, tr, "ThreeModeModel"),
     (["--frame", "v4c"], None, tr, "cup_matches"),
     (["--priors", "off"], None, bt, "load_decision_priors"),

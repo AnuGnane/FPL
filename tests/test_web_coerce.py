@@ -17,7 +17,7 @@ from gaffer.web.coerce import fail, finite, opt_float, opt_int
 NAN = float("nan")
 
 
-@pytest.mark.parametrize("value,expected", [
+@pytest.mark.parametrize(("value", "expected"), [
     (None, None),
     (NAN, None),
     ("x", None),
@@ -36,7 +36,7 @@ def test_opt_float_rounds_only_when_it_is_asked_to():
     assert opt_float(None, 4) is None
 
 
-@pytest.mark.parametrize("value,expected", [
+@pytest.mark.parametrize(("value", "expected"), [
     (None, None),
     (NAN, None),
     ("x", None),
@@ -48,7 +48,7 @@ def test_opt_int_reads_a_whole_number_or_says_there_is_none(value, expected):
     assert opt_int(value) == expected
 
 
-@pytest.mark.parametrize("value,expected", [
+@pytest.mark.parametrize(("value", "expected"), [
     (None, 0.0),
     (NAN, 0.0),
     ("x", 0.0),

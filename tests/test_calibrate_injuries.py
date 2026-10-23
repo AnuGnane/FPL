@@ -228,7 +228,7 @@ def _payload(**curves) -> dict:
             "curves": curves, "pooled": pooled}
 
 
-@pytest.mark.parametrize("bad, why", [
+@pytest.mark.parametrize(("bad", "why"), [
     ({"pooled": [0.2, 0.5, 1.0]}, "start at 0"),
     ({"knock": [0.2, 0.5, 1.0]}, "start at 0"),
     ({"pooled": [0.0, 0.7, 0.4]}, "non-decreasing"),

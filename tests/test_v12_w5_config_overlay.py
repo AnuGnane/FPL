@@ -48,7 +48,7 @@ def tree(tmp_path):
     def overlay(text: str):
         (tmp_path / LOCAL_OVERLAY).write_text(text)
 
-    yield base, overlay
+    return base, overlay
 
 
 def test_no_overlay_is_the_config_exactly_as_it_was(tree):

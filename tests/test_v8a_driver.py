@@ -61,7 +61,7 @@ def test_the_driver_does_not_leave_minutes_features_mutated():
 
 
 @pytest.mark.parametrize(
-    "zeros,haulers,all_,expect",
+    ("zeros", "haulers", "all_", "expect"),
     [(1.060, 5.140, 1.980, "keep"),        # clearly better zeros, no cost
      (1.066, 5.140, 1.980, "withdraw"),    # under the 0.005 bar
      (1.050, 5.150, 1.980, "withdraw"),    # haulers regressed too far

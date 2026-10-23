@@ -63,11 +63,18 @@ def test_no_temp_file_survives_a_successful_write(tmp_path):
     assert [p.name for p in tmp_path.iterdir()] == ["out.json"]
 
 
+def _fail_inside(path, text):
+    """Write ``text`` through ``atomic_path`` and fail before it lands, so the
+    ``raises`` blocks below hold one statement (holiday F-205, ``PT012``)."""
+    with gio.atomic_path(path) as tmp:
+        tmp.write_text(text)
+        raise ValueError("boom")
+
+
 def test_no_temp_file_survives_a_failed_write(tmp_path):
     """The ``finally`` two of the twenty sites never had."""
-    with pytest.raises(ValueError), gio.atomic_path(tmp_path / "out.json") as tmp:
-        tmp.write_text("half")
-        raise ValueError("boom")
+    with pytest.raises(ValueError, match="boom"):
+        _fail_inside(tmp_path / "out.json", "half")
     assert list(tmp_path.iterdir()) == []
 
 
@@ -76,9 +83,8 @@ def test_a_failed_write_leaves_the_previous_file_exactly_as_it_was(tmp_path):
     not each have to."""
     path = tmp_path / "out.json"
     path.write_text("the old one")
-    with pytest.raises(ValueError), gio.atomic_path(path) as tmp:
-        tmp.write_text("the new one")
-        raise ValueError("boom")
+    with pytest.raises(ValueError, match="boom"):
+        _fail_inside(path, "the new one")
     assert path.read_text() == "the old one"
 
 
@@ -118,7 +124,7 @@ def test_a_failed_frame_write_leaves_the_banked_file_intact(tmp_path,
         raise OSError("disk full")
 
     monkeypatch.setattr(store, "save", boom)
-    with pytest.raises(OSError):
+    with pytest.raises(OSError, match="disk full"):
         gio.atomic_save(pd.DataFrame({"a": [9]}), "live/thing.parquet")
     assert len(store.load("live/thing.parquet")) == 2
     assert not list(tmp_path.glob("live/*.tmp"))

@@ -190,7 +190,7 @@ def test_save_evaluation_refuses_to_write_a_nan(tmp_path, monkeypatch):
     """A NaN written here is invalid JSON that only fails on read, three
     weeks later, as a 500 from /api/quality. Fail at write time instead."""
     monkeypatch.chdir(tmp_path)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not JSON compliant"):
         save_evaluation("current", {"mae": float("nan")})
 
 
@@ -233,7 +233,7 @@ def test_save_evaluation_keeps_the_old_artifact_when_the_write_fails(
     artifact truncated — last night's numbers are still on disk."""
     monkeypatch.chdir(tmp_path)
     save_evaluation("current", {"holdout_slots": 10})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not JSON compliant"):
         save_evaluation("benchmark", {"mae": float("nan")})
     assert load_evaluation()["current"]["holdout_slots"] == 10
     assert [p.name for p in EVALUATION_PATH.parent.iterdir()] == [
