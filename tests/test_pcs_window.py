@@ -49,10 +49,11 @@ def _tree(tmp_path, weeks, *, components=None, season="2026-27"):
                 truth.append({"season": season, "gw": gw, "code": code + 1,
                               "opp_code": opp, "kickoff_time": kickoff,
                               "minutes": 20, "gc": 0})
-                for c in (code, code + 1):
-                    comp.append({"code": c, "team_code": club,
-                                 "opp_code": opp, "kickoff_time": kickoff,
-                                 "p_cs": 0.5})
+                comp.extend(
+                    {"code": c, "team_code": club,
+                     "opp_code": opp, "kickoff_time": kickoff,
+                     "p_cs": 0.5}
+                    for c in (code, code + 1))
         if components is None or gw in components:
             pd.DataFrame(comp).to_parquet(reports / f"components_gw{gw}.parquet")
     live = tmp_path / "data" / "live"

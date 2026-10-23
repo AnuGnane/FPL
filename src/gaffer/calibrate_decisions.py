@@ -143,10 +143,9 @@ def walk_season(season: str, start_gw: int = 5,
             except Exception as exc:  # noqa: BLE001 — a chip evaluation that falls over costs this week's chip samples, not the calibration
                 print(f"calibration: no chip samples for GW{gw} ({exc})")
             else:
-                for r in table.itertuples():
-                    if int(r.gw) == gw:
-                        chips.append({"gw": int(r.gw), "chip": str(r.chip),
-                                      "gain": float(r.gain)})
+                chips.extend({"gw": int(r.gw), "chip": str(r.chip),
+                              "gain": float(r.gain)}
+                             for r in table.itertuples() if int(r.gw) == gw)
         return plan
 
     bt.solve_plan = observing_solve

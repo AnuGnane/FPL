@@ -66,9 +66,10 @@ def dangling_citations(name: str, text: str, sections: set[str], *, is_guide: bo
             if m.group(2) not in sections:
                 found.append(f"{name}:{_line(text, m.start(2))} §{m.group(2)}")
     else:
-        for m in _GUIDE_CITE.finditer(text):
-            if m.group(1) not in sections:
-                found.append(f"{name}:{_line(text, m.start(1))} §{m.group(1)}")
+        found.extend(
+            f"{name}:{_line(text, m.start(1))} §{m.group(1)}"
+            for m in _GUIDE_CITE.finditer(text)
+            if m.group(1) not in sections)
     return found
 
 

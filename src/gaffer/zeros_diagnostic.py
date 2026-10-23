@@ -228,18 +228,18 @@ def format_diagnostic(payload: dict) -> str:
             line += f"  [{m['note']}]"
         lines.append(line)
     lines.append("-- p_dnp calibration (all rows)")
-    for row in payload["dnp_reliability"]:
-        lines.append(f"   decile {row['decile']}  pred {row['pred']:.4f}  "
-                     f"obs {row['obs']:.4f}  n {row['n']}")
+    lines.extend(f"   decile {row['decile']}  pred {row['pred']:.4f}  "
+                 f"obs {row['obs']:.4f}  n {row['n']}"
+                 for row in payload["dnp_reliability"])
     lines.append("-- p_start calibration (per stratum, all rows)")
     for name, curve in payload.get("start_reliability", {}).items():
         if not curve:
             continue
         lines.append(f"   {name}")
-        for row in curve:
-            lines.append(f"     decile {row['decile']}  "
-                         f"pred {row['pred']:.4f}  obs {row['obs']:.4f}  "
-                         f"n {row['n']}")
+        lines.extend(f"     decile {row['decile']}  "
+                     f"pred {row['pred']:.4f}  obs {row['obs']:.4f}  "
+                     f"n {row['n']}"
+                     for row in curve)
     return "\n".join(lines)
 
 

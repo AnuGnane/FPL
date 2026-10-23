@@ -45,12 +45,13 @@ def _pool_frame(star_ep: float = 9.0) -> pd.DataFrame:
     rows, code = [], 1
     for position, n in SQUAD:
         for _ in range(n):
-            for gw in GWS:
-                rows.append({"code": code, "name": f"P{code}",
-                             "position": position, "team_code": code % 8,
-                             "cost": 50, "sell": 50,
-                             "owned": code in OWNED, "gw": gw,
-                             "ep_raw": star_ep if code == 23 else 3.0})
+            rows.extend(
+                {"code": code, "name": f"P{code}",
+                 "position": position, "team_code": code % 8,
+                 "cost": 50, "sell": 50,
+                 "owned": code in OWNED, "gw": gw,
+                 "ep_raw": star_ep if code == 23 else 3.0}
+                for gw in GWS)
             code += 1
     return pd.DataFrame(rows, columns=POOL_COLS)
 

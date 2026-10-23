@@ -23,15 +23,16 @@ def _plain_history(n_players=6, n_gws=12):
     """History with no Understat columns whatsoever."""
     rows = []
     for gw in range(1, n_gws + 1):
-        for i in range(n_players):
-            rows.append({
+        rows.extend(
+            {
                 "code": 100 + i, "season_idx": 0, "gw": gw,
                 "position": ["GKP", "DEF", "MID", "FWD"][i % 4],
                 "team_code": 1 + i % 2, "opp_code": 2 - i % 2,
                 "was_home": i % 2 == 0, "minutes": 90,
                 "kickoff_time": f"2024-08-{10 + gw:02d}T14:00:00Z",
                 "goals": i % 3 == 0, "assists": 0, "starts": 1,
-                "total_points": 2, "bps": 20, "bonus": 0})
+                "total_points": 2, "bps": 20, "bonus": 0}
+            for i in range(n_players))
     return pd.DataFrame(rows)
 
 

@@ -80,10 +80,10 @@ def readme_tests() -> str:
 def problems(workflow: str, docs: str) -> list[str]:
     """What keeps a workflow's run steps from matching the gate lines the docs name."""
     runs = run_steps(workflow)
-    found: list[str] = []
-    for gate in GATES:
-        if not any(gate in run for run in runs):
-            found.append(f"no run step in {WORKFLOW} runs the gate {gate!r}")
+    found: list[str] = [
+        f"no run step in {WORKFLOW} runs the gate {gate!r}"
+        for gate in GATES
+        if not any(gate in run for run in runs)]
     for run in runs:
         if run.startswith(SETUP) or not run.startswith(CHECKED):
             continue
@@ -92,9 +92,10 @@ def problems(workflow: str, docs: str) -> list[str]:
             found.append(
                 f"{WORKFLOW} runs {command!r}, which neither {RULES} nor README's Tests names"
             )
-        for test_id in DESELECT.findall(run):
-            if test_id not in docs:
-                found.append(f"{WORKFLOW} deselects {test_id}, which README's Tests does not name")
+        found.extend(
+            f"{WORKFLOW} deselects {test_id}, which README's Tests does not name"
+            for test_id in DESELECT.findall(run)
+            if test_id not in docs)
     return found
 
 

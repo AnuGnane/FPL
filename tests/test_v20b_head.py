@@ -34,15 +34,16 @@ def _frame(seasons: int = 3, gws: int = 38, players: int = 120,
             minutes = np.where(rng.random(players) < 0.9, 90, 0)
             goals = np.where(minutes > 0, goals, 0)
             bonus = np.clip(goals * 2, 0, 3)
-            for i in range(players):
-                rows.append({
+            rows.extend(
+                {
                     "code": i, "season_idx": s, "gw": gw,
                     "position": positions[i], "minutes": int(minutes[i]),
                     "goals": int(goals[i]), "assists": 0,
                     "bonus": float(bonus[i]),
                     "xg_r38": float(skill[i] + rng.normal(0, 0.02)),
                     "home": int(rng.random() < 0.5),
-                    "elo_diff": float(rng.normal(0, 50))})
+                    "elo_diff": float(rng.normal(0, 50))}
+                for i in range(players))
     return pd.DataFrame(rows)
 
 

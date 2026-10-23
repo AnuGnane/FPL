@@ -111,13 +111,13 @@ def test_attacking_model_fits_with_the_new_columns_all_nan():
     from gaffer.models.attacking import ATTACK_FEATURES, AttackingModel
 
     rng = np.random.default_rng(0)
-    rows = []
-    for i in range(200):
-        rows.append({"code": 100 + i % 10, "season_idx": 0, "gw": 1 + i % 20,
-                     "position": "MID", "minutes": 90,
-                     "goals": int(rng.random() < 0.2),
-                     "assists": int(rng.random() < 0.2),
-                     "xg_r5": rng.random(), "xa_r5": rng.random()})
+    rows = [
+        {"code": 100 + i % 10, "season_idx": 0, "gw": 1 + i % 20,
+         "position": "MID", "minutes": 90,
+         "goals": int(rng.random() < 0.2),
+         "assists": int(rng.random() < 0.2),
+         "xg_r5": rng.random(), "xa_r5": rng.random()}
+        for i in range(200)]
     df = pd.DataFrame(rows)
     for col in ATTACK_FEATURES:
         if col not in df.columns:

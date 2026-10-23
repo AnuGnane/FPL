@@ -380,9 +380,10 @@ def _offences(path: pathlib.Path) -> list[str]:
                 and node.value in ("config.toml", "config.local.toml")):
             out.append(f"{node.lineno}: {node.value!r}")
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name == "tomli_w" or (alias.name == "tomllib" and "web" in path.parts):
-                    out.append(f"{node.lineno}: import {alias.name}")
+            out.extend(
+                f"{node.lineno}: import {alias.name}"
+                for alias in node.names
+                if alias.name == "tomli_w" or (alias.name == "tomllib" and "web" in path.parts))
         if (isinstance(node, ast.ImportFrom) and node.module in ("tomli_w", "tomllib")
                 and (node.module == "tomli_w" or "web" in path.parts)):
             out.append(f"{node.lineno}: from {node.module}")

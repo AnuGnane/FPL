@@ -120,11 +120,12 @@ def test_a_debut_red_card_no_longer_costs_three_whole_points():
     # gameweeks, and exactly one sending-off in the lot.
     rows = []
     for code in range(1, 101):
-        for gw in range(1, 11):
-            rows.append({"code": code, "season_idx": 3, "gw": gw,
-                         "position": "MID", "team_code": 10 + code % 20,
-                         "rc": 1.0 if (code == 1 and gw == 1) else 0.0,
-                         "yc": 0.0, "minutes": 90.0})
+        rows.extend(
+            {"code": code, "season_idx": 3, "gw": gw,
+             "position": "MID", "team_code": 10 + code % 20,
+             "rc": 1.0 if (code == 1 and gw == 1) else 0.0,
+             "yc": 0.0, "minutes": 90.0}
+            for gw in range(1, 11))
     out = add_shrunken_cards(pd.DataFrame(rows))
     sent_off = out[(out["code"] == 1) & (out["gw"] == 10)].iloc[0]
 

@@ -55,7 +55,7 @@ ADVICE = re.compile(r"^gw(\d+)-advice\.json$")
 
 def _stamp(payload: dict) -> date | None:
     try:
-        return datetime.fromisoformat(str(payload["generated_at"]).replace("Z", "+00:00")).date()
+        return datetime.fromisoformat(str(payload["generated_at"])).date()
     except (KeyError, TypeError, ValueError):
         return None
 

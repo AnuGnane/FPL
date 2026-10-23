@@ -36,13 +36,14 @@ def _frame(seasons: int = 3, gws: int = 20, players: int = 60, seed: int = 0,
             dens = np.where(rng.random(players) < congested_share, 2, 1)
             rate = np.where((dens >= 2) & signal, 0.5, 0.95)
             played = rng.random(players) < rate
-            for i in range(players):
-                rows.append({"code": i, "season_idx": s, "gw": gw,
-                             "minutes": 90 if played[i] else 0,
-                             "starts": int(played[i]),
-                             "flat": 0.0,
-                             "density_pub_7d": float(dens[i]),
-                             "density_pub_missing": 0})
+            rows.extend(
+                {"code": i, "season_idx": s, "gw": gw,
+                 "minutes": 90 if played[i] else 0,
+                 "starts": int(played[i]),
+                 "flat": 0.0,
+                 "density_pub_7d": float(dens[i]),
+                 "density_pub_missing": 0}
+                for i in range(players))
     return pd.DataFrame(rows)
 
 

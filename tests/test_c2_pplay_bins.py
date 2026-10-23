@@ -36,12 +36,13 @@ def _frame(seasons: int = 3, gws: int = 20, players: int = 300,
         for i in range(players):
             played[rng.permutation(gws)[:round(rate[i] * gws)], i] = True
         for gw in range(1, gws + 1):
-            for i in range(players):
-                rows.append({"code": i, "season_idx": s, "gw": gw,
-                             "minutes": 90 if played[gw - 1, i] else 0,
-                             "starts": int(played[gw - 1, i]),
-                             "rate": float(rate[i]),
-                             "noise": float(rng.normal())})
+            rows.extend(
+                {"code": i, "season_idx": s, "gw": gw,
+                 "minutes": 90 if played[gw - 1, i] else 0,
+                 "starts": int(played[gw - 1, i]),
+                 "rate": float(rate[i]),
+                 "noise": float(rng.normal())}
+                for i in range(players))
     return pd.DataFrame(rows)
 
 

@@ -40,14 +40,15 @@ def _frame(seasons: int = 3, gws: int = 38, players: int = 120,
             # the lever rather than the fit's noise.
             goals = np.where(minutes > 0,
                              np.floor(rate + rng.random(players)), 0)
-            for i in range(players):
-                rows.append({
+            rows.extend(
+                {
                     "code": i, "season_idx": s, "gw": gw,
                     "position": positions[i], "home": int(home[i]),
                     "minutes": int(minutes[i]), "goals": int(goals[i]),
                     "assists": 0, "xa": 0.0,
                     "total_points": int(2 * (minutes[i] > 0) + 4 * goals[i]),
-                    "xg": float(rate[i] + rng.normal(0, 0.3))})
+                    "xg": float(rate[i] + rng.normal(0, 0.3))}
+                for i in range(players))
     df = pd.DataFrame(rows).sort_values(["code", "season_idx", "gw"])
     # A noisy all-venue mean, as the engineered columns are: an exact
     # per-player constant would let the control's trees memorise each
