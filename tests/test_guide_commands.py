@@ -128,15 +128,9 @@ _SPAWNED = re.compile(r'subprocess\.run\(\s*\[\s*[^,\]]*gaffer[^,\]]*,\s*"([a-z]
 
 # The commands no test invokes beyond ``--help``, held exactly in F-69's shape:
 # a new command without a test fails the rail, and so does a test written for
-# one of these until its line is struck (F-191; F-192 writes the six tests).
-UNEXERCISED = {
-    "train",         # (re)trains every model on history and live data
-    "field-scrape",  # banks the top-10k field sample and its EO for a gameweek
-    "review",        # grades last week's decisions against the model's
-    "digest",        # writes the Friday or Tuesday digest and notifies
-    "backup",        # tars the data no command can rebuild, keeping the last few
-    "mcp",           # serves the advice to an MCP client over stdio
-}
+# one listed here until its line is struck (F-191; F-192 emptied it with
+# ``tests/test_cli_commands.py``).
+UNEXERCISED: set[str] = set()
 
 
 def _exercised(sources: list[str]) -> set[str]:
