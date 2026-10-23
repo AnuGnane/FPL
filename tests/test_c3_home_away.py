@@ -18,7 +18,7 @@ from gaffer.data import store
 
 sys.path.insert(0, "scripts")
 
-import c3_home_away  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import c3_home_away
 
 ATTACK = ["xg_r10", "home"]
 

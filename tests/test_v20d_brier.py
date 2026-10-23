@@ -17,7 +17,7 @@ from gaffer.price_log import PRICE_LOG_COLS, PRICE_LOG_PATH
 
 sys.path.insert(0, "scripts")
 
-import v20d_brier  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import v20d_brier
 
 
 def _row(day, code, cost, pct, calibrating=False):

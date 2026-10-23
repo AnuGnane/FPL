@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-import v7b_legacy_minutes  # noqa: E402
+import v7b_legacy_minutes
 
 
 def test_the_vendored_class_and_its_lgb_kw_exist():

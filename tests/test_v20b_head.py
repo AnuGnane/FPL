@@ -17,7 +17,7 @@ from gaffer.data import store
 
 sys.path.insert(0, "scripts")
 
-import v20b_head  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import v20b_head
 
 ATTACK = ["xg_r38"]
 

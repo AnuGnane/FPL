@@ -62,7 +62,7 @@ from gaffer.data.bootstrap import scoring_table
 from gaffer.data.understat import UNDERSTAT_TEAM_PATH
 from gaffer.features.engineer import ROLL_STATS, build_prediction_frame, feature_columns
 from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix
-from gaffer.models.train import (  # noqa: F401
+from gaffer.models.train import (
     DEFAULT_E_GC,
     DEFAULT_P_CS,
     cup_matches,
@@ -74,7 +74,7 @@ from gaffer.news_shadow import load_shadow
 from gaffer.optimize.chip_policy import chip_thresholds_from_asset, flat_thresholds
 from gaffer.optimize.chips import (  # noqa: F401
     CHIP_PLAY_THRESHOLD,
-    WILDCARD_RECOMMEND_THRESHOLD,  # noqa: F401
+    WILDCARD_RECOMMEND_THRESHOLD,
     evaluate_chips,
 )
 from gaffer.optimize.formation import formation_legal

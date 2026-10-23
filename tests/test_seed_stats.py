@@ -9,8 +9,8 @@ import pytest
 
 sys.path.insert(0, "scripts")
 
-import seed_stats  # noqa: E402
-import v7b_replay  # noqa: E402
+import seed_stats
+import v7b_replay
 
 ARM = {"arm": "heur", "n": 40, "chips": True, "priors": "current",
        "minutes": "current", "frame": "current", "noise_asset": None}

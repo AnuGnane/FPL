@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, "scripts")
 
-import v20_appendix as ap  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import v20_appendix as ap
 
 GUIDE = Path("docs/GUIDE.md")
 

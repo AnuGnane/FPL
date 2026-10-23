@@ -19,7 +19,7 @@ from gaffer.data import store
 
 sys.path.insert(0, "scripts")
 
-import c2_pplay_bins  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import c2_pplay_bins
 
 
 def _frame(seasons: int = 3, gws: int = 20, players: int = 300,

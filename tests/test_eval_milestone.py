@@ -14,7 +14,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-import eval_milestone  # noqa: E402
+import eval_milestone
 
 # Player 1 has a double gameweek in GW30 (two matches, one rolling value
 # each); player 3's GW31 rolling value is missing.

@@ -18,7 +18,7 @@ import pytest
 
 sys.path.insert(0, "scripts")
 
-import v20_appendix as ap  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import v20_appendix as ap
 
 OLD = datetime(2026, 10, 13, 22, 0, tzinfo=UTC).timestamp()
 NEW = datetime(2026, 10, 15, 6, 0, tzinfo=UTC).timestamp()

@@ -18,7 +18,7 @@ from gaffer.data.my_entry import my_history_path
 
 sys.path.insert(0, "scripts")
 
-import backfill_overall_rank as bf  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import backfill_overall_rank as bf
 
 SEASON, ENTRY = "2026-27", 42
 CFG = Config(entry_id=ENTRY, league_id=5, current_season=SEASON)

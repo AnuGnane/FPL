@@ -10,7 +10,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from gaffer.served import (  # noqa: F401
+from gaffer.served import (
     PlanMoveTrace,
     PlanWeekTrace,
     ServedAlternative,

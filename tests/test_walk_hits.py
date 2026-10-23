@@ -12,7 +12,7 @@ import sys
 
 sys.path.insert(0, "scripts")
 
-import walk_hits  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import walk_hits
 
 
 def _advice(gw, hits, wanted, *, stamp="2026-09-20T17:00:00Z", steps=None,

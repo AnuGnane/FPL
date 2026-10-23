@@ -546,7 +546,7 @@ def test_notify_true_sends_the_headline(furnished, monkeypatch):
 
     def spy(args, **kwargs):
         calls.append(args)
-        class R:  # noqa: D401 — a stand-in CompletedProcess
+        class R:
             returncode = 0
         return R()
 
@@ -571,7 +571,7 @@ def test_the_title_and_body_travel_as_arguments_not_as_source(furnished,
 
     def spy(args, **kwargs):
         calls.append(args)
-        class R:  # noqa: D401 — a stand-in CompletedProcess
+        class R:
             returncode = 0
         return R()
 

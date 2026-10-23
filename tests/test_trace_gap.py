@@ -13,7 +13,7 @@ import sys
 
 sys.path.insert(0, "scripts")
 
-import trace_gap  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import trace_gap
 
 
 def _week(gw, xpts, *, ep_gain=1.0, hit_cost=0.0, ft_use_penalty=0.0,

@@ -17,7 +17,7 @@ from gaffer.price_log import PRICE_LOG_COLS, PRICE_LOG_PATH
 
 sys.path.insert(0, "scripts")
 
-import v20d_runs  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import v20d_runs
 
 # Thursdays in UTC: 09-17 (GW5), 09-24 (GW6), 10-01 (GW7).
 GW5, GW6, GW7 = "2026-09-17", "2026-09-24", "2026-10-01"

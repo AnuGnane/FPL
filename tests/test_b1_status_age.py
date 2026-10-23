@@ -17,7 +17,7 @@ from gaffer.snapshot import SNAPSHOT_COLS
 
 sys.path.insert(0, "scripts")
 
-import b1_status_age  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import b1_status_age
 
 SEASON = "2026-27"
 EVENTS = pd.DataFrame({"gw": [5, 6],

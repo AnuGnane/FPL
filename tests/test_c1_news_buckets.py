@@ -18,7 +18,7 @@ from gaffer.news_shadow import SHADOW_COLS, SHADOW_PATH
 
 sys.path.insert(0, "scripts")
 
-import c1_news_buckets  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import c1_news_buckets
 
 
 def _shadow(rows, season="2026-27"):

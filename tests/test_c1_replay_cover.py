@@ -18,7 +18,7 @@ from gaffer.news_shadow import SHADOW_PATH
 
 sys.path.insert(0, "scripts")
 
-import c1_replay_cover  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import c1_replay_cover
 
 
 def _log(season: str, gws) -> pd.DataFrame:

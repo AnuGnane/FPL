@@ -404,7 +404,7 @@ class _Resp:
         return _json.loads(self.text)
 
 
-import httpx  # noqa: E402 — imported after _FakeHTTP for readability
+import httpx
 
 ARCHIVE = {
     "data/2026-2027/players.csv": PLAYERS_CSV,
@@ -549,7 +549,7 @@ def test_the_installer_loop_names_every_plist_and_no_others():
 
 # --- T1-T6 review: the cache, the season map, and the atomic write -------
 
-from gaffer.data.core_insights import (  # noqa: E402
+from gaffer.data.core_insights import (
     CI_CACHE,
     fetch_csv,
     hot_gameweeks,

@@ -17,7 +17,7 @@ import pytest
 
 sys.path.insert(0, "scripts")
 
-import league_blend  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import league_blend
 
 ME = 7
 
