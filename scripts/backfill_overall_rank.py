@@ -104,6 +104,8 @@ def backfill(season: str, entry_id: int, *, write: bool = False,
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Print the ledger's fillable ``overall_rank`` cells, and bank them with
+    ``--write``."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--write", action="store_true",
                         help="bank the filled cells (default: dry run)")

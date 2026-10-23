@@ -180,6 +180,7 @@ def load_team_gw() -> pd.DataFrame | None:
 
 
 def main() -> int:
+    """Read the fixture history and print the ``V20C_HEAD`` verdict line."""
     try:
         tg = load_team_gw()
         payload = (_empty(f"no fixture history at "

@@ -181,6 +181,8 @@ def _season() -> str:
 
 
 def main() -> int:
+    """Read the news shadow against the results and print the ``C1_BUCKETS``
+    verdict line."""
     season = _season()
     try:
         payload = buckets_reading(load_shadow(), news_actuals(), season)

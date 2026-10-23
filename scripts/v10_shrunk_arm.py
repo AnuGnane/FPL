@@ -212,6 +212,8 @@ def verdict(base: dict, arm: dict) -> dict:
 
 
 def main() -> None:
+    """Run each arm on the benchmark and print a ``V10_ARM_DONE`` line per
+    arm."""
     tr.load_training_frame = _memoised
     shipped = list(tr.MINUTES_FEATURES)
     df, _tg, _elo = _memoised()

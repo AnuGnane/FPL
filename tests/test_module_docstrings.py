@@ -26,6 +26,11 @@ Holiday F-196 asks it of classes: every public top-level ``class`` under
 number still without one on 2026-10-23, held exactly in the same shape; F-197
 and F-198 write them off the golden path, F-200 the golden ones, and the
 orchestrator-only files stay on it for good.
+
+Holiday F-199 asks it of ``scripts/``: the same function walker over the top
+level only (``scripts/archive/`` is retired code, F-167's ruff exclude), with
+``SCRIPTS_FUNCTIONS_ALLOWED`` in F-69's shape. Its one entry is
+``s2_replay.py``, orchestrator-only (``CLAUDE.md``), which stays for good.
 """
 from __future__ import annotations
 
@@ -70,6 +75,13 @@ CLASSES_ALLOWED = {
     "optimize/milp.py": 3,         # orchestrator-only, for good
     "served.py": 2,                # golden
     "web/jobs.py": 1,              # orchestrator-only, for good
+}
+
+SCRIPTS = ROOT / "scripts"
+
+# F-199: per top-level script, the public functions still without a docstring.
+SCRIPTS_FUNCTIONS_ALLOWED = {
+    "s2_replay.py": 2,             # orchestrator-only, for good
 }
 
 
@@ -191,6 +203,24 @@ def test_a_bare_public_function_is_caught_and_private_or_nested_ones_are_not(
         'def outer():\n    """Why."""\n    def inner():\n        pass\n')
     (tmp_path / "clean.py").write_text('def told():\n    """Why."""\n')
     assert _undocumented_functions(tmp_path) == {"pkg/mod.py": 3}
+
+
+def _undocumented_script_functions() -> dict[str, int]:
+    """F-199: the function walker over ``scripts/``, top level only."""
+    return {f: n for f, n in _undocumented_functions(SCRIPTS).items()
+            if "/" not in f}
+
+
+def test_every_public_script_function_outside_the_allowlist_has_a_docstring():
+    stray = {f: n for f, n in _undocumented_script_functions().items()
+             if n > SCRIPTS_FUNCTIONS_ALLOWED.get(f, 0)}
+    assert stray == {}
+
+
+def test_each_scripts_allowlisted_file_holds_exactly_its_undocumented_count():
+    found = _undocumented_script_functions()
+    counts = {f: found.get(f, 0) for f in SCRIPTS_FUNCTIONS_ALLOWED}
+    assert counts == SCRIPTS_FUNCTIONS_ALLOWED
 
 
 def test_every_public_class_outside_the_allowlist_has_a_docstring():

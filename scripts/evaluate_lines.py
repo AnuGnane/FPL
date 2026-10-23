@@ -73,6 +73,8 @@ def _flag_latency(payload: dict | None) -> None:
 
 
 def main(path: Path = EVALUATION_PATH) -> None:
+    """Read the stored evaluation and print its ``NEWS_SHADOW`` and
+    ``FLAG_LATENCY`` lines."""
     stored: dict = {}
     if path.exists():
         try:

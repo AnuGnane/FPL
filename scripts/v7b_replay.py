@@ -226,6 +226,8 @@ def arm_configs(argv: list[str]) -> tuple[list[ArmConfig], list[int] | None,
 
 
 def gate_wanted(cfg: ArmConfig) -> bool:
+    """Whether the arm installs a gate on the solve; only the raw control
+    does not."""
     return cfg.arm != "raw"
 
 

@@ -18,6 +18,8 @@ from gaffer.calibrate_noise import composite_table, write_noise
 
 
 def main(argv: list[str]) -> Path:
+    """Write one composite-σ asset for the floor given and print the
+    ``V7B_COMPOSITE`` line."""
     src, floor = Path(argv[0]), float(argv[1])
     payload = composite_table(json.loads(src.read_text()), floor)
     dest = Path("reports") / f"scenario_noise_composite_{argv[1]}.json"

@@ -180,6 +180,8 @@ def _read(loader) -> tuple[pd.DataFrame | None, str | None]:
 
 
 def main() -> int:
+    """Read the shadow and snapshot logs and print the ``C1_COVER`` line of
+    what they cover."""
     replayable, current = _config()
     shadow, shadow_err = _read(load_shadow)
     snapshot, snapshot_err = _read(load_snapshot_log)

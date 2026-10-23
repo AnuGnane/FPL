@@ -86,6 +86,7 @@ def load_plist(path: Path) -> dict:
 
 
 def main(argv: list[str]) -> int:
+    """Print the plist's next fire time; exit 2 on a wrong argument count."""
     if len(argv) != 1:
         print("usage: automation_status.py <plist>", file=sys.stderr)
         return 2

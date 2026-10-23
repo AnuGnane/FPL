@@ -136,6 +136,8 @@ def read_season(reports: Path = REPORTS) -> tuple[list[dict], dict]:
 
 
 def main(reports: Path = REPORTS) -> None:
+    """Read the season's banked runs and print a ``WALK_HITS_GW`` line per
+    week and the ``WALK_HITS`` summary."""
     rows, summary = read_season(reports)
     for row in rows:
         print(f"WALK_HITS_GW {json.dumps(row)}")

@@ -201,6 +201,8 @@ def _season() -> str:
 
 
 def main() -> int:
+    """Grade the presser verdicts and print a ``PRESSER_GW`` line per week
+    and the ``PRESSER_SERVE`` verdict."""
     season = _season()
     try:
         weeks, serve = readings(load_snapshot_log(), news_actuals(),

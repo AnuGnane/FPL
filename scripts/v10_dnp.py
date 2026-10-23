@@ -117,6 +117,8 @@ def check_lever(frame: pd.DataFrame) -> None:
 
 
 def main() -> None:
+    """Pick a typical XI each gameweek and print its did-not-play rate,
+    ending with the ``V10_DNP`` line."""
     from gaffer.assets import load_bootstrap_sample
     from gaffer.data.bootstrap import scoring_table
     from gaffer.models.assemble import apply_calibration, assemble_ep, ep_matrix

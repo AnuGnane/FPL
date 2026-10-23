@@ -103,6 +103,7 @@ def brier_reading(log: pd.DataFrame | None) -> dict:
 
 
 def main() -> int:
+    """Read the price log and print the ``V20D_BRIER`` verdict line."""
     if not store.exists(PRICE_LOG_PATH):
         payload = _empty(f"no price log at {store.DATA_DIR / PRICE_LOG_PATH}")
     else:

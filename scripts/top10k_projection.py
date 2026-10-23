@@ -142,6 +142,8 @@ def reading(series: dict[int, int], include_latest: bool = False) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Backtest the projection rule on the banked weeks and print the
+    ``TOP10K_PROJ`` line."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--season", default=None,
                         help="default: the season in force")

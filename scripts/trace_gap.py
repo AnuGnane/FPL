@@ -175,6 +175,8 @@ def read_all(reports: Path = REPORTS) -> tuple[list[dict], dict]:
 
 
 def main(reports: Path = REPORTS) -> None:
+    """Read the banked traces and print a ``TRACE_GAP`` line per run and the
+    ``TRACE_GAPS`` summary."""
     rows, summary = read_all(reports)
     for row in rows:
         print(f"TRACE_GAP {json.dumps(row)}")

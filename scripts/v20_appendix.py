@@ -116,6 +116,7 @@ DEFAULT_DIR = Path("logs")
 
 
 def tag_arm(tag: str) -> str:
+    """The v20 arm a run tag belongs to, or ``"unclaimed"``."""
     for arm in TAG_ARMS:
         if tag == arm or tag.startswith(arm + "-"):
             return arm
@@ -196,6 +197,8 @@ def collect(paths: list[Path], since: date | None = None
 
 
 def render(grouped: dict[str, list[tuple[Path, datetime, list[str]]]]) -> str:
+    """The grouped evidence lines as one Markdown block per arm, in
+    ``GROUPS`` order."""
     blocks = []
     for arm in GROUPS:
         if not grouped.get(arm):
@@ -209,6 +212,8 @@ def render(grouped: dict[str, list[tuple[Path, datetime, list[str]]]]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Collect the evidence lines from the given logs and print them, shaped
+    for the spec's §6."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("paths", nargs="*", type=Path,
                         help="log files or directories (default: logs/)")
