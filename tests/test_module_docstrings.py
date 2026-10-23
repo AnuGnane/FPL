@@ -65,20 +65,12 @@ FUNCTIONS_ALLOWED = {
 
 CLASSES_ALLOWED = {
     "advise.py": 1,                # orchestrator-only, for good
-    "api/client.py": 1,
     "artifacts.py": 1,             # golden
     "config.py": 1,                # golden
-    "data/entry.py": 1,
-    "data/odds.py": 1,
-    "difficulty.py": 3,
-    "league_mode.py": 1,
-    "models/calibrate.py": 1,
     "optimize/milp.py": 3,         # orchestrator-only, for good
     "served.py": 2,                # golden
-    "trace.py": 1,
     "web/jobs.py": 1,              # orchestrator-only, for good
     "web/schemas.py": 107,         # F-198, with the generated types
-    "web/settings_keys.py": 1,
 }
 
 

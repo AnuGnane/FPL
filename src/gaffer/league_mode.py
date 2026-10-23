@@ -133,6 +133,9 @@ def margin_sigma(history, my_entry: int,
 
 @dataclass
 class Strategy:
+    """The dial's verdict for one week: the tilt lam, the stance and the
+    numbers that set it (spec 2026-08-26 §3-§5)."""
+
     lam: float
     gap: int
     weeks_left: int

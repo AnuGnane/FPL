@@ -22,6 +22,9 @@ BASE = "https://api.the-odds-api.com/v4"
 
 
 class OddsClient:
+    """The Odds API over HTTP, silent rather than raising when no key is
+    configured, since odds are a best-effort signal."""
+
     def __init__(self, api_key: str, client: httpx.Client | None = None,
                  raw_dir: Path | str | None = None,
                  retries: int = 3, backoff: float = 2.0):

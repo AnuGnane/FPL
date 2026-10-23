@@ -47,6 +47,8 @@ from gaffer.config import BOUNDS, NO_CAP, Config
 
 @dataclass(frozen=True)
 class SettingKey:
+    """One whitelisted setting: where the UI's key lives in TOML and how it
+    is checked (v12 W5 §6.2)."""
     field: str
     """The wire key. Also the ``Config`` field where ``source`` is
     ``"config"``."""

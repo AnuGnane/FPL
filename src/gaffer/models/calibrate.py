@@ -42,6 +42,9 @@ MIN_ROWS = 200
 
 
 class CalibrationModel:
+    """The per-position starter-bias deltas, fitted once and applied to the
+    assembled expected points (v1's holdout bias)."""
+
     def __init__(self) -> None:
         # position -> additive points correction for a nailed starter.
         self.by_pos: dict[str, float] = {}

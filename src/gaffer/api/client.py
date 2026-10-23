@@ -28,6 +28,9 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
 
 
 class FPLClient:
+    """The one read-only door to the FPL API: GETs only, retried, with
+    snapshots kept for diffing."""
+
     def __init__(self, raw_dir: Path | str = "data/raw", transport=None,
                  retries: int = 3, backoff: float = 2.0):
         self.raw_dir = Path(raw_dir)
