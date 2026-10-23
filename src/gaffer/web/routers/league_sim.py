@@ -471,13 +471,12 @@ def _entry_probabilities(sim, inputs) -> list[LeagueWhatIfRow]:
     — on league 1794743 the leader's row read 45% where the same matrix, asked
     directly, says 82%. Nothing is renormalised now and nothing is inferred.
     """
-    rows = []
-    for entry in inputs.entries:
-        rows.append(LeagueWhatIfRow(
-            entry=int(entry.entry), name=str(entry.name),
-            is_you=bool(entry.is_me), total=int(entry.total),
-            p_win=sim.p_win_by_entry.get(int(entry.entry)),
-            exp_finish=(sim.exp_finish if entry.is_me else 0.0)))
+    rows = [LeagueWhatIfRow(
+        entry=int(entry.entry), name=str(entry.name),
+        is_you=bool(entry.is_me), total=int(entry.total),
+        p_win=sim.p_win_by_entry.get(int(entry.entry)),
+        exp_finish=(sim.exp_finish if entry.is_me else 0.0))
+        for entry in inputs.entries]
     rows.sort(key=lambda r: -r.total)
     return rows
 

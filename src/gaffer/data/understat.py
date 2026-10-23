@@ -79,16 +79,14 @@ def league_matches(dates: list) -> pd.DataFrame:
     ``is_result`` is what makes an incremental refresh cheap: a fixture that
     has not been played has nothing to cache and must be re-checked next week.
     """
-    rows = []
-    for m in dates or []:
-        rows.append({
-            "match_id": str(m["id"]),
-            "date": pd.to_datetime(m["datetime"], errors="coerce").date()
-            if m.get("datetime") else None,
-            "home_team": _text(m["h"]["title"]),
-            "away_team": _text(m["a"]["title"]),
-            "is_result": bool(m.get("isResult")),
-        })
+    rows = [{
+        "match_id": str(m["id"]),
+        "date": pd.to_datetime(m["datetime"], errors="coerce").date()
+        if m.get("datetime") else None,
+        "home_team": _text(m["h"]["title"]),
+        "away_team": _text(m["a"]["title"]),
+        "is_result": bool(m.get("isResult")),
+    } for m in dates or []]
     return pd.DataFrame(rows, columns=MATCH_COLS)
 
 
@@ -626,7 +624,7 @@ def history_player_index(seasons: list[str]) -> pd.DataFrame:
     # A club's bootstrap name is per season, and the odd rename means one
     # team code can carry two: keep both, so either spelling matches.
     code_to_names: dict[int, set[str]] = {}
-    for _season, table in season_name_codes(seasons).items():
+    for table in season_name_codes(seasons).values():
         for name, code in table.items():
             code_to_names.setdefault(int(code), set()).add(name)
 
@@ -635,10 +633,7 @@ def history_player_index(seasons: list[str]) -> pd.DataFrame:
                    in ordered.groupby("code", as_index=False).tail(1)
                    .itertuples()}
     pairs = ordered[["code", "team_code"]].dropna().drop_duplicates()
-    rows = []
-    for r in pairs.itertuples():
-        code = int(r.code)
-        for club in sorted(code_to_names.get(int(r.team_code), ())):
-            rows.append({"code": code, "name": latest_name[code],
-                         "team_name": club})
+    rows = [{"code": int(r.code), "name": latest_name[int(r.code)], "team_name": club}
+            for r in pairs.itertuples()
+            for club in sorted(code_to_names.get(int(r.team_code), ()))]
     return pd.DataFrame(rows, columns=["code", "name", "team_name"])

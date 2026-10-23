@@ -355,11 +355,11 @@ def test_benchmark_features_for_a_gameweek_use_only_strictly_prior_rows():
     """The walk-forward is not a re-engineering loop: the stored rolling
     columns already shift one match back, so GW g's features cannot contain
     GW g. Pin that, because the whole benchmark rests on it."""
-    rows = []
-    for gw in range(1, 6):
-        rows.append({"code": 1, "season_idx": 2, "gw": gw,
-                     "kickoff_time": f"2024-09-{gw:02d}T14:00:00Z",
-                     "total_points": 50 if gw == 3 else 2, "minutes": 90})
+    rows = [
+        {"code": 1, "season_idx": 2, "gw": gw,
+         "kickoff_time": f"2024-09-{gw:02d}T14:00:00Z",
+         "total_points": 50 if gw == 3 else 2, "minutes": 90}
+        for gw in range(1, 6)]
     frame = add_player_rolling(pd.DataFrame(rows))
     _, test = benchmark_split(frame)
     at_gw3 = test[test["gw"] == 3].iloc[0]

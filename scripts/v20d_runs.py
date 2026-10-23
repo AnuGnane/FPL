@@ -122,7 +122,7 @@ def _utc(stamp: str | None) -> datetime | None:
     if not stamp:
         return None
     try:
-        when = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        when = datetime.fromisoformat(str(stamp))
     except ValueError:
         return None
     if when.tzinfo is not None:

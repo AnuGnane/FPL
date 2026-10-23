@@ -1194,11 +1194,11 @@ def _format_news_shadow(payload: dict) -> str:
                 "completed gameweek.")
     lines = [f"news shadow ({payload['rows']} player-gameweeks)",
              "  gw   brier news / flags    mae news / flags"]
-    for row in payload["by_gw"]:
-        lines.append(
-            f"  GW{row['gw']:<3} {row['brier_news']:.4f} / "
-            f"{row['brier_flags']:.4f}      {row['mae_news']:.2f} / "
-            f"{row['mae_flags']:.2f}")
+    lines.extend(
+        f"  GW{row['gw']:<3} {row['brier_news']:.4f} / "
+        f"{row['brier_flags']:.4f}      {row['mae_news']:.2f} / "
+        f"{row['mae_flags']:.2f}"
+        for row in payload["by_gw"])
     o = payload["overall"]
     lines.append(f"  all   {o['brier_news']:.4f} / "
                  f"{o['brier_flags']:.4f}      {o['mae_news']:.2f} / "
@@ -1217,18 +1217,18 @@ def _format_flag_latency(payload: dict) -> str:
     lines = [f"flag latency ({payload['rows']} status changes over "
              f"{payload['snap_dates']} snapshot days)",
              "  lead        started  missed"]
-    for row in payload["histogram"]:
-        lines.append(f"  {row['bucket']:<10} {row['started']:>7}  "
-                     f"{row['missed']:>6}")
+    lines.extend(f"  {row['bucket']:<10} {row['started']:>7}  "
+                 f"{row['missed']:>6}"
+                 for row in payload["histogram"])
     if payload["late_flags"]:
         lines.append("  worst late flags (final status disagreed with the "
                      "start)")
-        for row in payload["late_flags"]:
-            lines.append(
-                f"    GW{row['gw']:<3} code {row['code']:<7} "
-                f"{row['lead_days']:3.0f}d  {row['from_status']}->"
-                f"{row['final_status']}  "
-                f"{'started' if row['started'] else 'did not start'}")
+        lines.extend(
+            f"    GW{row['gw']:<3} code {row['code']:<7} "
+            f"{row['lead_days']:3.0f}d  {row['from_status']}->"
+            f"{row['final_status']}  "
+            f"{'started' if row['started'] else 'did not start'}"
+            for row in payload["late_flags"])
     return "\n".join(lines)
 
 
@@ -1288,8 +1288,8 @@ def _format_calibration(payload: dict) -> str:
         lines.append(f"  omitted: {head} — {why}")
     for head, why in (payload.get("per_gw_omitted") or {}).items():
         lines.append(f"  per gameweek: {head} — {why}")
-    for row in payload.get("excluded") or []:
-        lines.append(f"  excluded: GW{row.get('gw')} — {row.get('reason')}")
+    lines.extend(f"  excluded: GW{row.get('gw')} — {row.get('reason')}"
+                 for row in payload.get("excluded") or [])
     if payload.get("missing"):
         lines.append("  no banked components: "
                      + ", ".join(f"GW{g}" for g in payload["missing"]))
@@ -1354,9 +1354,9 @@ def format_report(key: str, payload: dict) -> str:
         lines.append(f"-- head {head}: log loss "
                      f"{'n/a' if ll is None else format(ll, '.4f')}, "
                      f"{len(m['reliability'])} reliability bins")
-        for b in m["reliability"]:
-            lines.append(f"   pred {b['pred']:.3f}  obs {b['obs']:.3f}  "
-                         f"n {b['n']}")
+        lines.extend(f"   pred {b['pred']:.3f}  obs {b['obs']:.3f}  "
+                     f"n {b['n']}"
+                     for b in m["reliability"])
     if payload.get("caveat"):
         lines.append(f"CAVEAT: {payload['caveat']}")
     return "\n".join(lines)

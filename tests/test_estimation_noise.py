@@ -91,8 +91,9 @@ def _rows(n_per_cell=120, sigma=0.4) -> pd.DataFrame:
     rows = []
     # ep 7.0 lands in EP bin 4 (edges [0,2,3,4,6]); 5.0 would land in bin 3.
     for ep, xmins, s in ((1.0, 10.0, sigma), (7.0, 85.0, sigma * 3)):
-        for _ in range(n_per_cell):
-            rows.append({"ep": ep, "xmins": xmins, "sigma_est": s})
+        rows.extend(
+            {"ep": ep, "xmins": xmins, "sigma_est": s}
+            for _ in range(n_per_cell))
     return pd.DataFrame(rows)
 
 

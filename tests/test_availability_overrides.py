@@ -22,9 +22,10 @@ def _pred(gws=(5,)):
     """One row per (player, gameweek), the shape predict_components hands in."""
     rows = []
     for code in CODES:
-        for gw in gws:
-            rows.append({"code": code, "gw": gw, "p_play": 0.8, "p60": 0.6,
-                         "e_min": 60.0})
+        rows.extend(
+            {"code": code, "gw": gw, "p_play": 0.8, "p60": 0.6,
+             "e_min": 60.0}
+            for gw in gws)
     return pd.DataFrame(rows)
 
 

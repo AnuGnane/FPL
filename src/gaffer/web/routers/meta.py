@@ -676,11 +676,8 @@ def health() -> Health:
     # lives in ``tracking.HEALTH_PATH`` alone, so this route reads it there.
     model_health = latest_health()
 
-    artifacts = []
-    for path in sorted(REPORTS.glob("*")):
-        if path.is_file():
-            artifacts.append(ArtifactItem(name=f"reports/{path.name}",
-                                          bytes=path.stat().st_size))
+    artifacts = [ArtifactItem(name=f"reports/{path.name}", bytes=path.stat().st_size)
+                 for path in sorted(REPORTS.glob("*")) if path.is_file()]
     # v12 W4 §5.1. Rows and latest date per table, or an honest "never":
     # the collector is opt-in (a CLI run or its plist), so a clone that has
     # not run it must say what it is waiting for rather than render three

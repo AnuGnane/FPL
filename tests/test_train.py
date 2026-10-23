@@ -243,8 +243,8 @@ def _bps_history(year=2022, season_idx=0):
     """One season of a single two-team fixture per gameweek."""
     rows = []
     for gw in range(1, 4):
-        for i in range(4):
-            rows.append({
+        rows.extend(
+            {
                 "season": f"{year}-{year - 1999}",
                 "season_idx": season_idx, "gw": gw, "code": 100 + i,
                 "element": 1 + i, "name": f"P{i}",
@@ -257,18 +257,19 @@ def _bps_history(year=2022, season_idx=0):
                 "bonus": [3.0, 2.0, 1.0, 0.0][i],
                 "cbi": 6.0 if i == 0 else 0.0,
                 "total_points": 5, "starts": 1, "value": 50,
-            })
+            }
+            for i in range(4))
     return pd.DataFrame(rows)
 
 
 def _bps_fixtures(year=2022, season_idx=0):
-    rows = []
-    for gw in range(1, 4):
-        rows.append({
+    rows = [
+        {
             "season_idx": season_idx, "gw": gw,
             "kickoff_time": f"{year}-08-{10 + gw:02d}T14:00:00Z",
             "home_code": 1, "away_code": 2,
-            "home_goals": 1, "away_goals": 0})
+            "home_goals": 1, "away_goals": 0}
+        for gw in range(1, 4)]
     return pd.DataFrame(rows)
 
 

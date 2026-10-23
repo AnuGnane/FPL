@@ -45,9 +45,10 @@ def key_shaped(text: str) -> list[str]:
     for line in text.splitlines():
         if line.lstrip().startswith("#"):
             continue
-        for value in _ASSIGN.findall(line):
-            if len(value) >= 20 and _HEX.search(value):
-                hits.append(line.strip())
+        hits.extend(
+            line.strip()
+            for value in _ASSIGN.findall(line)
+            if len(value) >= 20 and _HEX.search(value))
     return hits
 
 

@@ -66,14 +66,15 @@ POSITIONS = (["GKP"] * 4 + ["DEF"] * 6 + ["MID"] * 6 + ["FWD"] * 4)
 def _season_rows(gws, n=20):
     rows = []
     for gw in gws:
-        for i in range(n):
-            rows.append({
+        rows.extend(
+            {
                 "season_idx": 0, "gw": gw, "code": 101 + i,
                 "element": 1 + i, "name": f"P{i}", "position": POSITIONS[i],
                 "team_code": 1 + i % 7, "value": 40 + i,
                 "kickoff_time": f"2025-0{1 + gw % 9}-01T12:00:00Z",
                 "total_points": 2, "minutes": 90,
-            })
+            }
+            for i in range(n))
     return pd.DataFrame(rows)
 
 
@@ -463,14 +464,15 @@ def _scored_season_rows(gws, n=20):
     """
     rows = []
     for gw in gws:
-        for i in range(n):
-            rows.append({
+        rows.extend(
+            {
                 "season_idx": 0, "gw": gw, "code": 101 + i,
                 "element": 1 + i, "name": f"P{i}", "position": POSITIONS[i],
                 "team_code": 1 + i % 7, "value": 40,
                 "kickoff_time": f"2025-01-{gw:02d}T12:00:00Z",
                 "total_points": i, "minutes": 90,
-            })
+            }
+            for i in range(n))
     return pd.DataFrame(rows)
 
 

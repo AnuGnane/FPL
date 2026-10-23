@@ -378,6 +378,5 @@ def format_tracker(report: dict) -> str:
             f"{totals['gws']} gw — {totals['pens_taken']:.1f} pens in "
             f"{totals['team_games']} team-games against a served "
             f"{totals['league_pens_pg_served']}/game")
-    for note in report.get("notes", []):
-        lines.append(f"note: {note}")
+    lines.extend(f"note: {note}" for note in report.get("notes", []))
     return "\n".join(lines)

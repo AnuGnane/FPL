@@ -36,9 +36,10 @@ def _rows(n_per_cell: int = 200, seed: int = 0) -> pd.DataFrame:
                             (1.0, 85.0, 0.5, n_per_cell),
                             (5.0, 85.0, 4.0, n_per_cell),
                             (5.0, 10.0, 4.0, 5)):
-        for _ in range(n):
-            rows.append({"code": 1, "gw": 5, "ep": ep, "xmins": x,
-                         "points": ep + float(rng.normal(0.0, sigma))})
+        rows.extend(
+            {"code": 1, "gw": 5, "ep": ep, "xmins": x,
+             "points": ep + float(rng.normal(0.0, sigma))}
+            for _ in range(n))
     return pd.DataFrame(rows)
 
 

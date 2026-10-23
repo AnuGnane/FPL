@@ -140,11 +140,12 @@ def _future(gws=(7, 8), team=3) -> pd.DataFrame:
     rows = []
     for i, gw in enumerate(gws):
         when = pd.Timestamp("2023-09-16", tz="UTC") + pd.Timedelta(days=7 * i)
-        for code in (1, 2):
-            rows.append({"code": code, "season_idx": 1, "gw": gw,
-                         "team_code": team, "opp_code": 4, "was_home": True,
-                         "position": "MID",
-                         "kickoff_time": when.isoformat()})
+        rows.extend(
+            {"code": code, "season_idx": 1, "gw": gw,
+             "team_code": team, "opp_code": 4, "was_home": True,
+             "position": "MID",
+             "kickoff_time": when.isoformat()}
+            for code in (1, 2))
     return pd.DataFrame(rows)
 
 
