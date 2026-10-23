@@ -176,8 +176,8 @@ def test_every_public_function_outside_the_allowlist_has_a_docstring():
 
 
 def test_each_allowlisted_file_holds_exactly_its_undocumented_count():
-    counts = {f: _undocumented_functions(PACKAGE).get(f, 0)
-              for f in FUNCTIONS_ALLOWED}
+    found = _undocumented_functions(PACKAGE)
+    counts = {f: found.get(f, 0) for f in FUNCTIONS_ALLOWED}
     assert counts == FUNCTIONS_ALLOWED
 
 
