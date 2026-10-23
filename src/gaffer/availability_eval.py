@@ -246,8 +246,8 @@ def score_flag_latency(log: pd.DataFrame, actuals: pd.DataFrame,
     covered = sorted({int(g) for g in window["gw"].unique()}) \
         if not window.empty else []
     graded = sorted(set(covered) & checked_gws(actuals))
-    gate = dict(snap_dates=snap_dates, min_snap_dates=MIN_SNAP_DATES,
-                covered_gws=covered, checked_covered_gws=graded)
+    gate = {"snap_dates": snap_dates, "min_snap_dates": MIN_SNAP_DATES,
+            "covered_gws": covered, "checked_covered_gws": graded}
     open_gate = snap_dates >= MIN_SNAP_DATES and bool(graded)
     if not open_gate:
         # The gate decides whether the report exists, not merely whether it is

@@ -123,10 +123,10 @@ def predict_components(pred_frame: pd.DataFrame, tg_future: pd.DataFrame,
     flags = players[["code", "status", "chance_of_playing"]]
     # v18b ruling 4: told, not read — the four switches the pass used to
     # take off the process-wide view come from the cfg this run was given.
-    switches = dict(overrides=cfg.news_overrides,
-                    start_floor=cfg.news_lineup_start_floor,
-                    llm_serving=cfg.news_llm_classifier,
-                    current_season=cfg.current_season)
+    switches = {"overrides": cfg.news_overrides,
+                "start_floor": cfg.news_lineup_start_floor,
+                "llm_serving": cfg.news_llm_classifier,
+                "current_season": cfg.current_season}
     mp_flags = apply_availability(mp, flags, **switches)
     mp = apply_availability(mp, avail if avail is not None else flags,
                             **switches)

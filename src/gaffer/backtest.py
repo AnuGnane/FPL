@@ -134,15 +134,14 @@ def club_fixtures(rows: pd.DataFrame) -> pd.DataFrame:
     nothing else; the GBM head (``TEAM_MODEL = "gbm"``) needs the rolled team
     features and would fail here (v20 §2 v20c step zero).
     """
-    tg = (rows[["team_code", "opp_code", "gw", "season_idx"]]
-          .assign(home=rows["was_home"].astype(float)
-                  if "was_home" in rows.columns
-                  else rows.get("home", float("nan")))
-          .drop_duplicates(subset=["team_code", "season_idx", "gw",
-                                   "opp_code"])
-          .rename(columns={"team_code": "code"})
-          .reset_index(drop=True))
-    return tg
+    return (rows[["team_code", "opp_code", "gw", "season_idx"]]
+            .assign(home=rows["was_home"].astype(float)
+                    if "was_home" in rows.columns
+                    else rows.get("home", float("nan")))
+            .drop_duplicates(subset=["team_code", "season_idx", "gw",
+                                     "opp_code"])
+            .rename(columns={"team_code": "code"})
+            .reset_index(drop=True))
 
 
 def with_team_model(comp: pd.DataFrame, rows: pd.DataFrame,
@@ -602,11 +601,11 @@ def run_backtest(season: str = "2025-26", start_gw: int = 5,
                          f"(expected one of {EP_SOURCES})")
     cfg = load_config()
     season_idx = cfg.train_seasons.index(season)
-    opt_kw = dict(decay=cfg.decay, bench_weight=cfg.bench_weight,
-                  vice_weight=cfg.vice_weight, ft_value=cfg.ft_value,
-                  itb_value=cfg.itb_value, hit_cost=cfg.hit_cost,
-                  ft_use_penalty=cfg.ft_use_penalty,
-                  bench_curve=cfg.bench_curve)
+    opt_kw = {"decay": cfg.decay, "bench_weight": cfg.bench_weight,
+              "vice_weight": cfg.vice_weight, "ft_value": cfg.ft_value,
+              "itb_value": cfg.itb_value, "hit_cost": cfg.hit_cost,
+              "ft_use_penalty": cfg.ft_use_penalty,
+              "bench_curve": cfg.bench_curve}
     priors = load_decision_priors() if cfg.decision_priors else None
     opt_kw["ft_lambda"] = lambda_from_priors(priors)
     chip_thresholds = chip_thresholds_from_asset(priors)

@@ -45,8 +45,8 @@ def _components():
 
 def test_assemble_ep_matches_hand_calc():
     ep = assemble_ep(_components(), SCORING)
-    # appearance: 1*p_play + 1*p60 = 2.0 ; goals: .1*6=.6 ; assists: .1*3=.3
-    # cs: p60*p_cs*4 = 2.0 ; gc: -0.5*e_gc*p60 = -0.3 ; defcon: .5*2=1.0
+    # appearance: 1*p_play + 1*p60 = 2.0 ; goals: .1*6=.6 ; assists: .1*3=.3  # noqa: ERA001 — a hand calculation, not code
+    # cs: p60*p_cs*4 = 2.0 ; gc: -0.5*e_gc*p60 = -0.3 ; defcon: .5*2=1.0  # noqa: ERA001 — a hand calculation, not code
     # bonus .4 ; cards -.1  => total 5.9
     assert abs(ep.iloc[0]["ep"] - 5.9) < 1e-9
 

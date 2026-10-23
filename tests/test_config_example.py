@@ -35,7 +35,7 @@ def _str(node: ast.AST) -> str | None:
 
 
 def _section_of(node: ast.AST) -> str | None:
-    # raw.get("<section>", ...) or raw["<section>"]
+    # raw.get("<section>", ...) or raw["<section>"]  # noqa: ERA001 — the two shapes matched, not code
     if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
             and node.func.attr == "get" and isinstance(node.func.value, ast.Name)
             and node.func.value.id == "raw" and node.args):

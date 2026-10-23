@@ -87,7 +87,7 @@ def _install_stubs(monkeypatch, season_rows):
         return season_rows, pd.DataFrame(), None
 
     def fake_predict(models, rows):
-        calls["predict_gws"].append(sorted(set(int(g) for g in rows["gw"])))
+        calls["predict_gws"].append(sorted({int(g) for g in rows["gw"]}))
         return rows
 
     real_build_pool = bt.build_pool

@@ -22,8 +22,8 @@ import pytest
 from gaffer.optimize.chips import PAIR_CHIP, PAIR_DGW_MIN_PROB, _weeks_covered, evaluate_chips
 from gaffer.optimize.milp import SolveInput
 
-CFG = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-           itb_value=0.05, hit_cost=4)
+CFG = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+       "itb_value": 0.05, "hit_cost": 4}
 GWS = [1, 2, 3]
 
 

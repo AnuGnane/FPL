@@ -142,9 +142,9 @@ def test_the_corr_lever_line_goes_with_its_v20b_replay():
 
 
 def test_a_lever_line_with_no_v20_replay_falls_back_by_its_prefix():
-    out = dict((line.split()[0], arm) for arm, line in ap.file_lines(
+    out = {line.split()[0]: arm for arm, line in ap.file_lines(
         "DC_CLIP n=3 of 10\nREPLAY_TEAM_MODEL p_cs n=0\n"
-        "LEVER minutes cols=missing\n"))
+        "LEVER minutes cols=missing\n")}
     assert out == {"DC_CLIP": "v20c", "REPLAY_TEAM_MODEL": "v20c0",
                    "LEVER": "unclaimed"}
 

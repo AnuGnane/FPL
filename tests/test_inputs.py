@@ -39,18 +39,18 @@ def _inputs(**over) -> Inputs:
          "now_cost": 75, "price_change_percent": 0.0}])
     comp = pd.DataFrame([{"code": 100, "gw": 7, "p_play": 0.9, "ep": 6.0},
                          {"code": 200, "gw": 7, "p_play": 0.8, "ep": 4.0}])
-    fields = dict(
-        gw=7, gws=[7, 8], deadline="2026-10-01T17:30:00Z", through=6,
-        gap_warning=None, players=players, comp=comp, components=comp.copy(),
-        ep_named=pd.DataFrame([{"code": 100, "gw": 7, "ep": 6.0,
-                                "name": "In", "position": "MID"}]),
-        ep_by={(100, 7): 6.0, (200, 7): 4.0}, my=None, league_eo={},
-        cover={}, cap_cover={}, rival_captains={}, rival_names={},
-        strategy=None,
-        win_probs=[{"name": "Rivals", "total": 512, "p_win": 0.24}],
-        priors={"lam": {"1": [0.4, 0.9]}, "theta": {"hit": 4.0}},
-        dgw_probs={}, prior_advice={"gw": 6, "moves": [{"out": 200}]},
-        price_timing=True, price_fall={}, difficulty={(1, 7): 0.4})
+    fields = {
+        "gw": 7, "gws": [7, 8], "deadline": "2026-10-01T17:30:00Z", "through": 6,
+        "gap_warning": None, "players": players, "comp": comp, "components": comp.copy(),
+        "ep_named": pd.DataFrame([{"code": 100, "gw": 7, "ep": 6.0,
+                                   "name": "In", "position": "MID"}]),
+        "ep_by": {(100, 7): 6.0, (200, 7): 4.0}, "my": None, "league_eo": {},
+        "cover": {}, "cap_cover": {}, "rival_captains": {}, "rival_names": {},
+        "strategy": None,
+        "win_probs": [{"name": "Rivals", "total": 512, "p_win": 0.24}],
+        "priors": {"lam": {"1": [0.4, 0.9]}, "theta": {"hit": 4.0}},
+        "dgw_probs": {}, "prior_advice": {"gw": 6, "moves": [{"out": 200}]},
+        "price_timing": True, "price_fall": {}, "difficulty": {(1, 7): 0.4}}
     fields.update(over)
     return Inputs(**fields)
 

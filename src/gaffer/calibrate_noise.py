@@ -397,9 +397,8 @@ def ensemble_sigma(eps: list[pd.DataFrame]) -> pd.DataFrame:
     """
     stacked = pd.concat([e[["code", "gw", "ep"]] for e in eps],
                         ignore_index=True)
-    out = stacked.groupby(["code", "gw"], as_index=False).agg(
+    return stacked.groupby(["code", "gw"], as_index=False).agg(
         sigma_est=("ep", lambda s: float(s.std(ddof=0))), k=("ep", "size"))
-    return out
 
 
 def ensemble_rows(max_train_idx: int | None = None,
@@ -509,7 +508,7 @@ def run_estimation_calibration(max_train_idx: int | None = None,
         "season": ESTIMATION_SEASON,
         "source": "estimation",
         "k": len(seeds),
-        "seeds": list(int(s) for s in seeds),
+        "seeds": [int(s) for s in seeds],
     })
     return payload
 

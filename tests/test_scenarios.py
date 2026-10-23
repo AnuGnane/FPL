@@ -228,8 +228,8 @@ def test_noised_pool_replaces_the_ep_dicts_without_mutating_the_original():
 from gaffer.optimize.milp import SolveInput
 from gaffer.optimize.scenarios import ScenarioRun, run_scenarios
 
-SOLVE_KW = dict(decay=0.85, bench_weight=0.10, vice_weight=0.1,
-                ft_value=1.5, itb_value=0.05, hit_cost=4)
+SOLVE_KW = {"decay": 0.85, "bench_weight": 0.10, "vice_weight": 0.1,
+            "ft_value": 1.5, "itb_value": 0.05, "hit_cost": 4}
 
 
 def _board() -> tuple[pd.DataFrame, SolveInput]:

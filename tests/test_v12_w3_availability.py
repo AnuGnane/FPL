@@ -21,8 +21,8 @@ import pandas as pd
 from gaffer.optimize.milp import SolveInput
 from gaffer.optimize.scenarios import availability_draw, noised_pool, run_scenarios
 
-SOLVE_KW = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-                itb_value=0.05, hit_cost=4)
+SOLVE_KW = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+            "itb_value": 0.05, "hit_cost": 4}
 
 
 def _pool() -> pd.DataFrame:
@@ -139,7 +139,7 @@ def test_a_blank_gameweek_is_never_drawn_for():
 
 def test_the_sweep_is_reproducible_with_the_draw_on():
     pool, xm = _pool(), _xmins(_pool())
-    kw = dict(n=3, seed=5, p_play=_p_play(pool), draw_availability=True)
+    kw = {"n": 3, "seed": 5, "p_play": _p_play(pool), "draw_availability": True}
     a = run_scenarios(pool, _state(), xm, **kw, **SOLVE_KW)
     b = run_scenarios(pool, _state(), xm, **kw, **SOLVE_KW)
     assert _signature(a) == _signature(b)

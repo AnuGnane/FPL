@@ -45,8 +45,8 @@ fixes nothing costs exactly that and never more. A whole squad rebuilt across
 six weeks can be worth a lot; a hundred and twenty is where the number stops
 being a squad upgrade and starts being a units bug."""
 
-CFG = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-           itb_value=0.05, hit_cost=4)
+CFG = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+       "itb_value": 0.05, "hit_cost": 4}
 
 OWNED = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 16, 17, 18]
 

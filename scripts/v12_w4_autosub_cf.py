@@ -72,9 +72,9 @@ driver rather than copied. Two files disagreeing about which columns an arm
 is, is how a cycle ends up reporting one arm's numbers under another arm's
 name."""
 
-OPT_KW = dict(decay=0.9, bench_weight=0.1, vice_weight=0.1, ft_value=0.0,
-              itb_value=0.0, hit_cost=4, ft_use_penalty=0.0,
-              bench_curve=[0.21, 0.06, 0.002])
+OPT_KW = {"decay": 0.9, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 0.0,
+          "itb_value": 0.0, "hit_cost": 4, "ft_use_penalty": 0.0,
+          "bench_curve": [0.21, 0.06, 0.002]}
 """The solve every arm shares, ``scripts/archive/v10_autosub_cf.py:56-58`` verbatim.
 
 The ``bench_curve`` is required and is not read from ``config.toml``: with no

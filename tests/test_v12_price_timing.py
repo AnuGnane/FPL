@@ -380,8 +380,8 @@ def test_with_the_charge_large_enough_to_beat_the_gap_the_sale_moves_forward(
     either arm and an absence there would be satisfied by the control too."""
     pool = _pool()
     state = _state(pool)
-    kw = dict(decay=1.0, bench_weight=0.1, vice_weight=0.1, ft_value=0.0,
-              itb_value=5.0, hit_cost=4)
+    kw = {"decay": 1.0, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 0.0,
+          "itb_value": 5.0, "hit_cost": 4}
     control = milp._solve_once(pool, state, **kw, price_fall=None)
     assert 1 in control.gw_plans[1].sells
 

@@ -957,7 +957,7 @@ def grade_gw(gw: int, *, cfg, client=None) -> dict | None:
         return None
     frame = actuals_for_gw(gw)
     model = model_decisions(gw)
-    mine = {**mine, "code_of": {e: c for e, c in code_of_element().items()},
+    mine = {**mine, "code_of": dict(code_of_element().items()),
             "names": names_by_code()}
 
     # v12 W5 §6.4. Which frozen EP table this grade is being read against.

@@ -29,8 +29,8 @@ def week(gw, buys=(), sells=(), hits=0, chip=None):
 
 
 def run(weeks, **kw):
-    base = dict(gws=GWS, ep_by=EP, positions=POS, names=NAMES, decay=0.5,
-                hit_cost=4, ft_value=1.5, itb_value=0.05, free_transfers=1)
+    base = {"gws": GWS, "ep_by": EP, "positions": POS, "names": NAMES, "decay": 0.5,
+            "hit_cost": 4, "ft_value": 1.5, "itb_value": 0.05, "free_transfers": 1}
     return trace_plan(weeks, **{**base, **kw})
 
 
@@ -189,7 +189,7 @@ def test_the_ft_shadow_price_is_the_lambda_tables_terminal_margin():
     out = run([week(5, buys=[100], sells=[200]), week(6), week(7)],
               ft_lambda=Lookup())
     # terminal count 3 (see the recurrence above),
-    # weeks_left = max(1, SEASON_LAST_GW - 7)
+    # weeks_left = max(1, SEASON_LAST_GW - 7)  # noqa: ERA001 — the recurrence, not code
     from gaffer.optimize.milp import SEASON_LAST_GW
     assert out[-1].ft_basis == "lambda"
     assert out[-1].ft_shadow == pytest.approx(
