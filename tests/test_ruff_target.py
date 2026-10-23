@@ -115,3 +115,12 @@ def test_ruff_selects_the_pep8_naming_family():
     cannot come back silently."""
     data = tomllib.loads(Path("pyproject.toml").read_text())
     assert "N" in data["tool"]["ruff"]["lint"]["select"]
+
+
+def test_ruff_selects_the_string_concatenation_quotes_and_type_checking_families():
+    """Holiday F-209 turned ``ISC``, ``Q`` and ``TC`` on, in F-188's shape: a
+    missing comma between two strings, a single-quoted literal or an
+    annotation-only import at runtime cannot come back silently."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    select = data["tool"]["ruff"]["lint"]["select"]
+    assert {"ISC", "Q", "TC"} <= set(select)
