@@ -16,7 +16,7 @@ import pytest
 
 sys.path.insert(0, "scripts")
 
-import pcs_window  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import pcs_window
 
 FUTURE = "2099-08-{day:02d}T14:00:00Z"
 PAST = "2000-08-{day:02d}T14:00:00Z"

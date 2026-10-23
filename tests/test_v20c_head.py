@@ -17,7 +17,7 @@ from gaffer.models.team import build_team_gw
 
 sys.path.insert(0, "scripts")
 
-import v20c_head  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import v20c_head
 
 # Club 4 never scores; club 1 scores freely; 2 and 3 are ordinary.
 GOALS = {1: 4, 2: 1, 3: 1, 4: 0}

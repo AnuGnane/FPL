@@ -13,7 +13,7 @@ import pytest
 
 sys.path.insert(0, "scripts")
 
-import top10k_projection as tp  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import top10k_projection as tp
 
 # gw5 was never scraped: gw6's rises span the two-week gap.
 SERIES = {1: 60, 2: 120, 3: 190, 4: 250, 6: 400}

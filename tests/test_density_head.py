@@ -20,7 +20,7 @@ from gaffer.models.train import MINUTES_FEATURES
 
 sys.path.insert(0, "scripts")
 
-import density_head  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import density_head
 
 CONTROL = ["flat"]
 """A constant: the control can learn the base rate and nothing else, so a

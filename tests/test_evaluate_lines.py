@@ -15,8 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, "scripts")
 
-import evaluate_lines  # noqa: E402 — scripts/ is not a package; the path insert must come first
-import v20_appendix as ap  # noqa: E402 — same path insert as above
+import evaluate_lines
+import v20_appendix as ap
 
 FIXTURE = Path("tests/fixtures/evaluation_news_shadow.json")
 

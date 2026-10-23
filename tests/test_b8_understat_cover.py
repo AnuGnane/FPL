@@ -17,7 +17,7 @@ from gaffer.data import store
 
 sys.path.insert(0, "scripts")
 
-import b8_understat_cover  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import b8_understat_cover
 
 EVENTS = pd.DataFrame({
     "gw": [1, 2, 3],

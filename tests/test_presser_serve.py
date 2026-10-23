@@ -14,7 +14,7 @@ import pandas as pd
 
 sys.path.insert(0, "scripts")
 
-import presser_serve  # noqa: E402 — scripts/ is not a package; the path insert must come first
+import presser_serve
 
 SEASON = "2026-27"
 

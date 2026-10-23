@@ -8,11 +8,11 @@ import pytest
 
 sys.path.insert(0, "scripts")
 
-from v7b_legacy_minutes import LGB_KW as LEGACY_LGB_KW  # noqa: E402
-from v7b_legacy_minutes import LegacyMinutesModel  # noqa: E402
+from v7b_legacy_minutes import LGB_KW as LEGACY_LGB_KW
+from v7b_legacy_minutes import LegacyMinutesModel
 
-from gaffer.models.minutes import LGB_KW, ThreeModeModel  # noqa: E402
-from gaffer.models.train import MINUTES_FEATURES  # noqa: E402
+from gaffer.models.minutes import LGB_KW, ThreeModeModel
+from gaffer.models.train import MINUTES_FEATURES
 
 # 6 s of wall: the vendored and shipped minutes heads are both LightGBM-fitted
 # on every comparison, so the inner loop deselects the file (v18g §2.5).
