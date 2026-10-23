@@ -176,7 +176,8 @@ def blend_reading(client, cfg) -> dict:
 
 
 def main() -> int:
-    """Read the config's leagues and print the ``LEAGUE_BLEND`` verdict line."""
+    """Fetch each configured league's standings and print the
+    ``LEAGUE_BLEND`` verdict line."""
     try:
         cfg = load_config()
     except (GafferError, OSError, ValueError, KeyError, TypeError) as exc:

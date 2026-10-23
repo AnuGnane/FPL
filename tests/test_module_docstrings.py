@@ -205,9 +205,9 @@ def test_a_bare_public_function_is_caught_and_private_or_nested_ones_are_not(
     assert _undocumented_functions(tmp_path) == {"pkg/mod.py": 3}
 
 
-def _undocumented_script_functions() -> dict[str, int]:
+def _undocumented_script_functions(tree: Path = SCRIPTS) -> dict[str, int]:
     """F-199: the function walker over ``scripts/``, top level only."""
-    return {f: n for f, n in _undocumented_functions(SCRIPTS).items()
+    return {f: n for f, n in _undocumented_functions(tree).items()
             if "/" not in f}
 
 
@@ -221,6 +221,13 @@ def test_each_scripts_allowlisted_file_holds_exactly_its_undocumented_count():
     found = _undocumented_script_functions()
     counts = {f: found.get(f, 0) for f in SCRIPTS_FUNCTIONS_ALLOWED}
     assert counts == SCRIPTS_FUNCTIONS_ALLOWED
+
+
+def test_only_top_level_scripts_count_and_the_archive_does_not(tmp_path):
+    (tmp_path / "archive").mkdir()
+    (tmp_path / "archive" / "old.py").write_text("def bare():\n    pass\n")
+    (tmp_path / "live.py").write_text("def bare():\n    pass\n")
+    assert _undocumented_script_functions(tmp_path) == {"live.py": 1}
 
 
 def test_every_public_class_outside_the_allowlist_has_a_docstring():
