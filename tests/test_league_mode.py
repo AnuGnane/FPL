@@ -527,7 +527,7 @@ def test_cover_with_equal_weights_reduces_to_league_eo():
                   {"element": 2, "multiplier": 1}],
              12: [{"element": 1, "multiplier": 1}],
              13: [{"element": 3, "multiplier": 1}]}
-    equal = {e: 1 / 3 for e in picks}
+    equal = dict.fromkeys(picks, 1 / 3)
     # effective_ownership rounds to one decimal place of a percent, so the
     # comparison is to that precision — 0.667 against 0.6666..., not exact.
     assert cover_table(picks, equal) == pytest.approx(

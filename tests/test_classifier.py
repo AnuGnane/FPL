@@ -192,7 +192,7 @@ def test_a_failing_chunk_is_retried_once_and_then_skipped(tmp_path):
     calls = log.read_text(encoding="utf-8").strip().splitlines()
     # Three chunks, one of them attempted twice.
     assert len(calls) == 4
-    assert sorted(out["code"]) == list(range(0, 40)) + list(range(80, 91))
+    assert sorted(out["code"]) == list(range(40)) + list(range(80, 91))
 
 
 def test_a_chunk_that_answers_on_the_retry_still_lands(tmp_path):

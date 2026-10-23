@@ -522,7 +522,7 @@ def normalize_ags(prices: dict[str, float], mu: float) -> dict[str, float]:
         raw[name] = -math.log(1.0 - p)
     total = sum(raw.values())
     if not raw or total <= 0.0:
-        return {name: 0.0 for name in raw}
+        return dict.fromkeys(raw, 0.0)
     scale = float(mu) / total
     return {name: value * scale for name, value in raw.items()}
 

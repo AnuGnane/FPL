@@ -44,7 +44,7 @@ def test_a_haul_map_replaces_the_column_rather_than_adding_one():
     """Two ceilings on one row is the v9c failure — two quantities under one
     heading — with the heading left ambiguous."""
     out = captain_table(_ep(), XI, EO,
-                        haul={c: 0.3 for c in XI})
+                        haul=dict.fromkeys(XI, 0.3))
     assert "p_haul_total" in out.columns
     assert "p_haul" not in out.columns
 

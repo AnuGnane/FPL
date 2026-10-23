@@ -61,7 +61,7 @@ def wired(here, monkeypatch):
 
     monkeypatch.setattr(
         "gaffer.api.client.FPLClient",
-        lambda *a, **kw: SimpleNamespace(get_bootstrap=lambda: {}))
+        lambda *a, **kw: SimpleNamespace(get_bootstrap=dict))
     monkeypatch.setattr("gaffer.data.bootstrap.build_events",
                         lambda raw: EVENTS)
     monkeypatch.setattr("gaffer.data.field.fetch_sample_picks", _fetch)

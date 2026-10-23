@@ -28,10 +28,10 @@ def test_a_cold_clone_says_never_collected_and_renders_no_zeros(clone):
 
 
 def test_a_collected_season_reports_rows_and_the_latest_date(clone):
-    store.save(pd.DataFrame([{**{c: 0 for c in CI_PLAYER_COLS},
+    store.save(pd.DataFrame([{**dict.fromkeys(CI_PLAYER_COLS, 0),
                               "season": "2026-27", "code": 1, "gw": 2}]),
                ci_path("2026-27", "players"))
-    store.save(pd.DataFrame([{**{c: None for c in CI_FIXTURE_COLS},
+    store.save(pd.DataFrame([{**dict.fromkeys(CI_FIXTURE_COLS),
                               "season": "2026-27", "gw": 6,
                               "kickoff": pd.Timestamp("2026-10-10T14:00Z"),
                               "team_code": 8}]),

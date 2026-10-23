@@ -64,7 +64,7 @@ def _components():
     for code, element, name, team in ((100, 7, "Incumbent", 300),
                                       (101, 8, "Newcomer", 300),
                                       (102, 9, "Stranger", 301)):
-        row = {c: 0.0 for c in COMPONENT_COLS}
+        row = dict.fromkeys(COMPONENT_COLS, 0.0)
         row.update({"code": code, "element": element, "name": name,
                     "position": "MID" if team == 300 else "DEF",
                     "team_code": team, "team_name": "T", "gw": 3,

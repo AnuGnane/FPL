@@ -36,7 +36,7 @@ def test_theta_is_at_least_the_mean_of_the_next_weeks_surplus():
     """E[max(S, theta)] >= E[S]: waiting can never be worth less than one
     more draw."""
     samples = [0.0, 4.0, 8.0]
-    th = stopping_thresholds({t: samples for t in range(5, 20)}, last_gw=19)
+    th = stopping_thresholds(dict.fromkeys(range(5, 20), samples), last_gw=19)
     assert th[18] >= sum(samples) / len(samples) - 1e-12
 
 

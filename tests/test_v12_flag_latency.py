@@ -272,7 +272,7 @@ two scorers are exercised against."""
 
 
 def _full_row(**over):
-    row = {c: None for c in SNAPSHOT_LOG_COLS}
+    row = dict.fromkeys(SNAPSHOT_LOG_COLS)
     row.update({"season": "2026-27", "gw": 3, "code": 1, "override": False})
     row.update(over)
     return row

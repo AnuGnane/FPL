@@ -142,7 +142,7 @@ def _xmins(gw: int, ep_by: dict) -> tuple[dict, str | None]:
         table = {}
     if table:
         return table, None
-    return ({key: FALLBACK_XMINS for key in ep_by},
+    return (dict.fromkeys(ep_by, FALLBACK_XMINS),
             f"no expected minutes on disk — every player was perturbed at a "
             f"flat {FALLBACK_XMINS:.0f}-minute assumption, so the "
             f"frequencies below rank moves rather than measure them")

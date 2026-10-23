@@ -51,7 +51,7 @@ FIXTURES = pd.DataFrame([
 
 
 def _components():
-    row = {c: 0.0 for c in COMPONENT_COLS}
+    row = dict.fromkeys(COMPONENT_COLS, 0.0)
     row.update({"code": 100, "element": 7, "name": "Salah", "position": "MID",
                 "team_code": 300, "team_name": "Liverpool", "gw": 3,
                 "opp_code": 301, "opp_name": "Arsenal", "was_home": True,

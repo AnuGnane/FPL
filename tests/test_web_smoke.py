@@ -165,7 +165,7 @@ def client(tmp_path, monkeypatch):
             PLAYERS, OWNED, {(code, 3): EP_OF[code] for code in CODES}, [3])))
     rows = []
     for i, code in enumerate(CODES):
-        row = {c: 0.0 for c in COMPONENT_COLS}
+        row = dict.fromkeys(COMPONENT_COLS, 0.0)
         row.update({"code": code, "element": int(ELEMENT_OF[code]),
                     "name": NAME_OF[code], "position": POSITIONS[i],
                     "team_code": TEAM_OF[code],

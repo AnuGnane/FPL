@@ -40,9 +40,9 @@ def _pool(star_ep: float = 8.0) -> pd.DataFrame:
             rows.append({"code": code, "position": pos,
                          "team_code": code % 10,
                          "cost": 50, "sell": 50,
-                         "ep": {g: 2.0 + i * 0.1 for g in GWS}})
+                         "ep": dict.fromkeys(GWS, 2.0 + i * 0.1)})
             code += 1
-    rows[-1]["ep"] = {g: star_ep for g in GWS}
+    rows[-1]["ep"] = dict.fromkeys(GWS, star_ep)
     return pd.DataFrame(rows)
 
 
@@ -58,7 +58,7 @@ def _state(**kw) -> SolveInput:
 
 
 def _uniform(pool, value: float, gws=GWS) -> dict:
-    return {int(c): {g: value for g in gws} for c in pool["code"]}
+    return {int(c): dict.fromkeys(gws, value) for c in pool["code"]}
 
 
 class Spy:
@@ -232,7 +232,7 @@ def _varied(pool, xi_value=0.6, rest=0.95) -> dict:
     ranked = sorted(pool["code"], key=lambda c: -sum(
         pool.loc[pool["code"] == c, "ep"].iloc[0].values()))
     top = set(ranked[:11])
-    return {int(c): {g: (xi_value if c in top else rest) for g in GWS}
+    return {int(c): dict.fromkeys(GWS, xi_value if c in top else rest)
             for c in pool["code"]}
 
 
@@ -316,7 +316,7 @@ def test_the_reserve_keeper_reads_the_xi_keeper_alone(monkeypatch):
     keepers = [int(c) for c in pool.loc[pool["position"] == "GKP", "code"]]
     pp = _varied(pool, xi_value=0.99, rest=0.99)
     for c in keepers:
-        pp[c] = {g: 0.5 for g in GWS}
+        pp[c] = dict.fromkeys(GWS, 0.5)
     spy, plan = _solve(monkeypatch, pool, state, p_play=pp)
     assert spy.calls == 2
     # The GK term rides on (sq - xi); its coefficient must reflect a frailty

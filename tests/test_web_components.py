@@ -12,7 +12,7 @@ from gaffer.web.app import create_app
 
 def _row(code: int, name: str, gw: int = 5, opp: str = "ARS",
          ep: float = 6.4, pen: float = 0.0) -> dict:
-    row = {c: 0.0 for c in COMPONENT_COLS}
+    row = dict.fromkeys(COMPONENT_COLS, 0.0)
     row.update({"code": code, "element": code, "name": name,
                 "position": "MID", "team_code": 14, "team_name": "Liverpool",
                 "gw": gw, "opp_code": 3, "opp_name": opp, "was_home": 1.0,

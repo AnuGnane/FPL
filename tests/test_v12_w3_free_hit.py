@@ -30,7 +30,7 @@ def _pool() -> pd.DataFrame:
             rows.append({"code": code, "position": pos,
                          "team_code": (code % 6) + 1,
                          "cost": 40 + i, "sell": 40 + i,
-                         "ep": {g: 1.0 + (code % 7) * 0.3 for g in GWS}})
+                         "ep": dict.fromkeys(GWS, 1.0 + code % 7 * 0.3)})
             code += 1
     return pd.DataFrame(rows)
 

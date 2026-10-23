@@ -616,8 +616,8 @@ def _squad(differential: int) -> list[dict]:
             + [{"element": differential, "multiplier": 1}])
 
 
-FLAT_SIGMA = {e: 3.0 for e in range(1, 40)}
-FLAT_EP = {e: 4.0 for e in range(1, 40)}
+FLAT_SIGMA = dict.fromkeys(range(1, 40), 3.0)
+FLAT_EP = dict.fromkeys(range(1, 40), 4.0)
 NORMAL_P05_P95 = 3.2897
 """How many standard deviations separate a normal's 5th and 95th centiles.
 The engine publishes the fan as quantiles, so this is how a standard

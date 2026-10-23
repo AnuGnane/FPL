@@ -71,7 +71,7 @@ def _normalise(values: dict[int, float]) -> dict[int, float]:
         # separate: fall back to the full range before giving up on it.
         lo, hi = series.min(), series.max()
     if not hi > lo:
-        return {code: 0.5 for code in values}
+        return dict.fromkeys(values, 0.5)
     return {code: (0.5 if v != v
                    else min(max((v - lo) / (hi - lo), 0.0), 1.0))
             for code, v in values.items()}
