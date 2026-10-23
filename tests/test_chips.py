@@ -149,7 +149,7 @@ def _out_of_reach_pool():
                 "ep": dict.fromkeys(FLAT_GWS, 8.0 if code in ELITE else 2.0),
                 "cost": 100 if code in ELITE else 40,
                 "sell": 100 if code in ELITE
-            else (50 if code in BIG_OWNED else 40)}
+                        else (50 if code in BIG_OWNED else 40)}
             for code in range(lo, hi + 1))
     return pd.DataFrame(rows)
 
