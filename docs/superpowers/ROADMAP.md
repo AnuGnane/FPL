@@ -140,16 +140,17 @@ code cites (F-177) and `tests/test_code_cycle_cites.py` the cycles
 `tests/` and `frontend/src/` cite (F-178); F-179's
 `tests/test_guide_rails.py` holds GUIDE §10 to every doc rail; and
 `tests/test_guide_scripts.py` checks the archive's README both ways (F-180).
-F-182 to F-194 added four rails and grew four: two dependency rails hold
+F-182 to F-194 added three rails and grew four: two dependency rails hold
 what is declared to what is imported, both ways, `tests/test_dependencies.py`
 for `pyproject.toml` (F-182) and `frontend/src/kit/dependencies.test.ts` for
 `package.json` (F-183); warnings are errors, `filterwarnings` opening with
 `error` and every ignore naming its message, category and reason, railed in
 `tests/test_pytest_markers.py` (F-184); vitest's console guard,
-`frontend/src/kit/consoleGuard.ts`, fails a test that prints outside its
-allowlist (F-185), which F-186's `act` fixes and F-187's router future
-flags emptied; ruff selects the `UP` (F-188) and `SIM` (F-189) families,
-the golden modules' sites ignored until the Mac's F-190, each asserted in
+`frontend/src/kit/consoleGuard.ts`, fails a test that prints anything its
+allowlist does not expect (F-185), and F-186's `act` fixes and F-187's
+router future flags emptied that allowlist; ruff selects the `UP` (F-188) and `SIM` (F-189) families,
+the golden modules' sites ignored until the Mac's F-190 and the
+orchestrator-only files' for good, each asserted in
 `tests/test_ruff_target.py`; every CLI command is invoked by a test beyond
 `--help`, by rail in `tests/test_guide_commands.py` (F-191, its allowlist
 emptied by F-192); and every public function under `src/gaffer/` has a

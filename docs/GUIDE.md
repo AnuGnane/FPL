@@ -937,11 +937,11 @@ key `load_config` reads, with `Config`'s defaults, F-103 and F-113),
 and v8c's `[league]` keys documented there), `tests/test_v13_degradation.py`
 (v13's ladder caps documented there and in the README),
 `tests/test_ruff_target.py` (ruff's target and `.python-version` equal
-`requires-python`, F-136, and ruff selecting the `UP` and `SIM` families,
-F-188 and F-189), `tests/test_pytest_markers.py` (every marker
-registered in `pyproject.toml`, F-132, and the `filterwarnings` rule that
-opens with `error` so a new warning fails its test, F-184), `tests/test_pulp_filters.py` (the
-PuLP warning filters fail when PuLP 4 arrives, F-89),
+`requires-python`, F-136; ruff selects the `UP` and `SIM` families, F-188
+and F-189), `tests/test_pytest_markers.py` (every marker registered in
+`pyproject.toml`, F-132, and the `filterwarnings` rule that opens with
+`error` so a new warning fails its test, F-184),
+`tests/test_pulp_filters.py` (the PuLP warning filters fail when PuLP 4 arrives, F-89),
 `tests/test_v12_mcp.py` (v12's `mcp` dependency floor),
 `tests/test_dependencies.py` (every declared dependency is imported and
 every third-party import declared, F-182), its frontend twin
