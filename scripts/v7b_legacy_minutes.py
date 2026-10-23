@@ -20,8 +20,12 @@ worktree checkout.
 
 from __future__ import annotations
 
-import pandas as pd
+from typing import TYPE_CHECKING
+
 from lightgbm import LGBMClassifier, LGBMRegressor
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 LGB_KW = {"n_estimators": 300, "learning_rate": 0.05, "num_leaves": 31,
           "verbose": -1, "random_state": 7}

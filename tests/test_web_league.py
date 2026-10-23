@@ -78,7 +78,7 @@ class FakeClient:
 
 def _artifacts(tmp_path):
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 5\n')
+        "[fpl]\nentry_id = 1\nleague_id = 5\n")
     players = pd.DataFrame([
         {"code": 100, "element": 7, "name": "Salah", "position": "MID",
          "team_id": 1, "team_code": 300, "now_cost": 130, "status": "a",
@@ -143,7 +143,7 @@ def test_race_without_a_league_id_says_so(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _artifacts(tmp_path)
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 0\n')
+        "[fpl]\nentry_id = 1\nleague_id = 0\n")
     resp = TestClient(create_app()).get("/api/league/race")
     assert resp.status_code == 422
     assert "league_id" in resp.json()["detail"]
@@ -236,7 +236,7 @@ def test_a_focus_that_is_not_private_is_still_served(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _artifacts(tmp_path)
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 314\n')
+        "[fpl]\nentry_id = 1\nleague_id = 314\n")
     monkeypatch.setattr("gaffer.web.routers.league.fpl_client",
                         FakeClient)
     monkeypatch.setattr("gaffer.web.routers.league._OVERVIEW", {})
@@ -252,7 +252,7 @@ def test_standings_page_until_my_row_is_in(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _artifacts(tmp_path)
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 5\n')
+        "[fpl]\nentry_id = 1\nleague_id = 5\n")
 
     def row(entry, rank, total):
         return {"entry": entry, "entry_name": f"T{entry}", "player_name": "P",

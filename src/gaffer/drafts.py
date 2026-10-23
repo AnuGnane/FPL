@@ -17,11 +17,14 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from gaffer import artifacts
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 MAX_DRAFTS = 12
 """Spec D4's cap. Twelve named plans is a planning session; a hundred is a

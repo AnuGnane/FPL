@@ -13,13 +13,16 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from gaffer.web.jobs import JobAlreadyRunning
 from gaffer.web.schemas import JobRunView, JobStarted
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 

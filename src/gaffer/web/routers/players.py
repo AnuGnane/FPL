@@ -7,7 +7,7 @@ bootstrap snapshots. No model is loaded and no request is made.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from fastapi import APIRouter, Query
@@ -27,6 +27,9 @@ from gaffer.web.schemas import (
     PlayerRow,
     UpcomingFixture,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 router = APIRouter(prefix="/api/players", tags=["players"])
 

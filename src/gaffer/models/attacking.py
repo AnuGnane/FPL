@@ -11,11 +11,15 @@ FWD each get their own.
 
 from __future__ import annotations
 
-import pandas as pd
+from typing import TYPE_CHECKING
+
 from lightgbm import LGBMRegressor
 
 from gaffer.features.engineer import SHRUNK_FEATURES, understat_feature_columns
 from gaffer.models.minutes import ENSEMBLE_KW, LGB_KW
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 ATTACK_FEATURES = [
     "xg_r1", "xg_r3", "xg_r5", "xg_r10", "xg_r38",

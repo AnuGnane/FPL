@@ -29,7 +29,7 @@ from __future__ import annotations
 import json
 import math
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from gaffer import artifacts
 
@@ -46,6 +46,9 @@ from gaffer.artifacts import (  # noqa: F401
 )
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 MAX_OVERRIDES = 50
 """More pins than this is not a manager's judgement, it is a second model.

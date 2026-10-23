@@ -19,9 +19,8 @@ the key so a double gameweek's two fixtures stay distinct.
 
 from __future__ import annotations
 
-import pandas as pd
+from typing import TYPE_CHECKING
 
-from gaffer.config import Config
 from gaffer.data.news.lineups import fetch_lineups
 from gaffer.data.news.normalize import availability_frame
 from gaffer.data.news.premierinjuries import fetch_injuries
@@ -32,6 +31,11 @@ from gaffer.models.persistence import load_model, model_exists
 from gaffer.models.team import ODDS_AGAINST_COL, blend_team_odds, odds_blend_weight
 from gaffer.models.train import DEFAULT_E_GC, DEFAULT_P_CS
 from gaffer.set_pieces import add_pen_ep, attack_multipliers, pen_notices
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from gaffer.config import Config
 
 MODEL_NAMES = ["minutes", "team", "attacking", "defcon", "saves", "bonus"]
 

@@ -16,17 +16,21 @@ from __future__ import annotations
 
 import html
 import re
-from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import httpx
 import pandas as pd
 
 from gaffer.config import config_in_force
 from gaffer.data.news import NEWS_CACHE, cache_path, cached_text, fetched_at
 from gaffer.data.news.normalize import NEWS_MIN_COVERAGE, club_code, club_code_map, match_codes
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from datetime import datetime
+    from pathlib import Path
+
+    import httpx
 
 FFS_URL = "https://www.fantasyfootballscout.co.uk/team-news/"
 

@@ -181,7 +181,7 @@ def _rotowire_html(slot_of: dict[str, str] | None = None) -> str:
               + ("" if slot == "start"
                  else f'<span class="lineup__inj">'
                       f'{"OUT" if slot == "out" else "QUES"}</span>')
-              + '</li>')
+              + "</li>")
         (xi if slot == "start" else hurt).append(li)
     body = "".join(xi)
     if hurt:
@@ -272,7 +272,7 @@ def test_a_starter_named_by_any_provider_carries_no_damp(tmp_path):
            + "".join(f'<li title="Player {i}">'
                      f'<img src="/photos/players/110x140/{200 + i}.png">'
                      f'</li>' for i in range(11))
-           + '</ul>')
+           + "</ul>")
     # 211 and 212 are regulars FFS left out; RotoWire names 211 a starter.
     rw = ('<div class="lineup__box">'
           '<div class="lineup__mteam is-home">Arsenal</div>'

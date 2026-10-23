@@ -327,9 +327,9 @@ def _swap(buy, sell, i, gws, order, ep_by, tilted, decay):
     if buy is None or sell is None:
         side = "buy" if sell is None else "sell"
         return (None, None,
-                f"no {'sell' if side == 'buy' else 'buy'} of the same "
-                "position to pair this move with, so it cannot be priced as "
-                "a swap")
+                (f"no {'sell' if side == 'buy' else 'buy'} of the same "
+                 "position to pair this move with, so it cannot be priced as "
+                 "a swap"))
     if i is None:
         return None, None, "outside the solved horizon"
     horizon = list(gws)[i:]
@@ -337,8 +337,8 @@ def _swap(buy, sell, i, gws, order, ep_by, tilted, decay):
                if not any((c, g) in ep_by for g in horizon)]
     if missing:
         return (None, None,
-                f"player {missing[0]} is not in the pool the solver used, so "
-                "no expected points can be read for him")
+                (f"player {missing[0]} is not in the pool the solver used, so "
+                 "no expected points can be read for him"))
     gain = tilt = 0.0
     for g in horizon:
         d = decay ** order[g]

@@ -9,12 +9,16 @@ the report printed, not a fresh solve that could differ.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter, HTTPException
 
 from gaffer.artifacts import served_plan
 from gaffer.errors import GafferError
-from gaffer.served import ServedMove, ServedWeek
 from gaffer.web.schemas import PlanAlternative, PlanGw, PlanMove, PlanTimeline
+
+if TYPE_CHECKING:
+    from gaffer.served import ServedMove, ServedWeek
 
 router = APIRouter(prefix="/api", tags=["plan"])
 

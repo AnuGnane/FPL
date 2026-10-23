@@ -67,7 +67,7 @@ class FakeClient:
 
 def _config(tmp_path):
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 5\n')
+        "[fpl]\nentry_id = 1\nleague_id = 5\n")
     players = pd.DataFrame([
         {"code": 100, "element": 7, "name": "Salah", "position": "MID",
          "team_id": 1, "team_code": 300, "now_cost": 130, "status": "a",
@@ -208,7 +208,7 @@ def test_live_skips_tier_eo_entirely_when_it_is_switched_off(tmp_path,
     monkeypatch.chdir(tmp_path)
     _config(tmp_path)                       # writes the players snapshot too
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 5\n[league]\ntier_eo = false\n')
+        "[fpl]\nentry_id = 1\nleague_id = 5\n[league]\ntier_eo = false\n")
 
     def _boom(client, gw, sample=300):
         raise AssertionError("tier EO fetched with tier_eo = false")

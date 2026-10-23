@@ -39,7 +39,7 @@ from __future__ import annotations
 import json
 import subprocess
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -56,6 +56,9 @@ from gaffer.artifacts import (
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
 from gaffer.watchlist import watch_targets
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 DIGEST_KINDS = ("friday", "tuesday")
 
@@ -600,8 +603,8 @@ def tuesday_debrief() -> dict:
     if summary is not None:
         worst = summary.get("worst")
         sections.append(_section("season", "Season so far", [
-            f"{len(summary.get('gws') or [])} gameweek"
-            f"{'s' if len(summary.get('gws') or []) != 1 else ''} reviewed.",
+            (f"{len(summary.get('gws') or [])} gameweek"
+             f"{'s' if len(summary.get('gws') or []) != 1 else ''} reviewed."),
             f"{summary.get('hindsight_gap')} points lost to bench and "
             f"armband across {summary.get('hindsight_gap_gws')} of them."
             if summary.get("hindsight_gap_gws") else None,
@@ -675,16 +678,16 @@ def _miss_bits() -> list[str | None]:
         return []
     top = rows[0]
     direction = "over" if top["miss"] < 0 else "under"
-    return [f"GW{target}: {top['name']} — forecast {top['ep']}, scored "
-            f"{top['actual']}. The model {direction}rated him by "
-            f"{abs(top['miss'])}."]
+    return [(f"GW{target}: {top['name']} — forecast {top['ep']}, scored "
+             f"{top['actual']}. The model {direction}rated him by "
+             f"{abs(top['miss'])}.")]
 
 
 # --- the notification -------------------------------------------------
 
 NOTIFY_SCRIPT = ("on run argv",
-                 "display notification (item 1 of argv) "
-                 "with title (item 2 of argv)",
+                 ("display notification (item 1 of argv) "
+                  "with title (item 2 of argv)"),
                  "end run")
 """The AppleScript, with nothing user-controlled in it.
 

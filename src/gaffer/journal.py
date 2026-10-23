@@ -18,11 +18,14 @@ from __future__ import annotations
 import json
 import os
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
 from gaffer.artifacts import REPORTS, advice_history_files, history_stamp
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 JOURNAL_PATH = REPORTS / "journal.json"
 """v18d §2: ``reports/`` is spelled once, in :mod:`gaffer.artifacts`.

@@ -119,7 +119,7 @@ COMPONENTS = pd.DataFrame(
 
 def _setup(tmp_path, components=True, advice=True):
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 5\n')
+        "[fpl]\nentry_id = 1\nleague_id = 5\n")
     (tmp_path / "data" / "live").mkdir(parents=True, exist_ok=True)
     PLAYERS.to_parquet(tmp_path / "data/live/players.parquet", index=False)
     (tmp_path / "reports").mkdir(exist_ok=True)

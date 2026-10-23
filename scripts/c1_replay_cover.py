@@ -42,11 +42,13 @@ whatever it says.
 from __future__ import annotations
 
 import json
-
-import pandas as pd
+from typing import TYPE_CHECKING
 
 from gaffer.news_shadow import load_shadow
 from gaffer.snapshot import load_snapshot_log
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 START_GW = 5
 """``run_backtest``'s default ``start_gw``, the first gameweek it replays."""

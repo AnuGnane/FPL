@@ -40,10 +40,13 @@ transcribes what it prints.
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from gaffer import review
 from gaffer.data.my_entry import gw_history_row, load_my_history, my_history_path
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _rank(history: dict | None, gw: int) -> int | None:

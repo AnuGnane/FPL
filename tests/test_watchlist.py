@@ -125,9 +125,9 @@ def test_a_corrupt_store_reads_as_an_empty_one(capsys):
     assert "watchlist store unreadable" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("payload", ['[]', '{"watchlist": []}',
+@pytest.mark.parametrize("payload", ["[]", '{"watchlist": []}',
                                      '{"watchlist": {"11": "nonsense"}}',
-                                     '{}'])
+                                     "{}"])
 def test_a_store_whose_shape_has_drifted_reads_as_empty_or_skips_the_row(
         payload):
     (artifacts.REPORTS / "watchlist.json").write_text(payload)

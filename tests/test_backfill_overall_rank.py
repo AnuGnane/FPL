@@ -85,8 +85,8 @@ def test_a_second_write_finds_nothing_to_fill(tree):
     bf.backfill(SEASON, ENTRY, write=True, raw_dir=raw)
     after = ledger.read_text()
     lines = bf.backfill(SEASON, ENTRY, write=True, raw_dir=raw)
-    assert lines == ["no graded row with a null overall_rank that the "
-                     "history can fill"]
+    assert lines == [("no graded row with a null overall_rank that the "
+                      "history can fill")]
     assert ledger.read_text() == after
 
 

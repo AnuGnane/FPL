@@ -91,8 +91,8 @@ def test_an_empty_report_refuses_and_says_which_note_caused_it(clone,
     because the live parquet is missing. Same loss, different cause."""
     path = _banked(clone)
     _report(monkeypatch, {"season": "2026-27", "gws": [], "season_totals": {},
-                          "notes": ["no live season on disk — run "
-                                    "`gaffer refresh` first"]})
+                          "notes": [("no live season on disk — run "
+                                     "`gaffer refresh` first")]})
     with pytest.raises(typer.Exit):
         cli.track_pens_cmd(season="2026-27")
     out = capsys.readouterr().out
@@ -107,8 +107,8 @@ def test_a_first_run_on_a_cold_clone_writes_its_empty_report(clone,
     """The half that makes the refusal safe. With nothing banked there is
     nothing to protect, and refusing would mean the file is never created."""
     _report(monkeypatch, {"season": "2026-27", "gws": [], "season_totals": {},
-                          "notes": ["no finished gameweek in the live season "
-                                    "yet"]})
+                          "notes": [("no finished gameweek in the live season "
+                                     "yet")]})
     cli.track_pens_cmd(season="2026-27")
     assert (clone / "reports" / "pen_tracker.json").exists()
 

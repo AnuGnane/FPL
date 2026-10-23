@@ -247,7 +247,7 @@ def test_the_alternatives_are_solved_exactly_as_the_incumbent_was():
     src = advise_source()
     coherent = src.index("plan = solver.coherent(")
     assert coherent < src.index("incumbent_weighted = True") < src.index(
-        "weighted = {\"p_play\": p_play_by_code}")
+        'weighted = {"p_play": p_play_by_code}')
 
 
 def test_fixed_moves_is_refused_rather_than_silently_honoured():

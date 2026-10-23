@@ -23,12 +23,15 @@ picture" answered from stored features.
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
 from gaffer.artifacts import REPORTS
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 FRINGE_SHARE = 0.3
 """``season_start_share`` below which a player is fringe rather than a regular.
@@ -216,10 +219,10 @@ def save_diagnostic(payload: dict) -> Path:
 def format_diagnostic(payload: dict) -> str:
     """The report as a table a human reads in a terminal."""
     o = payload["overall"]
-    lines = [f"=== zeros diagnostic (run_at {payload.get('run_at')}, "
-             f"sha {payload.get('git_sha')}) ===",
-             f"overall  n {o['n']:6d}  rmse {o['rmse']:7.4f}  "
-             f"mae {o['mae']:7.4f}  mean_ep {o['mean_ep']:7.4f}",
+    lines = [(f"=== zeros diagnostic (run_at {payload.get('run_at')}, "
+              f"sha {payload.get('git_sha')}) ==="),
+             (f"overall  n {o['n']:6d}  rmse {o['rmse']:7.4f}  "
+              f"mae {o['mae']:7.4f}  mean_ep {o['mean_ep']:7.4f}"),
              "-- strata (zeros rows only)"]
     for name, m in payload["strata"].items():
         line = (f"   {name:17s} n {m['n']:6d}  rmse {m['rmse']:7.4f}  "

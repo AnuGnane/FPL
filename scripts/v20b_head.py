@@ -36,9 +36,9 @@ whatever it says.
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
 import numpy as np
-import pandas as pd
 from lightgbm.basic import LightGBMError
 
 from gaffer.data import store
@@ -51,6 +51,9 @@ from gaffer.models.train import (
     bonus_season_floor,
     load_training_frame,
 )
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 POSITIONS = ("GKP", "DEF", "MID", "FWD")
 POS_DUMMIES = ["pos_DEF", "pos_MID", "pos_FWD"]

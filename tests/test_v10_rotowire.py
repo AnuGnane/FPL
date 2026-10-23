@@ -64,7 +64,7 @@ def _box(home: str, visit: str, home_xi, visit_xi, home_inj=(), visit_inj=(),
         '<li class="lineup__status is-expected">Predicted Lineup</li>'
         + _list("home", home_xi, list(home_inj), ques)
         + _list("visit", visit_xi, list(visit_inj))
-        + '</div>')
+        + "</div>")
 
 
 def _rotowire_html(ques: str | None = None) -> str:

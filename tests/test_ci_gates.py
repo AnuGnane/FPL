@@ -24,7 +24,7 @@ RULES = Path("CLAUDE.md")
 README = Path("README.md")
 
 # The gate lines CLAUDE.md's Commands block names: each must be in one run step.
-GATES = ['uvx ruff check src tests', '-m "not slow and not golden"', "npm run check"]
+GATES = ["uvx ruff check src tests", '-m "not slow and not golden"', "npm run check"]
 
 # A run step starting with one of these is a gate command and must be one the
 # docs name.

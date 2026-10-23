@@ -30,7 +30,7 @@ def test_create_app_serves_index_for_a_client_route():
                  "/league/rival/2", "/live", "/model"]:
         resp = client.get(path)
         assert resp.status_code == 200, path
-        assert "<div id=\"root\">" in resp.text
+        assert '<div id="root">' in resp.text
 
 
 @pytest.mark.skipif(not BUILT, reason=UNBUILT_REASON)

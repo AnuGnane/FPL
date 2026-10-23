@@ -33,25 +33,25 @@ _W = r"\s+"
 _DOCS = {
     "CLAUDE.md": (
         None,
-        r"\| API routes \| (\d+) \|.*?\n\| `JOB_KINDS` \| (\d+) \|.*?\n"
-        r"\| `Config` fields \| (\d+) \|",
+        (r"\| API routes \| (\d+) \|.*?\n\| `JOB_KINDS` \| (\d+) \|.*?\n"
+         r"\| `Config` fields \| (\d+) \|"),
     ),
     "README.md": (
         r"^## Tests",
-        rf"API{_W}routes{_W}\((\d+)\),{_W}job{_W}kinds{_W}\((\d+)\),"
-        rf"{_W}`Config`{_W}fields{_W}\((\d+)\)",
+        (rf"API{_W}routes{_W}\((\d+)\),{_W}job{_W}kinds{_W}\((\d+)\),"
+         rf"{_W}`Config`{_W}fields{_W}\((\d+)\)"),
     ),
     "docs/superpowers/ROADMAP.md": (
         r"^## Where things stand",
-        rf"Pins:{_W}routes{_W}(\d+){_W}\(`tests/test_v11_degradation\.py`\),"
-        rf"{_W}job{_W}kinds{_W}(\d+){_W}\(`tests/test_v12_w1_degradation\.py`\),"
-        rf"{_W}`Config`{_W}(\d+){_W}\(`tests/test_v13_degradation\.py`\)",
+        (rf"Pins:{_W}routes{_W}(\d+){_W}\(`tests/test_v11_degradation\.py`\),"
+         rf"{_W}job{_W}kinds{_W}(\d+){_W}\(`tests/test_v12_w1_degradation\.py`\),"
+         rf"{_W}`Config`{_W}(\d+){_W}\(`tests/test_v13_degradation\.py`\)"),
     ),
     "docs/GUIDE.md": (
         r"^## 12\.",
-        rf"Pins:{_W}routes{_W}(\d+){_W}\(`tests/test_v11_degradation\.py`\),"
-        rf"{_W}job{_W}kinds{_W}(\d+){_W}\(`tests/test_v12_w1_degradation\.py`\),"
-        rf"{_W}`Config`{_W}(\d+){_W}\(`tests/test_v13_degradation\.py`\)",
+        (rf"Pins:{_W}routes{_W}(\d+){_W}\(`tests/test_v11_degradation\.py`\),"
+         rf"{_W}job{_W}kinds{_W}(\d+){_W}\(`tests/test_v12_w1_degradation\.py`\),"
+         rf"{_W}`Config`{_W}(\d+){_W}\(`tests/test_v13_degradation\.py`\)"),
     ),
 }
 

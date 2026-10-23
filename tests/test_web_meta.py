@@ -68,7 +68,7 @@ ADVICE = {"gw": 2, "deadline": "2026-09-04T17:30:00Z", "buys": [],
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(
-        '[fpl]\nentry_id = 1\nleague_id = 5\n')
+        "[fpl]\nentry_id = 1\nleague_id = 5\n")
     live = tmp_path / "data" / "live"
     live.mkdir(parents=True, exist_ok=True)
     TEAMS.to_parquet(live / "teams.parquet", index=False)

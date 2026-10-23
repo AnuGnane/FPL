@@ -26,13 +26,15 @@ worst case is the payload handed back exactly as it arrived.
 from __future__ import annotations
 
 import threading
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 from gaffer import difficulty
 from gaffer.data import store
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 PLAYER_KEYS = ("xi", "bench", "buys", "sells", "captain", "vice")
 """The advice keys holding player dicts.

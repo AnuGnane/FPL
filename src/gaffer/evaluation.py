@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import subprocess
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
@@ -28,6 +28,9 @@ from gaffer.artifacts import REPORTS
 from gaffer.config import load_config
 from gaffer.errors import GafferError
 from gaffer.io import atomic_write
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 RETURN_CATEGORIES = ["zeros", "blanks", "tickers", "haulers", "all"]
 """OpenFPL's return buckets, defined on *actual* points, plus the pooled cut.
@@ -1214,8 +1217,8 @@ def _format_flag_latency(payload: dict) -> str:
     precision the log never had (``availability_eval.pre_deadline``)."""
     if not payload.get("available"):
         return f"flag latency: {payload.get('note') or 'nothing to score.'}"
-    lines = [f"flag latency ({payload['rows']} status changes over "
-             f"{payload['snap_dates']} snapshot days)",
+    lines = [(f"flag latency ({payload['rows']} status changes over "
+              f"{payload['snap_dates']} snapshot days)"),
              "  lead        started  missed"]
     lines.extend(f"  {row['bucket']:<10} {row['started']:>7}  "
                  f"{row['missed']:>6}"
@@ -1236,8 +1239,8 @@ def _format_presser_grades(payload: dict) -> str:
     """Spec §3.2's table: precision of absence per verdict class."""
     if not payload.get("available"):
         return f"presser grades: {payload.get('note') or 'nothing to score.'}"
-    lines = [f"presser grades ({payload['rows']} graded verdicts, "
-             f"{payload['absent_rows']} absences)",
+    lines = [(f"presser grades ({payload['rows']} graded verdicts, "
+              f"{payload['absent_rows']} absences)"),
              "  verdict           n   started  absent  precision  recall"]
     conf = {row["verdict"]: row for row in payload["confusion"]}
     # Recall's denominator is the gameweek's absences. With none of them, the
@@ -1271,8 +1274,8 @@ def _format_calibration(payload: dict) -> str:
             return f"  n/a({n:>4})"
         return f"{head['brier']:8.4f}({head['n']:>4})"
 
-    lines = [f"=== calibration (run_at {payload.get('run_at')}, "
-             f"sha {payload.get('git_sha')}) ===",
+    lines = [(f"=== calibration (run_at {payload.get('run_at')}, "
+              f"sha {payload.get('git_sha')}) ==="),
              "  gw   " + "".join(f"{h:>14}" for h in CALIBRATION_HEADS)]
     for row in payload.get("gameweeks", []):
         heads = row.get("heads", {})
@@ -1316,8 +1319,8 @@ def format_report(key: str, payload: dict) -> str:
         return _format_flag_latency(payload)
     if key == "presser_grades":
         return _format_presser_grades(payload)
-    lines = [f"=== {key} (run_at {payload.get('run_at')}, "
-             f"sha {payload.get('git_sha')}) ==="]
+    lines = [(f"=== {key} (run_at {payload.get('run_at')}, "
+              f"sha {payload.get('git_sha')}) ===")]
     if payload.get("odds_blend_weight") is not None:
         lines.append(f"odds blend weight w = {payload['odds_blend_weight']:.2f}")
     if key == "decomposition":

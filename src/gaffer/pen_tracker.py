@@ -14,7 +14,7 @@ version of it anybody will actually read.
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -22,6 +22,9 @@ from gaffer import artifacts
 from gaffer.data import store
 from gaffer.io import atomic_write
 from gaffer.set_pieces import GOAL_POINTS, LEAGUE_PENS_PG, PEN_CONVERSION, pen_estimate, share_now
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 PLAYER_GW_PATH = "live/player_gw.parquet"
 EVENTS_PATH = "live/events.parquet"
@@ -356,8 +359,8 @@ def save_tracker_guarded(report: dict) -> tuple[Path | None, str | None]:
 def format_tracker(report: dict) -> str:
     """The printed table: one line per gameweek, then the season line."""
     lines = [f"Penalty tracker — season {report.get('season') or 'unknown'}",
-             f"{'GW':>3}  {'pred EP':>8}  {'pens':>5}  {'1st':>5}  "
-             f"{'hit':>5}  {'per game':>9}  instrument"]
+             (f"{'GW':>3}  {'pred EP':>8}  {'pens':>5}  {'1st':>5}  "
+              f"{'hit':>5}  {'per game':>9}  instrument")]
     for b in report.get("gws", []):
         if "error" in b:
             lines.append(f"{b['gw']:>3}  unreadable: {b['error']}")
