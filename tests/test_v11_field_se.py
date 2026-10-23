@@ -101,7 +101,7 @@ def test_the_error_is_never_zero_for_an_unknown(logged, players_client):
                for r in players_client())
 
 
-def test_an_unmeasured_error_beside_a_measured_eo_is_still_None(
+def test_an_unmeasured_error_beside_a_measured_eo_is_still_none(
         players_client):
     """The older-log case. ``FIELD_EO_COLS`` is fixed, so a scrape that never
     computed an error writes a NaN rather than dropping the column, and NaN

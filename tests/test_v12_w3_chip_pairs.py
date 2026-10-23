@@ -56,7 +56,7 @@ def test_with_no_doubles_the_table_is_the_table_it_was():
     assert list(table.columns) == ["chip", "gw", "gw2", "gain", "per_week"]
 
 
-def test_gw2_is_None_on_an_ordinary_row_and_never_nan():
+def test_gw2_is_none_on_an_ordinary_row_and_never_nan():
     """pandas turns a column of None-and-int into float64 with NaN, which
     pydantic refuses and json writes as a bare NaN."""
     rows = _table(dgw_gws={3}).to_dict("records")

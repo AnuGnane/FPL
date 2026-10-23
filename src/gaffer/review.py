@@ -1031,7 +1031,7 @@ The whole write is a JSON dump of a few dozen rows; a lock older than a minute
 is a crash, not a slow neighbour."""
 
 
-class _ledger_lock:
+class _LedgerLock:
     """Best-effort exclusive lock around the ledger's read-modify-write.
 
     :func:`append_ledger` reads the whole file, drops one gameweek's row and
@@ -1156,7 +1156,7 @@ def append_ledger(row: dict):
     banked = {**dict(row), "season": str(row.get("season") or season)}
     # The lock spans the read as well as the write: the race this guards is
     # the read-modify-write, not the rename, which was already atomic.
-    with _ledger_lock(lock_path()):
+    with _LedgerLock(lock_path()):
         rows = []
         for stored in _all_ledger_rows():
             r = {**stored, "season": str(stored.get("season") or season)}

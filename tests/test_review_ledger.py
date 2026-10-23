@@ -362,20 +362,20 @@ def test_the_ledger_write_takes_a_lock_and_gives_it_back(here, monkeypatch):
     second read the ledger before the first replaced it and write back a copy
     without the first's row."""
     from gaffer import io as gio
-    from gaffer import review as R
+    from gaffer import review
 
     seen = {}
     # v12 W1 §2.11: the rename lives in gaffer.io now, so the spy sits there.
     real = gio.os.replace
 
     def spy(src, dst):
-        seen["locked"] = R.lock_path().exists()
+        seen["locked"] = review.lock_path().exists()
         return real(src, dst)
 
     monkeypatch.setattr(gio.os, "replace", spy)
     append_ledger({"gw": 3, "my_points": 50})
     assert seen["locked"] is True
-    assert not R.lock_path().exists()
+    assert not review.lock_path().exists()
 
 
 def test_a_lock_left_behind_by_a_dead_review_never_blocks_the_next_one(here):
@@ -385,11 +385,11 @@ def test_a_lock_left_behind_by_a_dead_review_never_blocks_the_next_one(here):
     import os
     import time
 
-    from gaffer import review as R
+    from gaffer import review
 
     append_ledger({"gw": 3, "my_points": 50})
-    R.lock_path().write_text("dead")
-    os.utime(R.lock_path(), (time.time() - 3600, time.time() - 3600))
+    review.lock_path().write_text("dead")
+    os.utime(review.lock_path(), (time.time() - 3600, time.time() - 3600))
     append_ledger({"gw": 4, "my_points": 60})
     assert [r["gw"] for r in load_ledger()] == [3, 4]
 

@@ -649,7 +649,7 @@ def history_path() -> Path:
 _HISTORY_LOCK = threading.Lock()
 """Serialises :func:`append_sim_history`'s read-modify-write.
 
-Same idiom as :class:`gaffer.review._ledger_lock`, one process wide: the sim
+Same idiom as :class:`gaffer.review._LedgerLock`, one process wide: the sim
 runs from a web handler as well as from the CLI, and two threads reading the
 whole history, dropping one gameweek and writing it back would lose whichever
 row the loser read before the winner's rename."""

@@ -222,6 +222,6 @@ def test_latest_backup_reads_the_newest_and_its_size(tree):
     assert newest["modified_at"].endswith("+00:00")
 
 
-def test_latest_backup_of_an_absent_directory_is_None(tmp_path):
+def test_latest_backup_of_an_absent_directory_is_none(tmp_path):
     """The Health line's empty state: "never", not a zero and not a crash."""
     assert backup.latest_backup(tmp_path / "nope") is None
