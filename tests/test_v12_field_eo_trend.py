@@ -34,7 +34,7 @@ def _log(rows):
           "se": 2.0, "n": 300} for s, g, d, e, v in rows])
 
 
-@pytest.fixture()
+@pytest.fixture
 def logged(monkeypatch):
     def install(rows):
         monkeypatch.setattr(field, "load_field_eo", lambda: _log(rows))

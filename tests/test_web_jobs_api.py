@@ -26,7 +26,7 @@ def test_job_run_view_defaults_the_optional_tail_fields():
     assert view.finished_at is None
 
 
-@pytest.fixture()
+@pytest.fixture
 def app_and_runner(tmp_path, monkeypatch):
     """A real app whose runner executes test bodies instead of the pipeline."""
     monkeypatch.chdir(tmp_path)

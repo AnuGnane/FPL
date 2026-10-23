@@ -45,7 +45,7 @@ PRESSER = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def served(tmp_path, monkeypatch):
     def install(payload: dict):
         from gaffer import evaluation

@@ -66,7 +66,7 @@ def _components():
     return pd.DataFrame([row])[COMPONENT_COLS]
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data" / "live").mkdir(parents=True, exist_ok=True)

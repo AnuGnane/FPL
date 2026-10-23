@@ -40,7 +40,7 @@ def _save_state(gws=(1, 2), star_ep=9.0, lam=0.0, league_eo=None,
         cover=cover))
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _save_state()

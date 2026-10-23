@@ -31,7 +31,7 @@ def _week(gw, buys=(), sells=(), hits=0):
             "buys": [dict(b) for b in buys], "sells": [dict(s) for s in sells]}
 
 
-@pytest.fixture()
+@pytest.fixture
 def wired(monkeypatch):
     """A three-week plan, priced, over a bank of 1.5m (15 tenths)."""
     import pandas as pd

@@ -12,7 +12,7 @@ from gaffer.web.settings_keys import BY_FIELD, WHITELIST
 BASE = "[fpl]\nentry_id = 1\nleague_id = 5\n"
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "config.toml").write_text(BASE)

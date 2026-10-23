@@ -20,7 +20,7 @@ TUESDAY = {"kind": "tuesday", "generated_at": "2026-09-01T09:30:00+00:00",
                          "bits": ["You scored 58."]}]}
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "reports").mkdir()

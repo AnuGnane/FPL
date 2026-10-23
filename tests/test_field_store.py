@@ -37,7 +37,7 @@ TABLE = {7: {"eo": 150.0, "se": 3.2, "n": 2},
          9: {"eo": 50.0, "se": 2.1, "n": 2}}
 
 
-@pytest.fixture()
+@pytest.fixture
 def here(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")

@@ -30,7 +30,7 @@ from gaffer.web.routers.meta import calibration_health, team_model_health
 GW = 6
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     return TestClient(create_app())

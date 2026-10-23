@@ -233,7 +233,7 @@ B1_ADVICE = {
 B1_CFG = Config(entry_id=42, league_id=5, current_season="2026-27", sim_n=50)
 
 
-@pytest.fixture()
+@pytest.fixture
 def b1(tmp_path, monkeypatch):
     """A clone where I made a transfer and the model wanted a different one."""
     import json

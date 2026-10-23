@@ -47,7 +47,7 @@ def test_a_bar_outside_the_bounds_is_refused_by_name(tmp_path, monkeypatch, line
         _load(tmp_path, monkeypatch, base=BASE + f"[optimizer]\n{line}\n")
 
 
-@pytest.fixture()
+@pytest.fixture
 def settings_client(tmp_path, monkeypatch):
     from gaffer.web.app import create_app
 

@@ -38,7 +38,7 @@ HISTORY = {"current": [
 ]}
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(tmp_path, monkeypatch):
     reports = tmp_path / "reports"
     reports.mkdir()

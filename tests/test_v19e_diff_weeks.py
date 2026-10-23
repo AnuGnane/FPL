@@ -17,7 +17,7 @@ def _advice(gw, captain, buys, pts):
             "captain": {"code": captain, "name": f"P{captain}"}}
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "reports").mkdir()

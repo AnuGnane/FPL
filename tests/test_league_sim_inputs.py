@@ -56,7 +56,7 @@ def _comp() -> pd.DataFrame:
     return pd.DataFrame(rows, columns=COMPONENT_COLS)
 
 
-@pytest.fixture()
+@pytest.fixture
 def here(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")

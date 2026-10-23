@@ -47,7 +47,7 @@ def _until(predicate, timeout=5.0):
     return False
 
 
-@pytest.fixture()
+@pytest.fixture
 def sleeper():
     """A job body that blocks until the test releases it."""
     release = threading.Event()
@@ -110,7 +110,7 @@ def test_a_kind_with_no_override_falls_back_to_the_old_constant(
 
 # --- 4-6: what the freed lane says ----------------------------------
 
-@pytest.fixture()
+@pytest.fixture
 def client_and_release(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     release = threading.Event()

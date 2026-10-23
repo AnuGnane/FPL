@@ -37,7 +37,7 @@ PICKS = [[{"element": 7, "position": 1, "multiplier": 2},
 CFG = Config(entry_id=1, league_id=5, current_season="2026-27")
 
 
-@pytest.fixture()
+@pytest.fixture
 def here(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")
@@ -48,7 +48,7 @@ def here(tmp_path, monkeypatch):
     return tmp_path
 
 
-@pytest.fixture()
+@pytest.fixture
 def wired(here, monkeypatch):
     """Bootstrap, events and the shared fetch, all faked. Counts fetches."""
     calls = {"fetch": 0}

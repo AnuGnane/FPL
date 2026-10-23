@@ -43,7 +43,7 @@ def _priors_covering_everything() -> dict:
                                           "freehit")}}
 
 
-@pytest.fixture()
+@pytest.fixture
 def sentinels(monkeypatch):
     """Both flat constants replaced by numbers a calibration cannot produce.
 

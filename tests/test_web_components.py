@@ -23,7 +23,7 @@ def _row(code: int, name: str, gw: int = 5, opp: str = "ARS",
     return row
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     return TestClient(create_app(), raise_server_exceptions=False)

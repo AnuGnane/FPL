@@ -9,7 +9,7 @@ from gaffer.web.lan import lan_ip, qr_lines
 runner = CliRunner()
 
 
-@pytest.fixture()
+@pytest.fixture
 def no_server(monkeypatch):
     """Capture what uvicorn would have been asked to do."""
     calls = {}

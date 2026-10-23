@@ -61,7 +61,7 @@ def _write(root):
         pool=pool))
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _write(tmp_path)

@@ -47,7 +47,7 @@ ADVICE = {
 }
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     """A clone with one solved gameweek, wired the way the advice tests wire
     it: a real artifact on disk and a real solve state beside it."""

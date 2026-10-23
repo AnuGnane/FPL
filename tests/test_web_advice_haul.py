@@ -72,7 +72,7 @@ def _write(root, advice=None):
     return root / "reports" / f"gw{GW}-advice.json"
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _write(tmp_path)

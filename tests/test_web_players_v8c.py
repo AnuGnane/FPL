@@ -23,7 +23,7 @@ from gaffer.web.routers.players import field_class
 from tests.test_web_league_sim import _artifacts
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")

@@ -27,7 +27,7 @@ PLAYERS = pd.DataFrame({"code": [11], "element": [11], "name": ["Saka"],
                         "position": ["MID"], "now_cost": [100]})
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data" / "live").mkdir(parents=True)

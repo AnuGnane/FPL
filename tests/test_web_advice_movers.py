@@ -35,7 +35,7 @@ ADVICE = {"gw": GW, "buys": [], "sells": [], "expected_pts": 60.0,
           "captain": {"code": 11, "name": "P11"}}
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "reports").mkdir()

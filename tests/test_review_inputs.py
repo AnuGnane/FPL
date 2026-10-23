@@ -70,7 +70,7 @@ HISTORY = {"current": [{"event": 2, "points": 20, "total_points": 20,
            "chips": [{"name": "3xc", "event": 2}]}
 
 
-@pytest.fixture()
+@pytest.fixture
 def here(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(store, "DATA_DIR", tmp_path / "data")

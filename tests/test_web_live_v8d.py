@@ -131,7 +131,7 @@ def _setup(tmp_path, components=True, advice=True):
             json.dumps({"gw": 3, "expected_pts": 61.5}))
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _setup(tmp_path)

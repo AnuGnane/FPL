@@ -15,7 +15,7 @@ BRIEF = {"gw": 4, "run_stamp": "s", "prose": "One sentence. Two.", "facts": {"gw
          "model_command": "claude", "prompt_version": 1, "checked_at": "2026-09-05T09:00:00+00:00"}
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     artifacts.REPORTS.mkdir()

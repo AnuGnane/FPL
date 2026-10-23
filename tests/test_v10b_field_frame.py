@@ -48,7 +48,7 @@ def _write_config(root) -> None:
         "[fpl]\nentry_id = 1\nleague_id = 1\n")
 
 
-@pytest.fixture()
+@pytest.fixture
 def wired(tmp_path, monkeypatch):
     """A snapshot that knows both id spaces, and a log that speaks elements."""
     monkeypatch.chdir(tmp_path)

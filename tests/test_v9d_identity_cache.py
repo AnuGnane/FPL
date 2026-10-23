@@ -37,7 +37,7 @@ from gaffer.data import store
 from gaffer.web import identity
 
 
-@pytest.fixture()
+@pytest.fixture
 def wired(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data" / "live").mkdir(parents=True)

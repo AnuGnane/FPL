@@ -44,7 +44,7 @@ V20D_BRIER {"n": 0, "reason": "no log"}
 """
 
 
-@pytest.fixture()
+@pytest.fixture
 def logs(tmp_path):
     (tmp_path / "b.log").write_text(B_LOG)
     (tmp_path / "c.log").write_text(C_LOG)

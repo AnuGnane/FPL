@@ -27,7 +27,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 """Captured at import, before any fixture has changed the process CWD."""
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     return TestClient(create_app())

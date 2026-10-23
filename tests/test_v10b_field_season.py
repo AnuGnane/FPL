@@ -29,7 +29,7 @@ from gaffer.data import store
 from gaffer.data.field import FIELD_EO_COLS, latest_field_eo
 
 
-@pytest.fixture()
+@pytest.fixture
 def two_seasons(tmp_path, monkeypatch):
     """A log spanning a season boundary, with one element reused across it."""
     monkeypatch.chdir(tmp_path)

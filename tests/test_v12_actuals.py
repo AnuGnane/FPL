@@ -22,7 +22,7 @@ import pytest
 from gaffer import availability_eval as ae
 
 
-@pytest.fixture()
+@pytest.fixture
 def events():
     return pd.DataFrame({
         "gw": [1, 2, 3],

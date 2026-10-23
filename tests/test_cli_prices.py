@@ -29,7 +29,7 @@ PLAYERS = pd.DataFrame({
 })
 
 
-@pytest.fixture()
+@pytest.fixture
 def wired(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("gaffer.api.client.FPLClient.get_bootstrap",

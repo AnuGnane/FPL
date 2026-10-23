@@ -88,7 +88,7 @@ SIM_HISTORY = [{"gw": 3, "p_win": 0.14, "p_top3": 0.4, "exp_finish": 3.1,
                 "run_at": "2026-08-27T09:00:00Z", "n": 2000, "seed": 7}]
 
 
-@pytest.fixture()
+@pytest.fixture
 def bare(tmp_path, monkeypatch):
     """A clone with a reports directory and absolutely nothing in it."""
     monkeypatch.chdir(tmp_path)
@@ -97,7 +97,7 @@ def bare(tmp_path, monkeypatch):
     return tmp_path
 
 
-@pytest.fixture()
+@pytest.fixture
 def furnished(bare, monkeypatch):
     EVENTS.to_parquet(bare / "data/live/events.parquet", index=False)
     (bare / f"reports/gw{GW}-advice.json").write_text(json.dumps(ADVICE))

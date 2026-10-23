@@ -7,7 +7,7 @@ import pytest
 from gaffer.web.routers.players import set_piece_manual, set_piece_orders
 
 
-@pytest.fixture()
+@pytest.fixture
 def clone(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "data").mkdir()
