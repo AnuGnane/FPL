@@ -106,8 +106,8 @@ def test_a_dead_fetch_is_no_reading_rather_than_a_raise():
 def test_a_bank_logs_the_last_passed_deadlines_week_and_says_so(here, capsys):
     now = pd.Timestamp("2026-10-07T12:00:00Z")
     assert bank_threshold(_Client(), EVENTS, "2026-27", now=now) == 1
-    assert "Top-10k threshold: 398 points at rank 10000 for gw6 at " \
-        "2026-10-07." in capsys.readouterr().out
+    assert ("Top-10k threshold: 398 points at rank 10000 for gw6 at "
+            "2026-10-07.") in capsys.readouterr().out
     log = load_threshold_log()
     assert list(log.columns) == THRESHOLD_COLS
     assert log.iloc[0][["season", "gw", "total"]].tolist() == [
