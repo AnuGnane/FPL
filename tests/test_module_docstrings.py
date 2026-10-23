@@ -20,6 +20,12 @@ Holiday F-193 asks it of functions: every public top-level ``def`` (and
 ``async def``) under ``src/gaffer/`` has a docstring. ``FUNCTIONS_ALLOWED``
 maps each file to the number still without one on 2026-10-22, held exactly in
 F-69's shape, so it can only shrink; F-194 and F-200 write the docstrings.
+
+Holiday F-196 asks it of classes: every public top-level ``class`` under
+``src/gaffer/`` has a docstring. ``CLASSES_ALLOWED`` maps each file to the
+number still without one on 2026-10-23, held exactly in the same shape; F-197
+and F-198 write them off the golden path, the golden and orchestrator-only
+files wait for the Mac.
 """
 from __future__ import annotations
 
@@ -57,6 +63,24 @@ FUNCTIONS_ALLOWED = {
     "web/routers/whatif.py": 2,    # orchestrator-only, for good
 }
 
+CLASSES_ALLOWED = {
+    "advise.py": 1,                # golden, orchestrator-only
+    "api/client.py": 1,
+    "artifacts.py": 1,             # golden
+    "config.py": 1,                # golden
+    "data/entry.py": 1,
+    "data/odds.py": 1,
+    "difficulty.py": 3,
+    "league_mode.py": 1,
+    "models/calibrate.py": 1,
+    "optimize/milp.py": 3,         # orchestrator-only
+    "served.py": 2,                # golden
+    "trace.py": 1,
+    "web/jobs.py": 1,              # orchestrator-only
+    "web/schemas.py": 107,         # F-198, with the generated types
+    "web/settings_keys.py": 1,
+}
+
 
 def _undocumented(tree: Path) -> set[str]:
     """Paths, relative to ``tree``, of modules that open with no docstring."""
@@ -91,6 +115,23 @@ def _undocumented_functions(tree: Path) -> dict[str, int]:
         bare = sum(
             1 for node in module.body
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and not node.name.startswith("_")
+            and not ast.get_docstring(node))
+        if bare:
+            out[path.relative_to(tree).as_posix()] = bare
+    return out
+
+
+def _undocumented_classes(tree: Path) -> dict[str, int]:
+    """Per file under ``tree``, how many top-level classes whose name does not
+    start with ``_`` have no (or an empty) docstring; files with none are left
+    out."""
+    out = {}
+    for path in sorted(tree.rglob("*.py")):
+        module = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        bare = sum(
+            1 for node in module.body
+            if isinstance(node, ast.ClassDef)
             and not node.name.startswith("_")
             and not ast.get_docstring(node))
         if bare:
@@ -159,3 +200,30 @@ def test_a_bare_public_function_is_caught_and_private_or_nested_ones_are_not(
         'def outer():\n    """Why."""\n    def inner():\n        pass\n')
     (tmp_path / "clean.py").write_text('def told():\n    """Why."""\n')
     assert _undocumented_functions(tmp_path) == {"pkg/mod.py": 3}
+
+
+def test_every_public_class_outside_the_allowlist_has_a_docstring():
+    stray = {f: n for f, n in _undocumented_classes(PACKAGE).items()
+             if n > CLASSES_ALLOWED.get(f, 0)}
+    assert stray == {}
+
+
+def test_each_class_allowlisted_file_holds_exactly_its_undocumented_count():
+    found = _undocumented_classes(PACKAGE)
+    counts = {f: found.get(f, 0) for f in CLASSES_ALLOWED}
+    assert counts == CLASSES_ALLOWED
+
+
+def test_a_bare_public_class_is_caught_and_private_or_nested_ones_are_not(
+        tmp_path):
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "mod.py").write_text(
+        '"""Module."""\n'
+        "class Bare:\n    pass\n"
+        'class Empty:\n    """"""\n'
+        'class Told:\n    """Why."""\n'
+        "class _Private:\n    pass\n"
+        'class Outer:\n    """Why."""\n    class Inner:\n        pass\n'
+        "def bare():\n    pass\n")
+    (tmp_path / "clean.py").write_text('class Told:\n    """Why."""\n')
+    assert _undocumented_classes(tmp_path) == {"pkg/mod.py": 2}
