@@ -78,3 +78,13 @@ def test_ruff_selects_the_ble_family_and_strikes_unused_noqa():
     data = tomllib.loads(Path("pyproject.toml").read_text())
     select = data["tool"]["ruff"]["lint"]["select"]
     assert {"BLE", "RUF100"} <= set(select)
+
+
+def test_ruff_selects_the_pytest_style_family_without_the_composite_assert():
+    """Holiday F-205 turned ``PT`` on, in F-188's shape, with ``PT018`` ruled
+    out: the tests' composite asserts read as one sentence, and splitting 656
+    of them names no new failure."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    lint = data["tool"]["ruff"]["lint"]
+    assert "PT" in lint["select"]
+    assert "PT018" in lint["ignore"]
