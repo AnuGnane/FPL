@@ -111,7 +111,7 @@ def components(gw: int,
         # can share a kickoff time in a fixture file, and the order they were
         # written in is the order the opponents should read in.
         rows = group.sort_values("kickoff_time", na_position="last",
-                                kind="mergesort")
+                                 kind="mergesort")
         fixtures = []
         for row in rows.itertuples():
             terms = [Component(label=label, points=round(finite(
