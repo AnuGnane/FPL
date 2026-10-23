@@ -117,7 +117,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _artifacts(tmp_path)
     monkeypatch.setattr("gaffer.web.routers.league.fpl_client",
-                        lambda: FakeClient())
+                        FakeClient)
     monkeypatch.setattr("gaffer.web.routers.league._OVERVIEW", {})
     invalidate()
     yield TestClient(create_app())
@@ -158,7 +158,7 @@ def test_race_surfaces_a_dead_api_as_a_retriable_error(tmp_path, monkeypatch):
             raise RuntimeError("connection refused")
 
     monkeypatch.setattr("gaffer.web.routers.league.fpl_client",
-                        lambda: Dead())
+                        Dead)
     resp = TestClient(create_app()).get("/api/league/race")
     assert resp.status_code == 422
     assert "FPL API" in resp.json()["detail"]
@@ -238,7 +238,7 @@ def test_a_focus_that_is_not_private_is_still_served(tmp_path, monkeypatch):
     (tmp_path / "config.toml").write_text(
         '[fpl]\nentry_id = 1\nleague_id = 314\n')
     monkeypatch.setattr("gaffer.web.routers.league.fpl_client",
-                        lambda: FakeClient())
+                        FakeClient)
     monkeypatch.setattr("gaffer.web.routers.league._OVERVIEW", {})
     invalidate()
     body = TestClient(create_app()).get("/api/league/race").json()

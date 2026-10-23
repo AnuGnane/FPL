@@ -87,7 +87,7 @@ def season_cover(log: pd.DataFrame | None) -> dict:
 def _next_season(season: str) -> str:
     """``"2026-27"`` → ``"2027-28"``; ``""`` when the label does not parse."""
     try:
-        first = int(season.split("-")[0])
+        first = int(season.split("-", maxsplit=1)[0])
     except ValueError:
         return ""
     return f"{first + 1}-{(first + 2) % 100:02d}"

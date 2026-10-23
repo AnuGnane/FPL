@@ -135,7 +135,7 @@ def _setup(tmp_path, components=True, advice=True):
 def client(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _setup(tmp_path)
-    monkeypatch.setattr(live_mod, "fpl_client", lambda: FakeClient())
+    monkeypatch.setattr(live_mod, "fpl_client", FakeClient)
     monkeypatch.setattr(live_mod, "tier_eo_table",
                         lambda client, gw, sample=300: {})
     return TestClient(create_app())
@@ -363,7 +363,7 @@ def test_the_pinned_rival_resets_with_the_gameweek(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _setup(tmp_path)
     live_mod.RACE_RIVAL[2] = 99
-    monkeypatch.setattr(live_mod, "fpl_client", lambda: FakeClient())
+    monkeypatch.setattr(live_mod, "fpl_client", FakeClient)
     monkeypatch.setattr(live_mod, "tier_eo_table",
                         lambda client, gw, sample=300: {})
     TestClient(create_app()).get("/api/live")

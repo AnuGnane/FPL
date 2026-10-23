@@ -39,7 +39,7 @@ _FOREST = ["Matz Sels", "Neco Williams", "Nikola Milenkovic", "Murillo",
 def _player_li(name: str, pos: str = "DC", inj: str | None = None) -> str:
     tag = f'<span class="lineup__inj">{inj}</span>' if inj else ""
     return (f'<li class="lineup__player"><div class="lineup__pos">{pos}</div>'
-            f'<a title="{name}" href="/soccer/player/x-1">{name.split()[-1]}'
+            f'<a title="{name}" href="/soccer/player/x-1">{name.rsplit(maxsplit=1)[-1]}'
             f'</a>{tag}</li>')
 
 

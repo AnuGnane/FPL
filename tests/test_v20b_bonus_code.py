@@ -211,7 +211,7 @@ def test_the_served_path_hands_an_on_head_the_raw_attacking_output(
 def _train_all(monkeypatch, df):
     for name in ("ThreeModeModel", "DefconModel", "SavesModel"):
         monkeypatch.setattr(train, name, lambda *a, **k: _Stub())
-    monkeypatch.setattr(train, "build_team_model", lambda: _Stub())
+    monkeypatch.setattr(train, "build_team_model", _Stub)
     monkeypatch.setattr(train, "attacking_features", lambda: ATTACK)
     monkeypatch.setattr(train, "bonus_season_floor", lambda d: 1)
     tg = pd.DataFrame({"elo_diff": [0.0]})

@@ -137,7 +137,7 @@ def test_ui_binds_loopback_and_opens_the_browser(monkeypatch):
 def test_ui_can_skip_the_browser(monkeypatch):
     opened = []
     monkeypatch.setattr("uvicorn.run", lambda *a, **k: None)
-    monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url))
+    monkeypatch.setattr("webbrowser.open", opened.append)
     result = runner.invoke(app, ["ui", "--no-open-browser"])
     assert result.exit_code == 0
     assert opened == []

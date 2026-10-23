@@ -131,7 +131,7 @@ def test_the_evaluation_scores_only_the_current_season(monkeypatch):
 
     actuals = pd.DataFrame({"gw": [5], "code": [1], "minutes": [90]})
     monkeypatch.setattr("gaffer.news_shadow.load_shadow",
-                        lambda: _two_season_log())
+                        _two_season_log)
     monkeypatch.setattr(store_mod, "exists", lambda p: p == SHADOW_PATH
                         or p == "live/player_gw.parquet")
     monkeypatch.setattr(store_mod, "load", lambda p: actuals)
@@ -156,7 +156,7 @@ def test_the_evaluation_scores_the_whole_log_when_the_config_is_unreadable(
 
     actuals = pd.DataFrame({"gw": [5], "code": [1], "minutes": [90]})
     monkeypatch.setattr("gaffer.news_shadow.load_shadow",
-                        lambda: _two_season_log())
+                        _two_season_log)
     monkeypatch.setattr(store_mod, "exists",
                         lambda p: p == "live/player_gw.parquet")
     monkeypatch.setattr(store_mod, "load", lambda p: actuals)

@@ -178,7 +178,7 @@ def client(tmp_path, monkeypatch):
     save_components(pd.DataFrame(rows)[COMPONENT_COLS], 3)
     for module in ("league", "live"):
         monkeypatch.setattr(f"gaffer.web.routers.{module}.fpl_client",
-                            lambda: FakeClient())
+                            FakeClient)
     return TestClient(create_app())
 
 
