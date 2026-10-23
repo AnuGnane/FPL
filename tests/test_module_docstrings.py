@@ -15,6 +15,11 @@ and helpers are out), with its own allowlist ``TESTS_ALLOWED`` in the same
 shape. ``test_odds.py`` and ``test_web_jobs.py`` are orchestrator-only
 (``CLAUDE.md``), so a holiday run may not write their docstrings and they
 stay on it for good.
+
+Holiday F-193 asks it of functions: every public top-level ``def`` (and
+``async def``) under ``src/gaffer/`` has a docstring. ``FUNCTIONS_ALLOWED``
+maps each file to the number still without one on 2026-10-22, held exactly in
+F-69's shape, so it can only shrink; F-194 and F-200 write the docstrings.
 """
 from __future__ import annotations
 
@@ -33,6 +38,59 @@ TESTS = ROOT / "tests"
 TESTS_ALLOWED = {
     "test_odds.py",
     "test_web_jobs.py",
+}
+
+# F-193: per file, the public top-level functions still without a docstring.
+FUNCTIONS_ALLOWED = {
+    "api/parse.py": 2,
+    "artifacts.py": 7,
+    "brief.py": 7,
+    "config.py": 1,
+    "data/bootstrap.py": 4,
+    "data/field.py": 1,
+    "data/my_entry.py": 4,
+    "data/news/__init__.py": 1,
+    "data/store.py": 3,
+    "decisions.py": 1,
+    "drafts.py": 2,
+    "evaluation.py": 1,
+    "ladder.py": 1,
+    "league_sim.py": 1,
+    "models/persistence.py": 1,
+    "report/render.py": 1,
+    "review.py": 2,
+    "sensitivity.py": 1,
+    "tracking.py": 1,
+    "web/app.py": 1,
+    "web/routers/advice.py": 1,
+    "web/routers/ask.py": 1,
+    "web/routers/brief.py": 2,
+    "web/routers/chips.py": 1,
+    "web/routers/components.py": 1,
+    "web/routers/confidence.py": 1,
+    "web/routers/decisions.py": 2,
+    "web/routers/digest.py": 1,
+    "web/routers/drafts.py": 3,
+    "web/routers/fixtures.py": 1,
+    "web/routers/jobs.py": 3,
+    "web/routers/journal.py": 1,
+    "web/routers/ladder.py": 2,
+    "web/routers/league.py": 3,
+    "web/routers/league_sim.py": 1,
+    "web/routers/live.py": 1,
+    "web/routers/meta.py": 4,
+    "web/routers/misses.py": 1,
+    "web/routers/news.py": 1,
+    "web/routers/overrides.py": 3,
+    "web/routers/plan.py": 1,
+    "web/routers/players.py": 2,
+    "web/routers/prices.py": 1,
+    "web/routers/quality.py": 1,
+    "web/routers/review.py": 1,
+    "web/routers/sensitivity.py": 1,
+    "web/routers/settings.py": 2,
+    "web/routers/watchlist.py": 3,
+    "web/routers/whatif.py": 2,
 }
 
 
@@ -56,6 +114,23 @@ def _undocumented_tests(tree: Path) -> set[str]:
         text = path.read_text(encoding="utf-8")
         if not ast.get_docstring(ast.parse(text, filename=str(path))):
             out.add(path.name)
+    return out
+
+
+def _undocumented_functions(tree: Path) -> dict[str, int]:
+    """Per file under ``tree``, how many top-level functions whose name does
+    not start with ``_`` have no (or an empty) docstring; files with none are
+    left out."""
+    out = {}
+    for path in sorted(tree.rglob("*.py")):
+        module = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        bare = sum(
+            1 for node in module.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and not node.name.startswith("_")
+            and not ast.get_docstring(node))
+        if bare:
+            out[path.relative_to(tree).as_posix()] = bare
     return out
 
 
@@ -92,3 +167,31 @@ def test_only_top_level_test_files_count_in_the_tests_tree(tmp_path):
     (tmp_path / "test_bare.py").write_text("x = 1\n")
     (tmp_path / "test_told.py").write_text('"""Why."""\nx = 1\n')
     assert _undocumented_tests(tmp_path) == {"test_bare.py"}
+
+
+def test_every_public_function_outside_the_allowlist_has_a_docstring():
+    stray = {f: n for f, n in _undocumented_functions(PACKAGE).items()
+             if n > FUNCTIONS_ALLOWED.get(f, 0)}
+    assert stray == {}
+
+
+def test_each_allowlisted_file_holds_exactly_its_undocumented_count():
+    counts = {f: _undocumented_functions(PACKAGE).get(f, 0)
+              for f in FUNCTIONS_ALLOWED}
+    assert counts == FUNCTIONS_ALLOWED
+
+
+def test_a_bare_public_function_is_caught_and_private_or_nested_ones_are_not(
+        tmp_path):
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "mod.py").write_text(
+        '"""Module."""\n'
+        "def bare():\n    pass\n"
+        "async def bare_async():\n    pass\n"
+        'def empty():\n    """"""\n'
+        'def told():\n    """Why."""\n'
+        "def _private():\n    pass\n"
+        'class C:\n    def method(self):\n        pass\n'
+        'def outer():\n    """Why."""\n    def inner():\n        pass\n')
+    (tmp_path / "clean.py").write_text('def told():\n    """Why."""\n')
+    assert _undocumented_functions(tmp_path) == {"pkg/mod.py": 3}
