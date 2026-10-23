@@ -23,19 +23,6 @@ export default tseslint.config(
   tseslint.configs.recommended,
   reactHooks.configs.flat.recommended,
   {
-    rules: {
-      // `set-state-in-effect` is one of the React Compiler rules that
-      // `eslint-plugin-react-hooks` v7 folded into its recommended set, and
-      // eight effects in this tree trip it: the reset-on-prop-change in
-      // `ExplainModal` and `DecisionPanel`, the re-seed-from-payload in
-      // `Players`, `WhatIfSim`, `SettingsTab` and `PlannerBoard`, and the
-      // subscribe-then-resync in `Toast` and `api/pageData`. Each is a real
-      // question about how that component syncs, and each answer is a
-      // behaviour change on a page under the screenshot gate — so they are
-      // recorded as warnings and left to the cycle that means to work on
-      // them, rather than silenced or rewritten in passing (v18f §2.2).
-      'react-hooks/set-state-in-effect': 'warn',
-    },
     languageOptions: {
       // The app is a browser page; the scripts beside it (`scripts/`, this
       // file, the vite and vitest configs) are node.
