@@ -27,13 +27,13 @@ TM_BASE = "https://www.transfermarkt.co.uk"
 
 SPELL_COLS = ["season", "injury_type", "days_out", "games_missed"]
 
-_ROW = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S | re.I)
-_CELL = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S | re.I)
+_ROW = re.compile(r"<tr[^>]*>(.*?)</tr>", re.DOTALL | re.IGNORECASE)
+_CELL = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.DOTALL | re.IGNORECASE)
 _TAG = re.compile(r"<[^>]+>")
-_DAYS = re.compile(r"(\d+)\s*days?", re.I)
+_DAYS = re.compile(r"(\d+)\s*days?", re.IGNORECASE)
 
 
-_PROFILE = re.compile(r'href="/([a-z0-9\-]+)/profil/spieler/(\d+)"', re.I)
+_PROFILE = re.compile(r'href="/([a-z0-9\-]+)/profil/spieler/(\d+)"', re.IGNORECASE)
 """The squad page's player links.
 
 Keyed on ``/profil/spieler/`` specifically: every row also links the same

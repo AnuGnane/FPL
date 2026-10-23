@@ -76,19 +76,19 @@ whether he is in the team."""
 # One club per <h2>, its section running to the next heading. The page nests
 # the heading inside a header/div/li tangle that has been rewritten twice this
 # season; the heading itself has not moved.
-_SECTION = re.compile(r"<h2[^>]*>(.*?)</h2>(.*?)(?=<h2[^>]*>|\Z)", re.S | re.I)
+_SECTION = re.compile(r"<h2[^>]*>(.*?)</h2>(.*?)(?=<h2[^>]*>|\Z)", re.DOTALL | re.IGNORECASE)
 # The pitch: one <ul class="row-N"> per line of the formation.
-_PITCH_LIST = re.compile(r'<ul class="row-\d+"[^>]*>(.*?)</ul>', re.S | re.I)
+_PITCH_LIST = re.compile(r'<ul class="row-\d+"[^>]*>(.*?)</ul>', re.DOTALL | re.IGNORECASE)
 # "Out:" / "Doubts:" / "Banned:" and the <ul class="players"> that may follow
 # it — the label is printed even when the list behind it is empty.
 _ABSENCE_LIST = re.compile(
     r"<strong>\s*(Out|Doubts?|Banned|Suspended)\s*:?\s*</strong>\s*"
-    r'(?:<ul class="players"[^>]*>(.*?)</ul>)?', re.S | re.I)
-_ITEM = re.compile(r"(<li[^>]*>.*?</li>)", re.S | re.I)
+    r'(?:<ul class="players"[^>]*>(.*?)</ul>)?', re.DOTALL | re.IGNORECASE)
+_ITEM = re.compile(r"(<li[^>]*>.*?</li>)", re.DOTALL | re.IGNORECASE)
 """Whole element, attributes included — the pitch keeps the player's name in
 the ``title`` attribute rather than in the body."""
-_TITLE = re.compile(r'title="([^"]*)"', re.I)
-_PHOTO = re.compile(r"/photos/players/\d+x\d+/(\d+)\.png", re.I)
+_TITLE = re.compile(r'title="([^"]*)"', re.IGNORECASE)
+_PHOTO = re.compile(r"/photos/players/\d+x\d+/(\d+)\.png", re.IGNORECASE)
 _SURNAME_FIRST = re.compile(r"^(.*?)\s*\(([^)]*)\)\s*$")
 _PERCENT = re.compile(r"\d+\s*%")
 _TAG = re.compile(r"<[^>]+>")
@@ -230,16 +230,16 @@ ROTOWIRE_URL = "https://www.rotowire.com/soccer/lineups.php"
 # a live fetch on 2026-09-01 (plan A5): 200, 462KB, ten fixtures, the classes
 # below on every one of them.
 _RW_BOX = re.compile(
-    r'<div class="lineup__box".*?(?=<div class="lineup__box"|\Z)', re.S | re.I)
+    r'<div class="lineup__box".*?(?=<div class="lineup__box"|\Z)', re.DOTALL | re.IGNORECASE)
 _RW_MTEAM = re.compile(
-    r'<div class="lineup__mteam is-(home|visit)"[^>]*>(.*?)<', re.S | re.I)
+    r'<div class="lineup__mteam is-(home|visit)"[^>]*>(.*?)<', re.DOTALL | re.IGNORECASE)
 _RW_LIST = re.compile(
-    r'<ul class="lineup__list is-(home|visit)"[^>]*>(.*?)</ul>', re.S | re.I)
+    r'<ul class="lineup__list is-(home|visit)"[^>]*>(.*?)</ul>', re.DOTALL | re.IGNORECASE)
 _RW_TITLE = re.compile(
-    r'<li class="lineup__title[^"]*">\s*Injuries\s*</li>', re.I)
-_RW_PLAYER = re.compile(r'<li class="lineup__player">(.*?)</li>', re.S | re.I)
+    r'<li class="lineup__title[^"]*">\s*Injuries\s*</li>', re.IGNORECASE)
+_RW_PLAYER = re.compile(r'<li class="lineup__player">(.*?)</li>', re.DOTALL | re.IGNORECASE)
 _RW_INJ = re.compile(r'<span class="lineup__inj">\s*([A-Za-z]+)\s*</span>',
-                     re.I)
+                     re.IGNORECASE)
 
 ROTOWIRE_TAGS = {"out": "out", "sus": "out", "ques": "doubt"}
 """RotoWire's own availability tags -> our slots.

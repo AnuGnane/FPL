@@ -19,8 +19,8 @@ WORKFLOW = ROOT / ".github/workflows/ci.yml"
 NVMRC = ROOT / "frontend/.nvmrc"
 PACKAGE = ROOT / "frontend/package.json"
 
-_LITERAL = re.compile(r"^\s*(python|node)-version:", re.M)
-_NODE_FILE = re.compile(r"^\s*node-version-file:\s*(\S+)\s*$", re.M)
+_LITERAL = re.compile(r"^\s*(python|node)-version:", re.MULTILINE)
+_NODE_FILE = re.compile(r"^\s*node-version-file:\s*(\S+)\s*$", re.MULTILINE)
 
 
 def literals(workflow: str) -> list[str]:

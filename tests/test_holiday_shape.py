@@ -16,10 +16,10 @@ from pathlib import Path
 
 HOLIDAY = Path(__file__).resolve().parents[1] / "HOLIDAY.md"
 
-_BOX = re.compile(r"^- \[([ x])\] \*\*F-(\d+)\b(.*)$", re.M)
+_BOX = re.compile(r"^- \[([ x])\] \*\*F-(\d+)\b(.*)$", re.MULTILINE)
 _DEPENDS = re.compile(r"Depends on (F-\d+(?:(?:,? and |, | to )F-\d+)*)")
 _LINK = re.compile(r"(,? and |, | to )?F-(\d+)")
-_ANY_BOX = re.compile(r"^- \[", re.M)
+_ANY_BOX = re.compile(r"^- \[", re.MULTILINE)
 TRACES = ("ROADMAP", "GUIDE", "spec", "CLAUDE.md", "CONVENTIONS", "README",
           "Inbox")
 # Whole words, so "specific" or "inspect" is no trace.

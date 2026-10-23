@@ -97,7 +97,7 @@ class SettingKey:
         return None if bounds is None else bounds[1]
 
 
-def _pct(value: int | float) -> str:
+def _pct(value: float) -> str:
     """The hit bar's word for a value, named once (v17e §2.5): the select's
     option labels and the label the server invents for a hand-edited value
     have to agree, and two copies of one f-string is how they stop

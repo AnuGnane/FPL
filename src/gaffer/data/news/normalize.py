@@ -179,7 +179,7 @@ def match_codes(rows: pd.DataFrame, players: pd.DataFrame,
     def sweep(rule) -> None:
         """One pass over what is still unmatched, taken only where exactly
         one unclaimed player answers."""
-        for i in list(pending):
+        for i in pending:
             if codes[i] is not None:
                 continue
             row = rows.iloc[i]

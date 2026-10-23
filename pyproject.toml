@@ -78,10 +78,10 @@ filterwarnings = [
 ]
 
 [tool.ruff]
-# v18g §1: E, F, B, I, UP, SIM, C4, PIE, RET, ERA, BLE, RUF100 and PT at line
-# 100 (UP since holiday F-188, SIM since F-189, C4, PIE, RET and ERA since
-# F-201, BLE and RUF100 since F-204, PT since F-205); the ignores below each
-# carry a reason.
+# v18g §1: E, F, B, I, UP, SIM, C4, PIE, RET, ERA, BLE, RUF100, PT, PERF,
+# FURB and PYI at line 100 (UP since holiday F-188, SIM since F-189, C4, PIE,
+# RET and ERA since F-201, BLE and RUF100 since F-204, PT since F-205, PERF,
+# FURB and PYI since F-206); the ignores below each carry a reason.
 line-length = 100
 target-version = "py312"
 # F-167: scripts/archive/ is the retired code v18g moved out of the way; it is
@@ -90,7 +90,7 @@ extend-exclude = ["scripts/archive"]
 
 [tool.ruff.lint]
 select = ["E", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "ERA", "BLE", "RUF100",
-          "PT"]
+          "PT", "PERF", "FURB", "PYI"]
 # B905: zip(strict=) on 174 sites is noise, not safety — every zip here is
 # over parallel columns the caller built (v18g §1).
 # PT018 (holiday F-205): a composite ``assert a and b`` reads as one sentence
@@ -127,12 +127,12 @@ ignore = ["B905", "PT018"]
 # (HOLIDAY.md Merging rule 2), so their sites wait for F-190's needs-mac PR.
 "src/gaffer/pipeline.py" = ["UP"]
 "src/gaffer/config.py" = ["UP"]
-"src/gaffer/artifacts.py" = ["UP"]
+"src/gaffer/artifacts.py" = ["UP", "PERF", "FURB", "PYI"]
 "src/gaffer/brief.py" = ["UP"]
 "src/gaffer/web/job_kinds.py" = ["UP"]
 # UP (holiday F-188): orchestrator-only files (CLAUDE.md) keep their spelling
 # for good; the orchestrator owns their diffs.
-"src/gaffer/advise.py" = ["UP", "C4", "PIE", "RET", "ERA"]
+"src/gaffer/advise.py" = ["UP", "C4", "PIE", "RET", "ERA", "PERF", "FURB", "PYI"]
 "src/gaffer/web/jobs.py" = ["UP"]
 "tests/test_v9d_degradation.py" = ["UP"]
 # C4, PIE, RET and ERA (holiday F-201): ladder.py, served.py and web/app.py
@@ -144,7 +144,8 @@ ignore = ["B905", "PT018"]
 # keep their spelling for good, as F-188's advise.py line does.
 "tests/test_v4c_degradation.py" = ["C4", "PIE", "RET", "ERA"]
 "tests/test_v11_degradation.py" = ["C4", "PIE", "RET", "ERA", "PT"]
-"tests/test_v12_w1_degradation.py" = ["C4", "PIE", "RET", "ERA", "PT"]
+"tests/test_v12_w1_degradation.py" = ["C4", "PIE", "RET", "ERA", "PT", "PERF", "FURB",
+                                      "PYI"]
 "tests/test_v12_w3_degradation.py" = ["C4", "PIE", "RET", "ERA", "RUF100", "PT"]
 "tests/test_v12_w4_degradation.py" = ["C4", "PIE", "RET", "ERA", "PT"]
 "tests/test_v12_w5_degradation.py" = ["C4", "PIE", "RET", "ERA", "PT"]
@@ -156,12 +157,13 @@ ignore = ["B905", "PT018"]
 # C4, PIE, RET and ERA (holiday F-201) likewise: ladder.py's sites wait for
 # F-202 on the Mac, and the three orchestrator-only files keep theirs for good.
 "src/gaffer/ladder.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA"]
-"src/gaffer/optimize/milp.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "RUF100"]
+"src/gaffer/optimize/milp.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "RUF100", "PERF",
+                                 "FURB", "PYI"]
 "tests/test_advise.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "RUF100"]
 "tests/test_v10_degradation.py" = ["SIM", "C4", "PIE", "RET", "ERA"]
 # SIM (holiday F-189): features/ sits on the golden path (F-18, F-81, F-92),
 # so engineer.py's one site waits for F-190 on the Mac with the six modules.
-"src/gaffer/features/engineer.py" = ["SIM"]
+"src/gaffer/features/engineer.py" = ["SIM", "PERF", "FURB", "PYI"]
 # RUF100 (holiday F-204): the orchestrator-only files (CLAUDE.md) keep their
 # marks for good, as on the lines above for test_golden_board.py (two unused
 # today), test_v12_w3_degradation.py, milp.py and test_advise.py (none today;
@@ -182,12 +184,20 @@ ignore = ["B905", "PT018"]
 "tests/test_v12_w2_degradation.py" = ["PT"]
 "tests/test_v12_w5_projections_degradation.py" = ["PT"]
 "tests/test_v13_degradation.py" = ["PT"]
-"tests/test_v8a_degradation.py" = ["PT"]
+"tests/test_v8a_degradation.py" = ["PT", "PERF", "FURB", "PYI"]
 "tests/test_v8b_degradation.py" = ["PT"]
 "tests/test_v8c_degradation.py" = ["PT"]
 "tests/test_v8f_degradation.py" = ["PT"]
 "tests/test_v8g_degradation.py" = ["PT"]
 "tests/test_v9a_degradation.py" = ["PT"]
+# PERF, FURB and PYI (holiday F-206): artifacts.py and features/ sit on the
+# Mac's golden path (HOLIDAY.md Merging rule 2; F-18's and F-92's reason for
+# features/), so their sites (artifacts.py's, engineer.py's and bps.py's
+# PERF102 at :290) wait for F-210's needs-mac PR, added to their lines above
+# and here. advise.py, milp.py, test_v12_w1_degradation.py and
+# test_v8a_degradation.py are orchestrator-only (CLAUDE.md) and keep their
+# spelling for good, added to their lines above as F-205 did.
+"src/gaffer/features/bps.py" = ["PERF", "FURB", "PYI"]
 
 [tool.ruff.lint.flake8-bugbear]
 # B008: typer's declarative defaults are the CLI's idiom (v18g §2.1).

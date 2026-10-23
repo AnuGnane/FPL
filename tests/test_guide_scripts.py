@@ -25,7 +25,7 @@ ARCHIVE = SCRIPTS / "archive"
 README = ARCHIVE / "README.md"
 
 # A bullet opens with the archived file's name in backticks (F-180).
-_BULLET = re.compile(r"^- `([^`]+)`", re.M)
+_BULLET = re.compile(r"^- `([^`]+)`", re.MULTILINE)
 
 
 def _live_scripts() -> list[Path]:
