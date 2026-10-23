@@ -261,7 +261,7 @@ def test_a_dead_api_is_a_retriable_422(tmp_path, monkeypatch):
         def get_entry(self, entry_id):
             raise RuntimeError("connection refused")
 
-    monkeypatch.setattr(mod, "fpl_client", lambda: Dead())
+    monkeypatch.setattr(mod, "fpl_client", Dead)
     monkeypatch.setattr(mod, "_OVERVIEW", {})
     invalidate()
     resp = TestClient(create_app()).get("/api/league/leagues")

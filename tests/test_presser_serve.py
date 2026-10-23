@@ -136,7 +136,7 @@ def test_missing_inputs_print_a_reason_not_a_traceback():
 def test_main_prints_the_serve_line_on_an_empty_clone(capsys, monkeypatch):
     monkeypatch.setattr(presser_serve, "_season", lambda: SEASON)
     monkeypatch.setattr(presser_serve, "load_snapshot_log",
-                        lambda: pd.DataFrame())
+                        pd.DataFrame)
     assert presser_serve.main() == 0
     line = capsys.readouterr().out.strip().splitlines()[-1]
     assert line.startswith("PRESSER_SERVE ")

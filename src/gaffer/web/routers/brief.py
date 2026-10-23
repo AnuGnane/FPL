@@ -38,7 +38,7 @@ def write(request: Request):
 
     timeout = float(config_in_force().news_llm_timeout_s) + BRIEF_TIMEOUT_MARGIN_S
     try:
-        job_id = request.app.state.jobs.submit(lambda: run_brief(), timeout_s=timeout)
+        job_id = request.app.state.jobs.submit(run_brief, timeout_s=timeout)
     except JobQueueFull as exc:
         return JSONResponse(status_code=429, content={"detail": str(exc)})
     return JobAccepted(job_id=job_id)

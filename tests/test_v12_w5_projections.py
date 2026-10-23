@@ -45,7 +45,7 @@ def _state(gw=5, at="2026-09-01T09:00:00+00:00", pool=None) -> SolveState:
 def here(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     patch_view(monkeypatch,
-               lambda: type("C", (), {"current_season": "2026-27"})())
+               type("C", (), {"current_season": "2026-27"}))
     return tmp_path
 
 
@@ -84,7 +84,7 @@ def test_another_season_is_not_this_seasons(here, monkeypatch):
     selected by a glob is exactly the shape of that mistake."""
     save_solve_state(_state())
     patch_view(monkeypatch,
-               lambda: type("C", (), {"current_season": "2027-28"})())
+               type("C", (), {"current_season": "2027-28"}))
     save_solve_state(_state())
     assert len(projection_snapshots("2026-27", 5)) == 1
     assert len(projection_snapshots("2027-28", 5)) == 1

@@ -364,7 +364,7 @@ def test_the_whatif_table_is_the_engines_own_win_frequencies(client,
     same scored matrix counted, so the panel and the headline cannot
     disagree about who is winning."""
     monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client",
-                        lambda: TenClient())
+                        TenClient)
     monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
     body = client.post("/api/league/whatif", json={"pins": []}).json()
     from gaffer.web.routers.league_sim import _CACHE
@@ -382,7 +382,7 @@ def test_the_leaders_row_is_not_a_pairwise_share(client, monkeypatch):
     """The reviewer's measurement, reproduced: the folded number the panel
     used to print is a long way from the counted one."""
     monkeypatch.setattr("gaffer.web.routers.league_sim.fpl_client",
-                        lambda: TenClient())
+                        TenClient)
     monkeypatch.setattr("gaffer.web.routers.league_sim._CACHE", {})
     body = client.post("/api/league/whatif", json={"pins": []}).json()
     from gaffer.web.routers.league_sim import _CACHE

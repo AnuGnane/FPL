@@ -498,7 +498,7 @@ def test_a_dropped_bank_rung_blanks_p_beats_bank_instead_of_crashing(
         board, monkeypatch):
     from gaffer import ladder
 
-    patch_view(monkeypatch, lambda: _cfg())
+    patch_view(monkeypatch, _cfg)
     real = ladder.solve_plan
 
     def flaky(pool, solve_state, **kw):
