@@ -107,3 +107,11 @@ def test_ruff_selects_the_pylint_warning_convention_and_error_families():
     lint = data["tool"]["ruff"]["lint"]
     assert {"PLW", "PLC", "PLE"} <= set(lint["select"])
     assert "PLC0415" in lint["ignore"]
+
+
+def test_ruff_selects_the_pep8_naming_family():
+    """Holiday F-208 turned ``N`` on, in F-188's shape: the family stays
+    selected or this fails, so a camelCase helper or an aliased module
+    cannot come back silently."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    assert "N" in data["tool"]["ruff"]["lint"]["select"]
