@@ -150,10 +150,10 @@ def test_a_lever_line_with_no_v20_replay_falls_back_by_its_prefix():
 
 
 @pytest.mark.parametrize(("tag", "arm"), [("v20c0-harness-main", "v20c0"),
-                                      ("v20c-clip-main", "v20c"),
-                                      ("v20c", "v20c"),
-                                      ("v20cx-thing", "unclaimed"),
-                                      ("v7b-old", "unclaimed")])
+                                        ("v20c-clip-main", "v20c"),
+                                        ("v20c", "v20c"),
+                                        ("v20cx-thing", "unclaimed"),
+                                        ("v7b-old", "unclaimed")])
 def test_the_tag_prefix_rule(tag, arm):
     assert ap.tag_arm(tag) == arm
 
