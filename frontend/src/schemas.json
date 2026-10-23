@@ -1941,7 +1941,7 @@
    "type": "object"
   },
   "DraftList": {
-   "description": "The saved drafts, as ``GET``, ``POST`` and ``DELETE /api/drafts`` return\nthem.",
+   "description": "The saved drafts, as ``GET`` and ``POST /api/drafts`` and\n``DELETE /api/drafts/{name}`` return them.",
    "properties": {
     "drafts": {
      "description": "Every saved draft.",
@@ -4011,7 +4011,7 @@
    "type": "object"
   },
   "LeagueWhatIfPin": {
-   "description": "One player's points pinned for a gameweek in a league what-if.",
+   "description": "One player pinned to a score outcome (haul, blank or score) in a\nleague what-if.",
    "properties": {
     "code": {
      "description": "A gaffer player *code*, not a season element id \u2014 the explorer, the\nsquad table and the compare panel all speak codes, and the router maps to\nelements against the same snapshot they were rendered from.",
@@ -5422,7 +5422,7 @@
    "type": "object"
   },
   "OddsInfluence": {
-   "description": "How far the bookmaker odds moved one fixture's clean-sheet and goals-\nconceded readings.",
+   "description": "How far the bookmaker odds moved one fixture's clean-sheet\nand goals-conceded readings.",
    "properties": {
     "e_gc_blended": {
      "description": "Expected goals conceded after blending with the odds market, or the\nmodel's own figure when there is no market weight.",
@@ -9513,7 +9513,7 @@
    "type": "object"
   },
   "WinProb": {
-   "description": "One manager's chance of winning the league, from the simulation.",
+   "description": "The manager's chance of finishing above one rival, from\n``win_probability``.",
    "properties": {
     "name": {
      "description": "The rival's team name.",

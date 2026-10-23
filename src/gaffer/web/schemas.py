@@ -312,7 +312,8 @@ class GapPoint(BaseModel):
 
 
 class WinProb(BaseModel):
-    """One manager's chance of winning the league, from the simulation."""
+    """The manager's chance of finishing above one rival, from
+    ``win_probability``."""
     name: str
     """The rival's team name."""
     total: int
@@ -565,7 +566,8 @@ class LeagueSimData(BaseModel):
 
 
 class LeagueWhatIfPin(BaseModel):
-    """One player's points pinned for a gameweek in a league what-if."""
+    """One player pinned to a score outcome (haul, blank or score) in a
+    league what-if."""
     code: int
     """A gaffer player *code*, not a season element id — the explorer, the
     squad table and the compare panel all speak codes, and the router maps to
@@ -999,8 +1001,8 @@ class MinutesOutput(BaseModel):
 
 
 class OddsInfluence(BaseModel):
-    """How far the bookmaker odds moved one fixture's clean-sheet and goals-
-    conceded readings."""
+    """How far the bookmaker odds moved one fixture's clean-sheet
+    and goals-conceded readings."""
     weight: float
     """How much the bookmaker odds blend counts for this fixture, 0-1;
     0.0 for a frame banked before the blend existed."""
@@ -3253,8 +3255,8 @@ class DraftRow(BaseModel):
 
 
 class DraftList(BaseModel):
-    """The saved drafts, as ``GET``, ``POST`` and ``DELETE /api/drafts`` return
-    them."""
+    """The saved drafts, as ``GET`` and ``POST /api/drafts`` and
+    ``DELETE /api/drafts/{name}`` return them."""
     drafts: list[DraftRow] = Field(default_factory=list)
     """Every saved draft."""
 

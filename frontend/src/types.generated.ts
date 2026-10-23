@@ -1553,8 +1553,8 @@ export interface DraftCompareRequest {
   names: string[]
 }
 /**
- * The saved drafts, as ``GET``, ``POST`` and ``DELETE /api/drafts`` return
- * them.
+ * The saved drafts, as ``GET`` and ``POST /api/drafts`` and
+ * ``DELETE /api/drafts/{name}`` return them.
  *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "DraftList".
@@ -3035,7 +3035,8 @@ export interface Trajectory {
   points: GwPoint[]
 }
 /**
- * One manager's chance of winning the league, from the simulation.
+ * The manager's chance of finishing above one rival, from
+ * ``win_probability``.
  *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "WinProb".
@@ -3187,7 +3188,8 @@ export interface RivalBeat {
   p_beat: number | null
 }
 /**
- * One player's points pinned for a gameweek in a league what-if.
+ * One player pinned to a score outcome (haul, blank or score) in a
+ * league what-if.
  *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "LeagueWhatIfPin".
@@ -4088,8 +4090,8 @@ export interface NewsShadowSummary {
   rows: number
 }
 /**
- * How far the bookmaker odds moved one fixture's clean-sheet and goals-
- * conceded readings.
+ * How far the bookmaker odds moved one fixture's clean-sheet
+ * and goals-conceded readings.
  *
  * This interface was referenced by `GafferApi`'s JSON-Schema
  * via the `definition` "OddsInfluence".
