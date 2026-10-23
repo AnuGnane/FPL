@@ -28,10 +28,11 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-194
-except F-92, which is open as `needs-mac` PR #166, and F-148 and F-190,
-the Mac's `config.py` docstring and the golden modules' `UP` and `SIM`
-sites, which are still queued; F-77 and F-81 (#134,
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-201
+except F-92, which is open as `needs-mac` PR #166, and F-148, F-190, F-200
+and F-202, the Mac's `config.py` docstring, the golden modules' `UP` and
+`SIM` sites, their function and class docstrings and their `C4`, `PIE`,
+`RET` and `ERA` sites, which are still queued; F-77 and F-81 (#134,
 #107 relanded linear), the other `needs-mac` packages, have merged.
 `HOLIDAY.md` is the record. Pins: routes
 52 (`tests/test_v11_degradation.py`), job kinds 12
@@ -156,6 +157,15 @@ orchestrator-only files' for good, each asserted in
 emptied by F-192); and every public function under `src/gaffer/` has a
 docstring, the function tree in `tests/test_module_docstrings.py` (F-193),
 whose allowlist F-194 cut to the golden and orchestrator-only files.
+F-196 to F-201 grew three: the same rail's class tree holds every public
+class under `src/gaffer/` to a docstring (F-196), its `CLASSES_ALLOWED`
+cut by F-197 and F-198 to the golden and orchestrator-only files, F-198's
+107 schema sentences carried into `frontend/src/types.generated.ts` as
+JSDoc; its scripts tree does the same for every public function under
+`scripts/` (F-199), `SCRIPTS_FUNCTIONS_ALLOWED` holding only the
+orchestrator-only `s2_replay.py`; and ruff selects the `C4`, `PIE`, `RET`
+and `ERA` families (F-201), asserted in `tests/test_ruff_target.py`, the
+golden modules' sites ignored until the Mac's F-202.
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
