@@ -24,8 +24,8 @@ F-69's shape, so it can only shrink; F-194 and F-200 write the docstrings.
 Holiday F-196 asks it of classes: every public top-level ``class`` under
 ``src/gaffer/`` has a docstring. ``CLASSES_ALLOWED`` maps each file to the
 number still without one on 2026-10-23, held exactly in the same shape; F-197
-and F-198 write them off the golden path, the golden and orchestrator-only
-files wait for the Mac.
+and F-198 write them off the golden path, F-200 the golden ones, and the
+orchestrator-only files stay on it for good.
 """
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ FUNCTIONS_ALLOWED = {
 }
 
 CLASSES_ALLOWED = {
-    "advise.py": 1,                # golden, orchestrator-only
+    "advise.py": 1,                # orchestrator-only, for good
     "api/client.py": 1,
     "artifacts.py": 1,             # golden
     "config.py": 1,                # golden
@@ -73,10 +73,10 @@ CLASSES_ALLOWED = {
     "difficulty.py": 3,
     "league_mode.py": 1,
     "models/calibrate.py": 1,
-    "optimize/milp.py": 3,         # orchestrator-only
+    "optimize/milp.py": 3,         # orchestrator-only, for good
     "served.py": 2,                # golden
     "trace.py": 1,
-    "web/jobs.py": 1,              # orchestrator-only
+    "web/jobs.py": 1,              # orchestrator-only, for good
     "web/schemas.py": 107,         # F-198, with the generated types
     "web/settings_keys.py": 1,
 }
