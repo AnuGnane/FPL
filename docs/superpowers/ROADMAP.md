@@ -8,7 +8,7 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-10-22)
+## Where things stand (2026-10-23)
 
 **The model cycle, v20, is open.** v20a closed on 2026-10-13: `role`
 stays, because Δ = mean(off − on) = +9.2 is inside 2·SE = 41.1 at K = 5. No
@@ -28,9 +28,10 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-181
-except F-92, which is open as `needs-mac` PR #166, and F-148, the Mac's
-`config.py` docstring, which is still queued; F-77 and F-81 (#134,
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-194
+except F-92, which is open as `needs-mac` PR #166, and F-148 and F-190,
+the Mac's `config.py` docstring and the golden modules' `UP` and `SIM`
+sites, which are still queued; F-77 and F-81 (#134,
 #107 relanded linear), the other `needs-mac` packages, have merged.
 `HOLIDAY.md` is the record. Pins: routes
 52 (`tests/test_v11_degradation.py`), job kinds 12
@@ -139,6 +140,21 @@ code cites (F-177) and `tests/test_code_cycle_cites.py` the cycles
 `tests/` and `frontend/src/` cite (F-178); F-179's
 `tests/test_guide_rails.py` holds GUIDE §10 to every doc rail; and
 `tests/test_guide_scripts.py` checks the archive's README both ways (F-180).
+F-182 to F-194 added four rails and grew four: two dependency rails hold
+what is declared to what is imported, both ways, `tests/test_dependencies.py`
+for `pyproject.toml` (F-182) and `frontend/src/kit/dependencies.test.ts` for
+`package.json` (F-183); warnings are errors, `filterwarnings` opening with
+`error` and every ignore naming its message, category and reason, railed in
+`tests/test_pytest_markers.py` (F-184); vitest's console guard,
+`frontend/src/kit/consoleGuard.ts`, fails a test that prints outside its
+allowlist (F-185), which F-186's `act` fixes and F-187's router future
+flags emptied; ruff selects the `UP` (F-188) and `SIM` (F-189) families,
+the golden modules' sites ignored until the Mac's F-190, each asserted in
+`tests/test_ruff_target.py`; every CLI command is invoked by a test beyond
+`--help`, by rail in `tests/test_guide_commands.py` (F-191, its allowlist
+emptied by F-192); and every public function under `src/gaffer/` has a
+docstring, the function tree in `tests/test_module_docstrings.py` (F-193),
+whose allowlist F-194 cut to the golden and orchestrator-only files.
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven

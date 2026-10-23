@@ -78,8 +78,8 @@ filterwarnings = [
 ]
 
 [tool.ruff]
-# v18g §1: E, F, B and I at line 100, UP since holiday F-188 and SIM since
-# F-189; the ignores below each carry a reason.
+# v18g §1: E, F, B, I, UP and SIM at line 100 (UP since holiday F-188, SIM
+# since F-189); the ignores below each carry a reason.
 line-length = 100
 target-version = "py312"
 # F-167: scripts/archive/ is the retired code v18g moved out of the way; it is

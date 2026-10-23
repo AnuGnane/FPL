@@ -871,8 +871,10 @@ and it is worth knowing because you can read the evidence yourself:
   Every module under `src/gaffer/` opens with a docstring
   (`tests/test_module_docstrings.py`, holiday F-147), as does every
   `tests/test_*.py` save the two orchestrator-only files (the same rail's
-  second tree, F-170 and F-171), and every `onClick`
-  in the frontend has a keyboard path (F-146's rail in
+  second tree, F-170 and F-171) and every public function under
+  `src/gaffer/` (the same rail's function tree, F-193, its allowlist
+  holding only the golden and orchestrator-only files since F-194); every
+  `onClick` in the frontend has a keyboard path (F-146's rail in
   `frontend/src/kit/tokens.test.ts`). Every `kit/`, `api/` and `hubs/`
   module has a test of the same stem (`frontend/src/kit/coverage.test.ts`,
   F-153, scanning `hubs/` since F-155), as every module under `src/gaffer/`
@@ -880,7 +882,9 @@ and it is worth knowing because you can read the evidence yourself:
   F-165, and every live script since F-174); no hub imports another hub's files
   bar one allowlisted crossing (F-156), no `data-testid` goes unread by a test (F-159) and no `hubs/` or
   `api/` export goes unread outside its file (F-160), each a rail in
-  `tokens.test.ts`; every API route declares its wire type
+  `tokens.test.ts`; a vitest test that prints to the console outside
+  `frontend/src/kit/consoleGuard.ts`'s allowlist fails (F-185, the
+  allowlist empty since F-187); every API route declares its wire type
   (`tests/test_route_models.py`, F-157); and every npm script is named by
   a doc, CI or another script (`tests/test_npm_scripts.py`, F-162).
 
@@ -892,7 +896,8 @@ here, the archived ones in `scripts/archive/README.md`, F-87),
 `tests/test_guide_jobs.py` (every job kind, F-96),
 `tests/test_launchd_tables.py` (every plist's fire times and command in both
 launchd tables, F-97 and F-115), `tests/test_guide_commands.py` (every CLI
-command and option in §8 and the README, F-100 and F-105),
+command and option in §8 and the README, F-100 and F-105, and every
+command invoked by a test beyond `--help`, F-191),
 `tests/test_guide_routes.py` (every API route in §5, F-102),
 `tests/test_guide_switches.py` (every v20 switch Health lists, F-111),
 `tests/test_guide_data_files.py` (every data file the code spells, in §9,
@@ -932,12 +937,16 @@ key `load_config` reads, with `Config`'s defaults, F-103 and F-113),
 and v8c's `[league]` keys documented there), `tests/test_v13_degradation.py`
 (v13's ladder caps documented there and in the README),
 `tests/test_ruff_target.py` (ruff's target and `.python-version` equal
-`requires-python`, F-136), `tests/test_pytest_markers.py` (every marker
-registered in `pyproject.toml`, F-132), `tests/test_pulp_filters.py` (the
+`requires-python`, F-136, and ruff selecting the `UP` and `SIM` families,
+F-188 and F-189), `tests/test_pytest_markers.py` (every marker
+registered in `pyproject.toml`, F-132, and the `filterwarnings` rule that
+opens with `error` so a new warning fails its test, F-184), `tests/test_pulp_filters.py` (the
 PuLP warning filters fail when PuLP 4 arrives, F-89),
 `tests/test_v12_mcp.py` (v12's `mcp` dependency floor),
 `tests/test_dependencies.py` (every declared dependency is imported and
-every third-party import declared, F-182) and
+every third-party import declared, F-182), its frontend twin
+`frontend/src/kit/dependencies.test.ts` (`package.json` against the
+frontend's imports both ways, F-183) and
 `tests/test_ci_versions.py` (CI's Python and Node versions each read one
 pinned file, F-150). `tests/test_v7b_driver.py` holds v7b's rule that
 `CONVENTIONS.md` is committed and linked from the ROADMAP. Beside them,
