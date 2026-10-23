@@ -23,10 +23,10 @@ from gaffer.models.dnp_calibrate import fit_dnp_calibrator
 # codebase has always said.
 from gaffer.models.modes import DNP, MODE_COLS, SIXTY_MINUTES, START, SUB, mode_labels  # noqa: F401
 
-LGB_KW = dict(n_estimators=300, learning_rate=0.05, num_leaves=31,
-              verbose=-1, random_state=7)
+LGB_KW = {"n_estimators": 300, "learning_rate": 0.05, "num_leaves": 31,
+          "verbose": -1, "random_state": 7}
 
-ENSEMBLE_KW = dict(subsample=0.8, subsample_freq=1, colsample_bytree=0.8)
+ENSEMBLE_KW = {"subsample": 0.8, "subsample_freq": 1, "colsample_bytree": 0.8}
 """What a *seeded* head turns on so that its seed actually bites.
 
 :data:`LGB_KW` samples neither rows nor columns, and its frames are far below

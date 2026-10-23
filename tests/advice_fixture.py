@@ -156,10 +156,10 @@ def tiny_my(**over) -> MyTeam:
     picks = pd.DataFrame([{"element": c - 100, "code": c,
                            "purchase": int(cost[c]), "now": int(cost[c]),
                            "sell": int(cost[c])} for c in squad])
-    fields = dict(entry_id=1, bank=50, free_transfers=1, current_gw=GW,
-                  picks=picks, chips_used=[],
-                  chips_by_gw={1: "wildcard", 2: "freehit", 3: "bboost",
-                               4: "3xc"})
+    fields = {"entry_id": 1, "bank": 50, "free_transfers": 1, "current_gw": GW,
+              "picks": picks, "chips_used": [],
+              "chips_by_gw": {1: "wildcard", 2: "freehit", 3: "bboost",
+                              4: "3xc"}}
     fields.update(over)
     return MyTeam(**fields)
 
@@ -175,15 +175,15 @@ def tiny_inputs(**over) -> Inputs:
     players = tiny_players()
     ep_by = tiny_ep(players)
     comp = tiny_comp(players)
-    fields = dict(
-        gw=GW, gws=list(GWS), deadline="2026-10-01T17:30:00Z", through=GW - 1,
-        gap_warning=None, players=players, comp=comp, components=comp.copy(),
-        ep_named=tiny_ep_named(ep_by, players), ep_by=ep_by, my=None,
-        league_eo={}, cover={}, cap_cover={}, rival_captains={},
-        rival_names={}, strategy=None, win_probs=[], priors=None,
-        dgw_probs={}, prior_advice=None, price_timing=False, price_fall={},
-        difficulty={(int(t), g): 0.5
-                    for t in players["team_code"].unique() for g in GWS})
+    fields = {
+        "gw": GW, "gws": list(GWS), "deadline": "2026-10-01T17:30:00Z", "through": GW - 1,
+        "gap_warning": None, "players": players, "comp": comp, "components": comp.copy(),
+        "ep_named": tiny_ep_named(ep_by, players), "ep_by": ep_by, "my": None,
+        "league_eo": {}, "cover": {}, "cap_cover": {}, "rival_captains": {},
+        "rival_names": {}, "strategy": None, "win_probs": [], "priors": None,
+        "dgw_probs": {}, "prior_advice": None, "price_timing": False, "price_fall": {},
+        "difficulty": {(int(t), g): 0.5
+                       for t in players["team_code"].unique() for g in GWS}}
     fields.update(over)
     return Inputs(**fields)
 
@@ -191,9 +191,9 @@ def tiny_inputs(**over) -> Inputs:
 def tiny_cfg(**over) -> Config:
     """The knobs the build reads. The sweep and the alternatives are off by
     default: a test that wants either says so, and pays for it."""
-    fields = dict(entry_id=1, league_id=0, horizon=len(GWS), scenarios_n=0,
-                  alt_plan_max_gap=0.0, decision_priors=False,
-                  price_timing=False)
+    fields = {"entry_id": 1, "league_id": 0, "horizon": len(GWS), "scenarios_n": 0,
+              "alt_plan_max_gap": 0.0, "decision_priors": False,
+              "price_timing": False}
     fields.update(over)
     return Config(**fields)
 

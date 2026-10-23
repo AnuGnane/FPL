@@ -159,8 +159,8 @@ def test_zero_lambda_reproduces_v1_solution():
     pool_tilted["ep"] = [{g: tilted[(int(c), g)] for g in gws}
                          for c in pool_tilted["code"]]
 
-    kw = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1,
-              ft_value=1.5, itb_value=0.05, hit_cost=4)
+    kw = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1,
+          "ft_value": 1.5, "itb_value": 0.05, "hit_cost": 4}
     base = solve_plan(pool, _state(ft=1), **kw).gw_plans[0]
     same = solve_plan(pool_tilted, _state(ft=1), **kw).gw_plans[0]
 

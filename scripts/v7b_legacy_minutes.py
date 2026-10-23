@@ -23,8 +23,8 @@ from __future__ import annotations
 import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 
-LGB_KW = dict(n_estimators=300, learning_rate=0.05, num_leaves=31,
-              verbose=-1, random_state=7)
+LGB_KW = {"n_estimators": 300, "learning_rate": 0.05, "num_leaves": 31,
+          "verbose": -1, "random_state": 7}
 
 
 class LegacyMinutesModel:

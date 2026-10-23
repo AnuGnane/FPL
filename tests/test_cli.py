@@ -146,12 +146,12 @@ def test_ui_can_skip_the_browser(monkeypatch):
 def _stub_advice(**kw):
     from gaffer.advise import Advice
 
-    base = dict(gw=2, deadline="2026-08-22T17:30:00Z", buys=[], sells=[],
-                hits=0, xi=[], bench=[],
-                captain={"name": "Salah"}, vice={"name": "Bloke"},
-                captain_options=[], chip_table=[], wildcard_now=None,
-                alternatives=[], threats=[], price_alerts=[],
-                expected_pts=61.5)
+    base = {"gw": 2, "deadline": "2026-08-22T17:30:00Z", "buys": [], "sells": [],
+            "hits": 0, "xi": [], "bench": [],
+            "captain": {"name": "Salah"}, "vice": {"name": "Bloke"},
+            "captain_options": [], "chip_table": [], "wildcard_now": None,
+            "alternatives": [], "threats": [], "price_alerts": [],
+            "expected_pts": 61.5}
     return Advice(**{**base, **kw})
 
 

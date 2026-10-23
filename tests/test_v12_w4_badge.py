@@ -91,5 +91,4 @@ def test_the_route_count_did_not_move(clone):
     from gaffer.web.app import create_app
 
     paths = create_app().openapi()["paths"]
-    assert not [p for p in paths if p.startswith("/api/setpieces")
-                or p.startswith("/api/set-pieces")]
+    assert not [p for p in paths if p.startswith(("/api/setpieces", "/api/set-pieces"))]

@@ -30,8 +30,8 @@ from gaffer.optimize.milp import SolveInput
 
 SENTINEL_WC, SENTINEL_CHIP = 999.0, 998.0
 
-CFG = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-           itb_value=0.05, hit_cost=4)
+CFG = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+       "itb_value": 0.05, "hit_cost": 4}
 
 
 def _priors_covering_everything() -> dict:

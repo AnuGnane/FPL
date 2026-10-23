@@ -18,8 +18,8 @@ import pytest
 from gaffer.optimize.chips import chip_baseline, free_hit_gain
 from gaffer.optimize.milp import GwPlan, Plan, SolveInput, solve_plan
 
-CFG = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-           itb_value=0.05, hit_cost=4)
+CFG = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+       "itb_value": 0.05, "hit_cost": 4}
 GWS = [1, 2]
 
 
@@ -36,8 +36,8 @@ def _pool() -> pd.DataFrame:
 
 
 def _state(**kw) -> SolveInput:
-    base = dict(owned_codes=list(range(1, 16)), bank=150, free_transfers=1,
-                gws=list(GWS))
+    base = {"owned_codes": list(range(1, 16)), "bank": 150, "free_transfers": 1,
+            "gws": list(GWS)}
     return SolveInput(**{**base, **kw})
 
 

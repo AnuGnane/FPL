@@ -100,7 +100,7 @@ def test_the_rail_bites_on_a_gap_a_forward_dependency_and_a_gateless_box(
     assert "F-5: depends on F-5, which is not earlier" in found
     assert "F-5: an unticked box names no trace" in found
     assert any(f.startswith("a box line is not") for f in found)
-    assert not any(f.startswith("F-6") or f.startswith("F-7") for f in found)
+    assert not any(f.startswith(("F-6", "F-7")) for f in found)
 
 
 def test_a_dependency_range_expands_and_a_list_reads_every_id():

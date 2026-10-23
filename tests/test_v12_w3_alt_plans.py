@@ -30,8 +30,8 @@ from gaffer.optimize.milp import (
 )
 
 GWS = [1, 2]
-KW = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-          itb_value=0.05, hit_cost=4)
+KW = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+      "itb_value": 0.05, "hit_cost": 4}
 
 
 def _pool() -> pd.DataFrame:
@@ -57,7 +57,7 @@ the one that needs a hold plan to exist."""
 
 
 def _state(**kw) -> SolveInput:
-    base = dict(owned_codes=list(OWNED), bank=100, free_transfers=2, gws=GWS)
+    base = {"owned_codes": list(OWNED), "bank": 100, "free_transfers": 2, "gws": GWS}
     return SolveInput(**{**base, **kw})
 
 

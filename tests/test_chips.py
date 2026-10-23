@@ -24,15 +24,15 @@ def _pool():
 
 OWNED = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 16, 17, 18]  # legal 15
 
-CFG = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-           itb_value=0.05, hit_cost=4)
+CFG = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+       "itb_value": 0.05, "hit_cost": 4}
 
 
 def test_evaluate_chips_returns_delta_per_chip_gw():
     state = SolveInput(owned_codes=list(OWNED), bank=0,
                        free_transfers=1, gws=[1, 2])
-    cfg = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-               itb_value=0.05, hit_cost=4)
+    cfg = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+           "itb_value": 0.05, "hit_cost": 4}
     table = evaluate_chips(_pool(), state, chips_available=["bboost", "3xc"],
                            **cfg)
     assert {"chip", "gw", "gain"} <= set(table.columns)
@@ -120,8 +120,8 @@ an artefact of the scoring, not of the fixtures."""
 # itb_value=0 drops the terminal in-the-bank term, which a wildcard shifts by
 # a constant that would otherwise pollute the per-week figure; the punitive
 # hit cost keeps the no-chip baseline still (see _out_of_reach_pool).
-FLAT_CFG = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-                itb_value=0.0, hit_cost=1000)
+FLAT_CFG = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+            "itb_value": 0.0, "hit_cost": 1000}
 
 
 def _flat_state():

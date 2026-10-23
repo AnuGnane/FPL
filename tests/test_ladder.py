@@ -354,7 +354,7 @@ def test_two_rungs_share_the_draw_for_a_player_they_both_field(board):
                     - {lp[0].captain, rp[0].captain})
     assert shared, "the two rungs should field players in common"
     code = shared[0]
-    kw = dict(draws=draws, hit_cost=4, n_draws=20)
+    kw = {"draws": draws, "hit_cost": 4, "n_draws": 20}
     left_delta = score_plan(lp, **kw) - score_plan(drop(lp, code, gw), **kw)
     right_delta = score_plan(rp, **kw) - score_plan(drop(rp, code, gw), **kw)
     shared_draw = draws[(code, gw)]
@@ -543,10 +543,10 @@ def _payload_kw(state, **over):
     gathered, the caps and the step context passed in (v17g §2.3b)."""
     from gaffer.ladder import StepContext
 
-    return {**dict(gw=state.gw, gws=state.gws, hit_bar=0.6, seed=11,
-                   sigmas={}, sigma_source="outcome_only", prior_advice=None,
-                   caps=(2, None), cap_source="config", ctx=StepContext(),
-                   n_draws=8), **over}
+    return {"gw": state.gw, "gws": state.gws, "hit_bar": 0.6, "seed": 11,
+            "sigmas": {}, "sigma_source": "outcome_only", "prior_advice": None,
+            "caps": (2, None), "cap_source": "config", "ctx": StepContext(),
+            "n_draws": 8, **over}
 
 
 def test_ladder_payload_solves_off_a_state_it_was_handed(tmp_path, monkeypatch):
@@ -733,7 +733,7 @@ def test_a_pre_v16_state_with_an_unreadable_advice_file_plans_no_chip(
     from gaffer.ladder import step_context_from
 
     state = _saved_state(tmp_path, monkeypatch)
-    empty = dict(price_fall={}, difficulty={})
+    empty = {"price_fall": {}, "difficulty": {}}
     assert step_context_from(None, state, **empty).chip_plan == []
     advice_path(state.gw).parent.mkdir(parents=True, exist_ok=True)
     for body in ("{not json", "[]", '{"headline": "no table"}',
@@ -753,7 +753,7 @@ def test_a_components_frame_it_cannot_read_costs_the_p_play_and_nothing_else(
     state = _saved_state(tmp_path, monkeypatch)
     # ``None`` is the frame the wrapper could not load and has already
     # printed about, so the core says nothing a second time.
-    empty = dict(price_fall={}, difficulty={})
+    empty = {"price_fall": {}, "difficulty": {}}
     assert step_context_from(None, state, **empty).p_play == {}
     assert capsys.readouterr().out == ""
     nameless = pd.DataFrame([{"code": 20, "gw": 1}])

@@ -43,8 +43,8 @@ from gaffer.optimize.milp import SolveInput, solve_plan
 GOLDEN = Path("tests/data/v12_w3_milp_golden.lp")
 
 GWS = [1, 2]
-KW = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-          itb_value=0.05, hit_cost=4, bench_curve=[0.21, 0.06, 0.002])
+KW = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+      "itb_value": 0.05, "hit_cost": 4, "bench_curve": [0.21, 0.06, 0.002]}
 OWNED = [1, 2, 5, 6, 7, 8, 9, 14, 15, 16, 17, 18, 22, 23, 24]
 
 
@@ -67,7 +67,7 @@ def _pool() -> pd.DataFrame:
 
 
 def _state(**kw) -> SolveInput:
-    base = dict(owned_codes=list(OWNED), bank=0, free_transfers=2, gws=GWS)
+    base = {"owned_codes": list(OWNED), "bank": 0, "free_transfers": 2, "gws": GWS}
     return SolveInput(**{**base, **kw})
 
 

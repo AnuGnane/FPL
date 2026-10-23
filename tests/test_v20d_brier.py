@@ -48,7 +48,7 @@ def test_a_fall_and_a_hold_are_scored_and_the_gap_and_missing_days_are_not():
     out = v20d_brier.brier_reading(_log(SYNTHETIC))
     assert out["n"] == 2 and out["drop_rows"] == 4 and out["drop_days"] == 1
     assert out["falls"] == 1 and out["base_rate"] == 0.5
-    # Term: ((0.8 - 1)^2 + (0.4 - 0)^2) / 2 = (0.04 + 0.16) / 2.
+    # Term: ((0.8 - 1)^2 + (0.4 - 0)^2) / 2 = (0.04 + 0.16) / 2.  # noqa: ERA001 — the arithmetic, not code
     assert out["brier_term"] == pytest.approx(0.1)
     assert out["brier_base"] == pytest.approx(0.25)
     assert out["verdict"].startswith("short: 1 drop-days")

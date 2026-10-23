@@ -181,8 +181,8 @@ def test_max_hits_does_not_bind_on_a_wildcard_week():
 
 def test_defaults_leave_the_solve_untouched():
     """The new fields are opt-in: an unconstrained solve must be identical."""
-    kw = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-              itb_value=0.05, hit_cost=4)
+    kw = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+          "itb_value": 0.05, "hit_cost": 4}
     before = solve_plan(_pool(star_ep=9.0), _state(ft=1), **kw)
     after = solve_plan(_pool(star_ep=9.0),
                        SolveInput(owned_codes=list(OWNED), bank=0,
@@ -589,8 +589,8 @@ def test_a_wildcard_week_accrues_no_free_transfer():
 
 # --- v13: max_transfers -------------------------------------------------
 
-KW13 = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-            itb_value=0.05, hit_cost=4)
+KW13 = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+        "itb_value": 0.05, "hit_cost": 4}
 
 
 def _two_star_pool():

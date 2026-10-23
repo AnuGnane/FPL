@@ -17,7 +17,7 @@ def test_sell_price_half_profit_rounded_down():
 
 
 def test_free_transfers_bank_and_cap():
-    # transfers_by_gw: {gw: n_transfers}; chips: {gw: chip_name}
+    # transfers_by_gw: {gw: n_transfers}; chips: {gw: chip_name}  # noqa: ERA001 — the argument shapes, not code
     # GW2 start: 1 FT. No transfers GW2-5 -> banks to 5 by GW6, capped.
     assert compute_free_transfers({}, {}, current_gw=7) == 5
     # used 1 in GW2 -> 1 available GW3

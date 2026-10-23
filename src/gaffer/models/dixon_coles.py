@@ -163,8 +163,7 @@ def _tau_vec(x: np.ndarray, y: np.ndarray, lam: np.ndarray, mu: np.ndarray,
     out = np.where((x == 0) & (y == 0), 1.0 - lam * mu * rho, out)
     out = np.where((x == 0) & (y == 1), 1.0 + lam * rho, out)
     out = np.where((x == 1) & (y == 0), 1.0 + mu * rho, out)
-    out = np.where((x == 1) & (y == 1), 1.0 - rho, out)
-    return out
+    return np.where((x == 1) & (y == 1), 1.0 - rho, out)
 
 
 def _nll(theta, hi, ai, hg, ag, lgh, lga, w, n) -> float:

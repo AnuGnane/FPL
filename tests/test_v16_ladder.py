@@ -107,7 +107,7 @@ def test_no_scored_rung_at_all_chooses_nothing():
 # --- the reasons, in precedence order --------------------------------------
 
 def _ctx(**kw):
-    base = dict(p_play={}, price_fall={}, difficulty={}, team_of={}, chip_plan=[])
+    base = {"p_play": {}, "price_fall": {}, "difficulty": {}, "team_of": {}, "chip_plan": []}
     base.update(kw)
     return StepContext(**base)
 

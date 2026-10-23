@@ -28,8 +28,8 @@ from gaffer.optimize.milp import (
 )
 
 GWS = [1, 2]
-KW = dict(decay=0.85, bench_weight=0.1, vice_weight=0.1, ft_value=1.5,
-          itb_value=0.05, hit_cost=4, bench_curve=list(DEFAULT_BENCH_CURVE))
+KW = {"decay": 0.85, "bench_weight": 0.1, "vice_weight": 0.1, "ft_value": 1.5,
+      "itb_value": 0.05, "hit_cost": 4, "bench_curve": list(DEFAULT_BENCH_CURVE)}
 
 
 def _pool(star_ep: float = 8.0) -> pd.DataFrame:
