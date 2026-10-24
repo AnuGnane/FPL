@@ -404,7 +404,7 @@ def sim(league_id: int | None = None) -> LeagueSimData:
     if _take_fresh(key):
         try:  # noqa: SIM105 — the except keeps BLE001's reason under the rail
             append_sim_history(result, int(gw), run_at)
-        except Exception:  # noqa: BLE001 — never blocks the page
+        except Exception:  # noqa: BLE001, S110 — never blocks the page
             pass
     me = next((e for e in inputs.entries if e.is_me), None)
     my_total = int(me.total) if me else 0

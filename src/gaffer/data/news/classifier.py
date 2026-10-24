@@ -168,7 +168,7 @@ def _store(cache_dir: Path, key: str, row: dict) -> None:
         cache_dir.mkdir(parents=True, exist_ok=True)
         (cache_dir / f"{key}.json").write_text(json.dumps(row),
                                                encoding="utf-8")
-    except Exception:  # noqa: BLE001 — an unwritable cache is not an outage
+    except Exception:  # noqa: BLE001, S110 — an unwritable cache is not an outage
         pass
 
 

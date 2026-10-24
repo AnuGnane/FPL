@@ -52,7 +52,7 @@ def fetch_rival_picks(client: FPLClient, entries: list[int],
     for entry in entries:
         try:
             out[entry] = client.get_entry_picks(entry, gw)["picks"]
-        except Exception:  # noqa: BLE001 — one rival's 404, timeout or odd payload drops that rival; the live and advise callers must not fail on one entry
+        except Exception:  # noqa: BLE001, S112 — one rival's 404, timeout or odd payload drops that rival; the live and advise callers must not fail on one entry
             continue        # rival joined late / endpoint 404 — skip
     return out
 
@@ -96,7 +96,7 @@ def fetch_rival_history(client: FPLClient, entries: list[int], gw: int,
     for entry in entries:
         try:
             current = client.get_entry_history(int(entry)).get("current") or []
-        except Exception:  # noqa: BLE001 — one entry's failed or private history drops that entry; the sigma falls back rather than the solve failing
+        except Exception:  # noqa: BLE001, S112 — one entry's failed or private history drops that entry; the sigma falls back rather than the solve failing
             continue        # entry joined late / history private — skip
         for event in current:
             if int(event["event"]) > int(gw):
@@ -133,7 +133,7 @@ def fetch_rival_picks_history(client: FPLClient, entries: list[int],
                 continue
             try:
                 picks = client.get_entry_picks(key[0], key[1])["picks"]
-            except Exception:  # noqa: BLE001 — a gameweek an entry never played is absent from the result, never fatal (docstring)
+            except Exception:  # noqa: BLE001, S112 — a gameweek an entry never played is absent from the result, never fatal (docstring)
                 continue        # never played / not public — skip
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(picks))

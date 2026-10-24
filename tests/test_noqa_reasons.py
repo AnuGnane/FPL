@@ -36,7 +36,9 @@ ALLOWED = {
 }
 
 BROAD = {"Exception", "BaseException"}
-REASONED = re.compile(r"#\s*noqa: BLE001 — \S")
+# Holiday F-224: a bandit code may share the mark (``BLE001, S110 — why``),
+# as ruff reads one noqa per line; the reason is still asked for.
+REASONED = re.compile(r"#\s*noqa: BLE001(?:,\s*[A-Z]+\d+)* — \S")
 
 
 def _names(node: ast.expr | None) -> set[str]:
@@ -93,10 +95,12 @@ def test_a_bare_mark_is_caught_and_a_reasoned_one_is_not(tmp_path):
         "try:\n    pass\nexcept (ValueError, BaseException):\n    pass\n"
         "try:\n    pass\nexcept Exception:  # noqa: BLE001 — a reason\n    pass\n"
         "try:\n    pass\nexcept Exception:  # noqa: BLE001 — \n    pass\n"
-        "try:\n    pass\nexcept OSError:\n    pass\n",
+        "try:\n    pass\nexcept OSError:\n    pass\n"
+        "try:\n    pass\nexcept Exception:  # noqa: BLE001, S110 — a reason\n    pass\n"
+        "try:\n    pass\nexcept Exception:  # noqa: BLE001, S110\n    pass\n",
         encoding="utf-8",
     )
-    assert _reasonless(sample) == [3, 7, 15]
+    assert _reasonless(sample) == [3, 7, 15, 27]
 
 
 # --- F-78: every code, not BLE001 alone ------------------------------------
