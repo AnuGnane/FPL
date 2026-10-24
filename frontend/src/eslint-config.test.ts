@@ -19,4 +19,14 @@ describe('eslint.config.js', () => {
         'so the warning fails the check: set it to error or remove it',
     ).toEqual([])
   })
+
+  // Holiday F-220: typescript-eslint's shipped `strict` set, spread after
+  // `recommended`, is the recommended set's stricter sibling rather than a
+  // rule invented here, so v18f §2.2's "nothing invented on top" still holds.
+  it('spreads typescript-eslint’s strict set', () => {
+    expect(
+      config.includes('tseslint.configs.strict'),
+      'eslint.config.js no longer names tseslint.configs.strict (holiday F-220)',
+    ).toBe(true)
+  })
 })
