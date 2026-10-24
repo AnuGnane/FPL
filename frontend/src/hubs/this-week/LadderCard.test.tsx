@@ -293,7 +293,7 @@ describe('LadderCard', () => {
   it('marks the chosen rung and lists every step with its share and reason', async () => {
     mount()
     const chosen = (await screen.findByText('free transfers only')).closest('tr')
-    if (!chosen) throw new Error('no chosen')
+    if (!chosen) throw new Error('the free-transfers rung has no row')
     expect(within(chosen).getByText('chosen')).toBeInTheDocument()
     const steps = screen.getByTestId('ladder-steps')
     expect(steps).toHaveTextContent(
