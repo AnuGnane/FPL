@@ -30,44 +30,44 @@ def _load():
 status = _load()
 
 # A Wednesday, so Thursday's advise run is tomorrow and Tuesday's is six days off.
-WED_NOON = datetime(2026, 10, 7, 12, 0)
+WED_NOON = datetime(2026, 10, 7, 12, 0)  # noqa: DTZ001 — naive local wall-clock, as the script reads launchd
 
 
 def test_a_weekly_job_fires_on_its_next_weekday():
     entry = {"Weekday": 4, "Hour": 18, "Minute": 0}
-    assert status.next_calendar_fire([entry], WED_NOON) == datetime(2026, 10, 8, 18, 0)
+    assert status.next_calendar_fire([entry], WED_NOON) == datetime(2026, 10, 8, 18, 0)  # noqa: DTZ001 — naive local wall-clock, as the script reads launchd
 
 
 def test_a_daily_job_still_due_today_fires_today():
     entry = {"Hour": 17, "Minute": 0}
-    assert status.next_calendar_fire([entry], WED_NOON) == datetime(2026, 10, 7, 17, 0)
+    assert status.next_calendar_fire([entry], WED_NOON) == datetime(2026, 10, 7, 17, 0)  # noqa: DTZ001 — naive local wall-clock, as the script reads launchd
 
 
 def test_a_daily_job_already_past_today_fires_tomorrow():
     entry = {"Hour": 6, "Minute": 30}
-    assert status.next_calendar_fire([entry], WED_NOON) == datetime(2026, 10, 8, 6, 30)
+    assert status.next_calendar_fire([entry], WED_NOON) == datetime(2026, 10, 8, 6, 30)  # noqa: DTZ001 — naive local wall-clock, as the script reads launchd
 
 
 def test_the_minute_it_fires_is_not_its_next_fire():
     entry = {"Hour": 12, "Minute": 0}
-    assert status.next_calendar_fire([entry], WED_NOON) == datetime(2026, 10, 8, 12, 0)
+    assert status.next_calendar_fire([entry], WED_NOON) == datetime(2026, 10, 8, 12, 0)  # noqa: DTZ001 — naive local wall-clock, as the script reads launchd
 
 
 def test_an_array_of_slots_takes_the_earliest():
     entries = [{"Weekday": 6, "Hour": 18, "Minute": 30},
                {"Weekday": 0, "Hour": 18, "Minute": 30}]
-    assert status.next_calendar_fire(entries, WED_NOON) == datetime(2026, 10, 10, 18, 30)
+    assert status.next_calendar_fire(entries, WED_NOON) == datetime(2026, 10, 10, 18, 30)  # noqa: DTZ001 — naive local wall-clock, as the script reads launchd
 
 
 def test_weekday_seven_is_sunday_as_launchd_reads_it():
     assert (status.next_calendar_fire([{"Weekday": 7, "Hour": 9, "Minute": 0}], WED_NOON)
             == status.next_calendar_fire([{"Weekday": 0, "Hour": 9, "Minute": 0}], WED_NOON)
-            == datetime(2026, 10, 11, 9, 0))
+            == datetime(2026, 10, 11, 9, 0))  # noqa: DTZ001 — naive local wall-clock, as the script reads launchd
 
 
 def test_a_left_out_minute_is_a_wildcard():
     entry = {"Hour": 12}
-    assert status.next_calendar_fire([entry], WED_NOON) == datetime(2026, 10, 7, 12, 1)
+    assert status.next_calendar_fire([entry], WED_NOON) == datetime(2026, 10, 7, 12, 1)  # noqa: DTZ001 — naive local wall-clock, as the script reads launchd
 
 
 def test_an_impossible_date_is_never():

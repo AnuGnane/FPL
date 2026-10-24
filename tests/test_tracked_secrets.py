@@ -76,7 +76,7 @@ def test_no_tracked_file_carries_a_key_shaped_value():
     found = {}
     for path in _tracked():
         try:
-            with open(_ROOT / path, encoding="utf-8") as f:
+            with (_ROOT / path).open(encoding="utf-8") as f:
                 text = f.read()
         except (UnicodeDecodeError, FileNotFoundError, IsADirectoryError):
             continue  # a binary, or a path deleted in the working tree

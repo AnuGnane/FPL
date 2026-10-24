@@ -70,7 +70,7 @@ def atomic_path(path: Path | str) -> Iterator[Path]:
     tmp = dest.with_name(f"{dest.name}.{os.getpid()}.tmp")
     try:
         yield tmp
-        os.replace(tmp, dest)
+        os.replace(tmp, dest)  # noqa: PTH105 — v9c's rail and the race tests read and patch os.replace
     finally:
         tmp.unlink(missing_ok=True)
 

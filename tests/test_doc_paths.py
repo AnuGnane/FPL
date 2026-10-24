@@ -114,13 +114,13 @@ def test_the_docs_name_the_paths_this_rail_reads():
 
 def test_every_path_the_docs_name_resolves():
     unresolved = {
-        str(doc): missing for doc in DOCS if (missing := _unresolved(doc.read_text(), Path(".")))
+        str(doc): missing for doc in DOCS if (missing := _unresolved(doc.read_text(), Path()))
     }
     assert unresolved == {}
 
 
 def test_every_bare_name_claude_md_writes_resolves():
-    assert _bare_unresolved(RULES.read_text(), Path(".")) == []
+    assert _bare_unresolved(RULES.read_text(), Path()) == []
 
 
 def test_a_text_naming_a_file_the_root_lacks_fails_the_rail(tmp_path):

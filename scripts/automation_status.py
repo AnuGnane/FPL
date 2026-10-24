@@ -90,7 +90,8 @@ def main(argv: list[str]) -> int:
     if len(argv) != 1:
         print("usage: automation_status.py <plist>", file=sys.stderr)
         return 2
-    print(describe(load_plist(Path(argv[0])), datetime.now()))
+    now = datetime.now()  # noqa: DTZ005 — launchd fires on naive local wall-clock (F-5)
+    print(describe(load_plist(Path(argv[0])), now))
     return 0
 
 
