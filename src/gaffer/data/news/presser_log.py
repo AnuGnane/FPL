@@ -91,7 +91,7 @@ def append_presser(rows: pd.DataFrame) -> int:
     merged = pd.concat(frames, ignore_index=True).drop_duplicates(
         subset=["season", "gw", "code", "run_at"], keep="last")
     atomic_save(merged, PRESSER_PATH)
-    return int(len(rows))
+    return len(rows)
 
 
 def load_presser_log() -> pd.DataFrame:

@@ -356,7 +356,7 @@ def score_presser_grades(log: pd.DataFrame, actuals: pd.DataFrame,
     frame = frame[frame["llm_verdict"].notna()]
     if frame.empty:
         return empty
-    banked = int(len(frame))
+    banked = len(frame)
 
     window = pre_deadline(frame, deadlines(events))
     if window.empty:

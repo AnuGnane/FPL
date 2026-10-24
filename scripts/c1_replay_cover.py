@@ -75,7 +75,7 @@ def season_cover(log: pd.DataFrame | None) -> dict:
         missing = [gw for gw in window if gw not in gws]
         covered = len(window) - len(missing)
         out[season] = {
-            "rows": int(len(part)),
+            "rows": len(part),
             "gw_min": min(gws),
             "gw_max": max(gws),
             "covered": covered,

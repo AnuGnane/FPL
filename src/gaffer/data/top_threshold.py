@@ -119,7 +119,7 @@ def append_threshold(rows: pd.DataFrame) -> int:
     merged = (pd.concat(frames, ignore_index=True) if frames
               else rows[THRESHOLD_COLS])
     atomic_save(merged, THRESHOLD_PATH)
-    return int(len(rows))
+    return len(rows)
 
 
 def load_threshold_log() -> pd.DataFrame:

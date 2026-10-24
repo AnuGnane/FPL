@@ -141,9 +141,9 @@ def predicted_ep(gw: int) -> dict:
         return {"rows": 0, "ep_pen_taker": 0.0, "takers": 0}
     comp = pd.read_parquet(path)
     if "ep_pen_taker" not in comp.columns:
-        return {"rows": int(len(comp)), "ep_pen_taker": 0.0, "takers": 0}
+        return {"rows": len(comp), "ep_pen_taker": 0.0, "takers": 0}
     ep = pd.to_numeric(comp["ep_pen_taker"], errors="coerce").fillna(0.0)
-    return {"rows": int(len(comp)),
+    return {"rows": len(comp),
             "ep_pen_taker": round(float(ep.sum()), 3),
             "takers": int((ep.abs() > 0).sum())}
 
@@ -176,13 +176,13 @@ def gw_block(week: pd.DataFrame, gw: int, season: str) -> dict:
     by_first = float(events[share >= 1.0].sum())
     team_games = 0
     if {"opp_code", "kickoff_time"} <= set(week.columns):
-        team_games = int(len(week[["opp_code", "kickoff_time"]]
-                             .drop_duplicates()))
+        team_games = len(week[["opp_code", "kickoff_time"]]
+                         .drop_duplicates())
     pred = predicted_ep(gw)
     return {
         "gw": int(gw),
         "instrument": instrument,
-        "rows": int(len(week)),
+        "rows": len(week),
         "covered_rows": covered,
         "team_games": team_games,
         "component_rows": pred["rows"],

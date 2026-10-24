@@ -223,7 +223,7 @@ def fit_blend_weight(frame: pd.DataFrame,
     odds = sub["p_cs_odds"].to_numpy(dtype="float64")
     model = sub["p_cs_model"].to_numpy(dtype="float64")
     y = sub["cs"].to_numpy(dtype="float64")
-    grid = [round(i * step, 2) for i in range(int(round(1.0 / step)) + 1)]
+    grid = [round(i * step, 2) for i in range(round(1.0 / step) + 1)]
     # Per-row losses, kept whole: the 1-SE band needs the *paired* spread of
     # the difference against the argmin, which a mean-only sweep throws away.
     per_row = []

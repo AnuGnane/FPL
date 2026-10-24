@@ -132,7 +132,7 @@ def append_prices(rows: pd.DataFrame) -> int:
     from gaffer.price_timing import owned_price_falls
 
     owned_price_falls.cache_clear()
-    return int(len(rows))
+    return len(rows)
 
 
 def load_price_log() -> pd.DataFrame:

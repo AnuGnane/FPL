@@ -142,8 +142,8 @@ def _big(young_share: float, old_share: float):
         # the default binds this player's start now, not the loop's last
         spec[code] = lambda d, s=start: ("a", None) if d < s else ("d", 75.0)
         codes.append(code)
-    young = int(round(young_share * 30))
-    old = int(round(old_share * 30))
+    young = round(young_share * 30)
+    old = round(old_share * 30)
     starts = [1 if (c < 130 and c - 100 < young)
               or (c >= 130 and c - 130 < old) else 0 for c in codes]
     results = pd.DataFrame({"gw": 5, "code": codes,

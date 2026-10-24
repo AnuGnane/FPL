@@ -100,7 +100,7 @@ def _frame_cover(frame: pd.DataFrame | None, by_gw: dict,
     stop = max(by_gw.values()) + pd.Timedelta(days=SPAN_TAIL_DAYS)
     dates = dates[(dates >= start) & (dates <= stop)]
     gws = to_gw(dates, by_gw).dropna()
-    return {"rows": int(len(dates)),
+    return {"rows": len(dates),
             "gws": sorted({int(g) for g in gws}),
             "newest": (dates.max().date().isoformat()
                        if len(dates) else None)}

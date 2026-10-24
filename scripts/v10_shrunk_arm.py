@@ -194,8 +194,8 @@ def run_arm(name: str) -> dict:
             float(ev.log_loss(starters["p_start"], starters["started"])), 5),
         "p_start_ll_all": round(
             float(ev.log_loss(heads["p_start"], heads["started"])), 5),
-        "starters_n": int(len(starters)),
-        "rows": int(len(heads)),
+        "starters_n": len(starters),
+        "rows": len(heads),
     }
 
 

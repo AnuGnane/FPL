@@ -108,8 +108,7 @@ select = ["E", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "ERA", "BLE", "RU
 # RUF001, RUF002 and RUF003 (holiday F-217): the en and em dashes, arrows
 # and multiplication signs in strings, docstrings and comments are the house
 # prose CLAUDE.md's writing-style section asks for (157 sites).
-# RUF046 (holiday F-217): its 71 int() casts are F-218's, part 2.
-ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003", "RUF046"]
+ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.lint.per-file-ignores]
 # E402: these tests import a fixture module after setting a path (v18g §1).
@@ -142,7 +141,7 @@ ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003", "R
 "src/gaffer/pipeline.py" = ["UP"]
 "src/gaffer/config.py" = ["UP"]
 "src/gaffer/artifacts.py" = ["UP", "PERF", "FURB", "PYI", "TRY"]
-"src/gaffer/brief.py" = ["UP", "ISC", "Q", "TC"]
+"src/gaffer/brief.py" = ["UP", "ISC", "Q", "TC", "RUF046"]
 "src/gaffer/web/job_kinds.py" = ["UP"]
 # UP (holiday F-188): orchestrator-only files (CLAUDE.md) keep their spelling
 # for good; the orchestrator owns their diffs.
@@ -175,9 +174,10 @@ ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003", "R
 # Mac; milp.py and the two tests are orchestrator-only (CLAUDE.md) for good.
 # C4, PIE, RET and ERA (holiday F-201) likewise: ladder.py's sites wait for
 # F-202 on the Mac, and the three orchestrator-only files keep theirs for good.
-"src/gaffer/ladder.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "ISC", "Q", "TC"]
+"src/gaffer/ladder.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "ISC", "Q", "TC",
+                          "RUF046"]
 "src/gaffer/optimize/milp.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "RUF100", "PERF",
-                                 "FURB", "PYI", "N", "ISC", "Q", "TC", "TRY"]
+                                 "FURB", "PYI", "N", "ISC", "Q", "TC", "TRY", "RUF046"]
 "tests/test_advise.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "RUF100"]
 "tests/test_v10_degradation.py" = ["SIM", "C4", "PIE", "RET", "ERA", "ISC", "Q", "TC"]
 # SIM (holiday F-189): features/ sits on the golden path (F-18, F-81, F-92),
@@ -252,6 +252,14 @@ ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003", "R
 # spelling for good. All but the two below are added to their lines above.
 "src/gaffer/models/train.py" = ["RUF005"]
 "tests/test_v8e_degradation.py" = ["RUF005"]
+# RUF046 (holiday F-218): brief.py and ladder.py are on the Mac's golden path
+# (HOLIDAY.md Merging rule 2), so their casts wait for F-219's needs-mac PR;
+# set_pieces.py, milp.py, chips.py and chip_policy.py are orchestrator-only
+# (CLAUDE.md) and keep their spelling for good. brief.py, ladder.py and
+# milp.py are added to their lines above.
+"src/gaffer/set_pieces.py" = ["RUF046"]
+"src/gaffer/optimize/chips.py" = ["RUF046"]
+"src/gaffer/optimize/chip_policy.py" = ["RUF046"]
 
 [tool.ruff.lint.flake8-bugbear]
 # B008: typer's declarative defaults are the CLI's idiom (v18g §2.1).

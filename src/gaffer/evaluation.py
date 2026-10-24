@@ -490,7 +490,7 @@ def score_news_shadow(shadow: pd.DataFrame,
                for s in sides if s != "presser"}
         out.update({f"mae_{s}": round(float(frame[f"_ae_{s}"].mean()), 3)
                     for s in sides if f"_ae_{s}" in frame.columns})
-        out["rows"] = int(len(frame))
+        out["rows"] = len(frame)
         # The presser side scores its own rows and reports its own count. The
         # two numbers are read together or not at all: a Brier over one row and
         # a Brier over two hundred are not the same evidence, and the shared
@@ -502,7 +502,7 @@ def score_news_shadow(shadow: pd.DataFrame,
             if not scored.empty:
                 out["brier_presser"] = round(
                     float(scored["_brier_presser"].mean()), 4)
-                out["rows_presser"] = int(len(scored))
+                out["rows_presser"] = len(scored)
         return out
 
     by_gw = []
@@ -520,7 +520,7 @@ def score_news_shadow(shadow: pd.DataFrame,
         by_gw.append(row)
 
     return {"run_at": run_at(), "git_sha": git_sha(),
-            "rows": int(len(joined)), "overall": _summary(joined),
+            "rows": len(joined), "overall": _summary(joined),
             "by_gw": by_gw}
 
 
@@ -992,7 +992,7 @@ def evaluate_calibration(season: str | None = None) -> dict:
         # its **own** n out of ``calibration_head``, and that is the number the
         # card prints beside each cell. Reading this one as a per-head count
         # would overstate every head in the row.
-        rows.append({"gw": gw, "n": int(len(joined)), "heads": heads})
+        rows.append({"gw": gw, "n": len(joined), "heads": heads})
 
     cumulative = {}
     for name in CALIBRATION_HEADS:

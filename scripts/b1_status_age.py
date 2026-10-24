@@ -170,9 +170,9 @@ def graded_rows(log: pd.DataFrame, actuals: pd.DataFrame,
 def _cell(part: pd.DataFrame) -> dict:
     flags = pd.to_numeric(part["p_play_flags"], errors="coerce").dropna()
     share = float(part["started"].mean())
-    return {"n": int(len(part)), "_share": share,
+    return {"n": len(part), "_share": share,
             "start_share": round(share, 4),
-            "n_flags": int(len(flags)),
+            "n_flags": len(flags),
             "mean_p_play_flags": (round(float(flags.mean()), 4)
                                   if len(flags) else None)}
 
@@ -229,7 +229,7 @@ def status_age_reading(log: pd.DataFrame | None, actuals: pd.DataFrame | None,
         for cell in cells.values():
             cell.pop("_share")
         name = status or "(none)"
-        statuses[name] = {"n": int(len(part)), "buckets": cells,
+        statuses[name] = {"n": len(part), "buckets": cells,
                           "rule": rule}
         if rule is not None:
             readable.append(name)
@@ -244,7 +244,7 @@ def status_age_reading(log: pd.DataFrame | None, actuals: pd.DataFrame | None,
     else:
         verdict = (f"insufficient: no status has two uncensored age buckets "
                    f"of {MIN_ROWS} rows")
-    return {"n": int(len(rows)), "season": season,
+    return {"n": len(rows), "season": season,
             "gws": sorted(int(g) for g in rows["gw"].unique()),
             "statuses": statuses, "verdict": verdict, "reason": None}
 

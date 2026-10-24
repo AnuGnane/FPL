@@ -181,7 +181,7 @@ def append_field_eo(rows: pd.DataFrame) -> int:
     merged = (pd.concat(frames, ignore_index=True) if frames
               else rows[FIELD_EO_COLS])
     atomic_save(merged, FIELD_EO_PATH)
-    return int(len(rows))
+    return len(rows)
 
 
 def load_field_eo(*, season: str | None = None) -> pd.DataFrame:

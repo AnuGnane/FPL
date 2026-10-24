@@ -222,7 +222,7 @@ def head_reading(df: pd.DataFrame | None,
 
     main, branch = _side(e_main, hold), _side(e_branch, hold)
     verdict, reason = _verdict(main, branch)
-    return {"n": int(len(hold)),
+    return {"n": len(hold),
             "n_train": int(((train["minutes"] > 0)
                             & (train["season_idx"] >= floor)
                             & train["bonus"].notna()).sum()),

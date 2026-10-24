@@ -430,7 +430,7 @@ def map_understat_players(us_players: pd.DataFrame, fpl_players: pd.DataFrame,
         if code is not None:
             take(r.understat_id, "override", code)
 
-    rows, report = [], {"rows": int(len(us)), "exact": 0, "cross_club": 0,
+    rows, report = [], {"rows": len(us), "exact": 0, "cross_club": 0,
                         "token_subset": 0, "surname_club": 0, "override": 0,
                         "unmatched": 0}
     unmatched_names = []

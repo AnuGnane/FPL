@@ -172,13 +172,13 @@ def fit_sigmas(rows: pd.DataFrame, ep_edges: list[float] | None = None,
     marginal_obs: dict[str, int] = {}
     for i, part in frame.groupby("ep_bin"):
         marginal[str(int(i))] = round(float(part["resid"].std(ddof=0)), 4)
-        marginal_obs[str(int(i))] = int(len(part))
+        marginal_obs[str(int(i))] = len(part)
 
     sigma: dict[str, float] = {}
     obs: dict[str, int] = {}
     for (i, j), part in frame.groupby(["ep_bin", "x_bin"]):
         key = f"{int(i)}_{int(j)}"
-        obs[key] = int(len(part))
+        obs[key] = len(part)
         if len(part) >= int(min_obs):
             sigma[key] = round(float(part["resid"].std(ddof=0)), 4)
 
@@ -190,7 +190,7 @@ def fit_sigmas(rows: pd.DataFrame, ep_edges: list[float] | None = None,
         "ep_marginal": marginal,
         "ep_marginal_obs": marginal_obs,
         "global": round(float(frame["resid"].std(ddof=0)), 4),
-        "rows": int(len(frame)),
+        "rows": len(frame),
         "min_cell_obs": int(min_obs),
     }
 
@@ -289,7 +289,7 @@ def fit_estimation_sigmas(rows: pd.DataFrame,
     marginal_obs: dict[str, int] = {}
     for i, part in frame.groupby("ep_bin"):
         value = round(float(part["sigma_est"].mean()), 4)
-        marginal_obs[str(int(i))] = int(len(part))
+        marginal_obs[str(int(i))] = len(part)
         if value > 0.0:
             marginal[str(int(i))] = value
         else:
@@ -299,7 +299,7 @@ def fit_estimation_sigmas(rows: pd.DataFrame,
     obs: dict[str, int] = {}
     for (i, j), part in frame.groupby(["ep_bin", "x_bin"]):
         key = f"{int(i)}_{int(j)}"
-        obs[key] = int(len(part))
+        obs[key] = len(part)
         if len(part) < int(min_obs):
             continue
         value = round(float(part["sigma_est"].mean()), 4)
@@ -316,7 +316,7 @@ def fit_estimation_sigmas(rows: pd.DataFrame,
         "ep_marginal": marginal,
         "ep_marginal_obs": marginal_obs,
         "global": round(float(frame["sigma_est"].mean()), 4),
-        "rows": int(len(frame)),
+        "rows": len(frame),
         "min_cell_obs": int(min_obs),
         "dropped_zero_cells": int(dropped),
     }
