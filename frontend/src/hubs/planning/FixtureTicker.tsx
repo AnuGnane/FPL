@@ -7,7 +7,7 @@ import {
 import type { TickerData } from '../../types'
 
 export default function FixtureTicker(
-  { weeks, oddsKeyPresent }: { weeks: number; oddsKeyPresent?: boolean },
+  { weeks, oddsKeyPresent }: { weeks: number; oddsKeyPresent?: boolean | undefined },
 ) {
   // Keyed by the window, so the eight-week table and the six-week one on the
   // What-If tab are two entries and neither can answer for the other; the

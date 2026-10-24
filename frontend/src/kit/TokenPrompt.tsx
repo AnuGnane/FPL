@@ -25,7 +25,7 @@ export interface TokenPromptProps {
   /** Fired after the token is stored, so the caller can make the write
    *  again. Optional: a panel with no handle on the write it just lost still
    *  gets the field, and the manager clicks the control again. */
-  onRetry?: () => void
+  onRetry?: (() => void) | undefined
 }
 
 /**

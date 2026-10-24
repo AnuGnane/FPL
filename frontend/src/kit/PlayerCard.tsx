@@ -62,7 +62,7 @@ export interface PlayerCardProps {
    *  Null or absent draws no tint. `fieldClass` then only names the class in
    *  the title — never a colour, because a colour would be a verdict. */
   lensEo?: number | null
-  onSelect?: (code: number) => void
+  onSelect?: ((code: number) => void) | undefined
 }
 
 /** The bundled plain shirt, inline.

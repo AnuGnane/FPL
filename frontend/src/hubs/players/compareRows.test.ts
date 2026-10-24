@@ -59,7 +59,7 @@ const MATRIX: FixtureMatrixData = {
 describe('the grouped chart rows', () => {
   it('gives every label a column per player, summed over the horizon', () => {
     const rows = compareRows([row(1, 'Salah'), row(2, 'Saka')], BODY)
-    expect(rows.map((r) => r.label)).toEqual(['Goals', 'Cards', 'Bonus'])
+    expect(rows.map((r) => r['label'])).toEqual(['Goals', 'Cards', 'Bonus'])
     // Both of Salah's fixtures, added: the chart is the horizon, not the week.
     expect(rows[0]['1']).toBeCloseTo(4.0)
     expect(rows[0]['2']).toBeCloseTo(1.1)
@@ -67,7 +67,7 @@ describe('the grouped chart rows', () => {
 
   it('gives a player with no such term a zero rather than a hole', () => {
     const rows = compareRows([row(1, 'Salah'), row(2, 'Saka')], BODY)
-    const cards = rows.find((r) => r.label === 'Cards')!
+    const cards = rows.find((r) => r['label'] === 'Cards')!
     expect(cards['2']).toBe(0)
   })
 
@@ -82,7 +82,7 @@ describe('the grouped chart rows', () => {
 
   it('keeps a negative term negative', () => {
     const rows = compareRows([row(1, 'Salah')], BODY)
-    expect(rows.find((r) => r.label === 'Cards')!['1']).toBeCloseTo(-0.3)
+    expect(rows.find((r) => r['label'] === 'Cards')!['1']).toBeCloseTo(-0.3)
   })
 
   it('has no rows at all when the breakdown has not landed', () => {

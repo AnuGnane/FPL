@@ -32,10 +32,10 @@ export default function HoldoutSection(
         </p>
         <StratifiedTableView
           columns={[
-            ['Model (all)', current.stratified.all ?? {}],
-            ['Model (starters)', current.stratified.starters ?? {}],
-            ['Last-5 mean', current.baselines.last5 ?? {}],
-            ['Last-38 mean', current.baselines.last38_ppg ?? {}],
+            ['Model (all)', current.stratified['all'] ?? {}],
+            ['Model (starters)', current.stratified['starters'] ?? {}],
+            ['Last-5 mean', current.baselines['last5'] ?? {}],
+            ['Last-38 mean', current.baselines['last38_ppg'] ?? {}],
           ]}
         />
       </Card>

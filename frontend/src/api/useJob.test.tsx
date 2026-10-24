@@ -60,7 +60,7 @@ class FakeEventSource {
   /** What the browser does on a dropped connection it intends to retry. */
   fail(readyState: number) {
     this.readyState = readyState
-    for (const fn of this.listeners.error ?? []) fn(new Event('error'))
+    for (const fn of this.listeners['error'] ?? []) fn(new Event('error'))
   }
 
   close() { this.closed = true; this.readyState = 2 }

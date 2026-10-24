@@ -20,7 +20,7 @@ function PlayerPicker(
     /** Id of a note explaining this input. Screen readers reach the "Must
      *  sell is not Ban" sentence from the field it is about, rather than
      *  meeting it as loose text after four pickers. */
-    describedBy?: string
+    describedBy?: string | undefined
   },
 ) {
   const [query, setQuery] = useState('')

@@ -216,11 +216,11 @@ export default function ExplainModal(
                   <p className="text-text-muted">
                     <span className="label">Set pieces</span>{' '}
                     penalties <span className="tn">
-                      {data.set_pieces.penalties ?? '–'}
+                      {data.set_pieces['penalties'] ?? '–'}
                     </span>, free kicks <span className="tn">
-                      {data.set_pieces.free_kicks ?? '–'}
+                      {data.set_pieces['free_kicks'] ?? '–'}
                     </span>, corners <span className="tn">
-                      {data.set_pieces.corners ?? '–'}
+                      {data.set_pieces['corners'] ?? '–'}
                     </span>
                     {/* v12 W4 §5.4. The three numbers above are FPL's unless the
                         user's data/set_pieces.toml named him, and a reader who

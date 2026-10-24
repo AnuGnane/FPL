@@ -5,9 +5,9 @@ import { CHIP_CODES, LABELS } from './chips'
 
 describe('chip lookups', () => {
   it('labels every solver chip name and the one chip pair', () => {
-    expect(LABELS.wildcard).toBe('Wildcard')
-    expect(LABELS.bboost).toBe('Bench Boost')
-    expect(LABELS.freehit).toBe('Free Hit')
+    expect(LABELS['wildcard']).toBe('Wildcard')
+    expect(LABELS['bboost']).toBe('Bench Boost')
+    expect(LABELS['freehit']).toBe('Free Hit')
     expect(LABELS['3xc']).toBe('Triple Captain')
     expect(LABELS['wildcard+bboost']).toBe('Wildcard + Bench Boost')
   })
@@ -23,7 +23,7 @@ describe('chip lookups', () => {
   it('leaves a name it does not know unmapped rather than none', () => {
     // The comment's rule: an unknown row must not re-solve as 'none'.
     expect(CHIP_CODES['wildcard+bboost']).toBeUndefined()
-    expect(CHIP_CODES.unknown).toBeUndefined()
-    expect(LABELS.unknown).toBeUndefined()
+    expect(CHIP_CODES['unknown']).toBeUndefined()
+    expect(LABELS['unknown']).toBeUndefined()
   })
 })

@@ -6,7 +6,7 @@ export interface PlayerNameProps {
   code: number
   name: string
   /** When the row's payload carries it, the identity dot rides along. */
-  pos?: string | null
+  pos?: string | null | undefined
 }
 
 /**

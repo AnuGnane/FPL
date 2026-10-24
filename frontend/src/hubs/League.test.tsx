@@ -293,7 +293,8 @@ describe('the simulated win-probability card', () => {
 describe('the Leagues tab, the URL league and the two writes', () => {
   function show(at?: string) {
     render(
-      <MemoryRouter {...routerFuture} initialEntries={at === undefined ? undefined : [at]}>
+      <MemoryRouter {...routerFuture}
+                    {...(at === undefined ? {} : { initialEntries: [at] })}>
         <League />
         <ToastOutlet />
       </MemoryRouter>,

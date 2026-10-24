@@ -341,8 +341,8 @@ describe('PlannerBoard', () => {
     render(<PlannerBoard gw={5} />)
     await pickPlan('Plan B')
     // 300 is not in Plan A's week; 2 is (the fixture's sell).
-    expect(screen.getByTestId('board-in-300').dataset.differs).toBe('true')
-    expect(screen.getByTestId('board-out-2').dataset.differs).toBe('false')
+    expect(screen.getByTestId('board-in-300').dataset['differs']).toBe('true')
+    expect(screen.getByTestId('board-out-2').dataset['differs']).toBe('false')
   })
 
   it('offers no handoff from an alternative', async () => {
