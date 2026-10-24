@@ -182,10 +182,10 @@ the v18f `set-state-in-effect` override), and
 `frontend/src/tsconfig.test.ts` keeps seven strictness flags on beyond
 `strict` (F-212's five, F-213's `exactOptionalPropertyTypes` and
 `noPropertyAccessFromIndexSignature`).
-F-215 to F-218 turned five more ruff families on, asserted the same way
-and the golden modules' sites ignored until the Mac's F-219: `PTH`, `DTZ`
-and `LOG` (F-215), `TRY` (F-216) and `RUF` (F-217, with F-218 striking
-`RUF046` from `ignore`). Four more codes are ruled out with their reasons
+F-215 to F-217 turned five more ruff families on and F-218 struck
+`RUF046` from `ignore`, asserted the same way and the golden modules'
+sites ignored until the Mac's F-219: `PTH`, `DTZ` and `LOG` (F-215),
+`TRY` (F-216) and `RUF` (F-217). Four more codes are ruled out with their reasons
 in `pyproject.toml`: `TRY003`, because a message built in the `raise` call
 is the repo's idiom and a class per message would be 276 classes that say
 nothing new, and `RUF001` to `RUF003`, because the dashes, arrows and
@@ -626,8 +626,9 @@ button; text equivalents on the tone-only chips; `--color-scrim` and
 `--color-on-accent` replacing the two Tailwind palette colours; `Badge` and
 `react-tooltip` gone; two hand types replaced by the generated names; the
 non-null assertions narrowed; lazy routes so the first paint carries no
-recharts; ESLint (flat config, the recommended sets, typescript-eslint's
-shipped `strict` beside them since holiday F-220) and `npm run check`; `useJob`'s test on fake
+recharts; ESLint (flat config, the recommended sets, with
+typescript-eslint's shipped `strict` beside them since holiday F-220) and
+`npm run check`; `useJob`'s test on fake
 timers (13.7 s → 31 ms; suite 14.5 s → 8.4 s) with a spy that fails on an
 `act` warning. Ruling: `eslint-plugin-react-hooks` v7's compiler rule
 `set-state-in-effect` is `warn` with its reason in the config — eight
