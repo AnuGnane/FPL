@@ -34,7 +34,7 @@ def test_lan_binds_every_interface_and_prints_the_lan_url(no_server,
     monkeypatch.setattr("gaffer.web.lan.lan_ip", lambda: "192.168.1.42")
     result = runner.invoke(cli.app, ["ui", "--lan", "--no-open-browser"])
     assert result.exit_code == 0
-    assert no_server["host"] == "0.0.0.0"
+    assert no_server["host"] == "0.0.0.0"  # noqa: S104 — the --lan bind under test
     assert "http://192.168.1.42:8927" in result.stdout
 
 

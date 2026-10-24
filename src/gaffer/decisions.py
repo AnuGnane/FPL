@@ -89,14 +89,14 @@ def _deadline_for(gw: int) -> str | None:
         deadline = artifacts.load_advice(gw).get("deadline")
         if deadline:
             return str(deadline)
-    except Exception:  # noqa: BLE001 — an absent or malformed advice payload falls through to the events snapshot
+    except Exception:  # noqa: BLE001, S110 — an absent or malformed advice payload falls through to the events snapshot
         pass
     try:
         events = artifacts.load_snapshot("live/events.parquet")
         row = events[events["gw"] == int(gw)]
         if not row.empty:
             return str(row["deadline_time"].iloc[0])
-    except Exception:  # noqa: BLE001 — an absent or drifted events snapshot leaves the deadline None, which callers handle
+    except Exception:  # noqa: BLE001, S110 — an absent or drifted events snapshot leaves the deadline None, which callers handle
         pass
     return None
 

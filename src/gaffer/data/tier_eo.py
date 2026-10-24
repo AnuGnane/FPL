@@ -50,7 +50,8 @@ def sample_slots(n: int, seed: int, max_page: int = MAX_PAGE,
     """
     universe = [(page, slot) for page in range(1, max_page + 1)
                 for slot in range(page_size)]
-    return sorted(random.Random(seed).sample(universe, min(n, len(universe))))
+    return sorted(random.Random(seed).sample(  # noqa: S311 — a seeded sample draw, not a secret
+        universe, min(n, len(universe))))
 
 
 def fetch_tier_entries(client, slots: list[tuple[int, int]]) -> list[int]:
@@ -146,7 +147,7 @@ def fetch_sample_picks(client, gw: int, sample: int = TIER_SAMPLE,
         try:
             out.append(list(client.get_entry_picks(int(entry),
                                                    int(gw))["picks"]))
-        except Exception:  # noqa: BLE001 — a private or missing entry is one fewer sample, never a raise (docstring)
+        except Exception:  # noqa: BLE001, S112 — a private or missing entry is one fewer sample, never a raise (docstring)
             continue        # private or missing entry — one fewer sample
     return out
 

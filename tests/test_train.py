@@ -104,7 +104,7 @@ def _player_frame(seasons=(0, 1), gws=8, players=24) -> pd.DataFrame:
     Values are deterministic-random: the models only have to *fit*, not be
     any good, but each classifier needs both classes present.
     """
-    rng = random.Random(11)
+    rng = random.Random(11)  # noqa: S311 — a simulation draw, not a secret
     rows = []
     for season in seasons:
         for gw in range(1, gws + 1):
@@ -140,7 +140,7 @@ def _player_frame(seasons=(0, 1), gws=8, players=24) -> pd.DataFrame:
 
 
 def _team_frame(seasons=(0, 1), gws=8, teams=6) -> pd.DataFrame:
-    rng = random.Random(23)
+    rng = random.Random(23)  # noqa: S311 — a simulation draw, not a secret
     rows = []
     for season in seasons:
         for gw in range(1, gws + 1):
