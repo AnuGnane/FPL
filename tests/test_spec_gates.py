@@ -53,7 +53,7 @@ def test_the_frozen_specs_are_the_ones_without_a_gate():
 
 
 def test_the_rail_bites_on_a_spec_dated_today_with_no_gate(tmp_path):
-    today = date.today().isoformat()
+    today = date.today().isoformat()  # noqa: DTZ011 — any date past CONVENTIONS_FROM bites; the zone cannot move it
     (tmp_path / f"{today}-v99-design.md").write_text("# v99\n\nNo verdict rule.\n")
     (tmp_path / f"{today}-v98-design.md").write_text("# v98\n\n## Gates\n")
     (tmp_path / "2026-08-29-v7a-design.md").write_text("# v7a\n")

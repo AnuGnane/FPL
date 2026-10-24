@@ -322,7 +322,7 @@ def _load_plist(path: Path) -> dict:
 
 
 def job_health(plist_dir: Path = PLIST_DIR, *,
-               installed_dir: Path | None = None, log_root: Path = Path("."),
+               installed_dir: Path | None = None, log_root: Path = Path(),
                now=None) -> list[JobHealth]:
     """Every installed plist, its schedule and whether it has run lately.
 

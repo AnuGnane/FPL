@@ -15,6 +15,7 @@ nobody, and the column would read exactly like a working one.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pandas as pd
 
@@ -27,7 +28,7 @@ SAMPLE = "src/gaffer/assets/bootstrap_sample.json"
 
 
 def _raw() -> dict:
-    with open(SAMPLE) as fh:
+    with Path(SAMPLE).open() as fh:
         return json.load(fh)
 
 

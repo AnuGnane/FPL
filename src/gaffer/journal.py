@@ -239,7 +239,7 @@ def load_journal(client, entry_id: int) -> dict:
         tmp = JOURNAL_PATH.with_name(f"{JOURNAL_PATH.name}.{os.getpid()}.tmp")
         try:
             tmp.write_text(json.dumps(out, indent=1))
-            os.replace(tmp, JOURNAL_PATH)
+            os.replace(tmp, JOURNAL_PATH)  # noqa: PTH105 — test_journal patches os.replace here
         finally:
             tmp.unlink(missing_ok=True)
     except OSError as exc:
