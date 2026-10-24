@@ -70,6 +70,17 @@ describe('WhatIfSim', () => {
     expect(screen.getByText(/pick an event/i)).toBeInTheDocument()
   })
 
+  // Holiday F-220: the toggle rebuilds the pins without the key rather than
+  // deleting it, and the object's keys are strings, so a second click must
+  // still find the numeric code it pinned.
+  it('unpins an event clicked a second time', async () => {
+    render(<WhatIfSim squad={SQUAD} rivals={[{ entry: 2, name: 'Hive' }]} />)
+    await userEvent.click(screen.getByTestId('pin-100-blank'))
+    await screen.findByTestId('delta-p-win')
+    await userEvent.click(screen.getByTestId('pin-100-blank'))
+    expect(await screen.findByText(/pick an event/i)).toBeInTheDocument()
+  })
+
   it('reports a code the server could not resolve', async () => {
     apiPost.mockResolvedValue({ ...RESULT, unknown_codes: [999] })
     render(<WhatIfSim squad={SQUAD} rivals={[{ entry: 2, name: 'Hive' }]} />)
