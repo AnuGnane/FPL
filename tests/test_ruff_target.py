@@ -134,3 +134,14 @@ def test_ruff_selects_the_pathlib_datetimez_and_logging_families():
     data = tomllib.loads(Path("pyproject.toml").read_text())
     select = data["tool"]["ruff"]["lint"]["select"]
     assert {"PTH", "DTZ", "LOG"} <= set(select)
+
+
+def test_ruff_selects_the_tryceratops_family_without_the_vanilla_message_rule():
+    """Holiday F-216 turned ``TRY`` on, in F-205's shape: a ``return`` that
+    belongs in the ``try``'s ``else`` or a ``ValueError`` on a type check
+    cannot come back silently. ``TRY003`` stays ignored: a message built in
+    the ``raise`` call is the repo's idiom (276 sites)."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    lint = data["tool"]["ruff"]["lint"]
+    assert "TRY" in lint["select"]
+    assert "TRY003" in lint["ignore"]
