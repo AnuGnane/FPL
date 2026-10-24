@@ -124,3 +124,13 @@ def test_ruff_selects_the_string_concatenation_quotes_and_type_checking_families
     data = tomllib.loads(Path("pyproject.toml").read_text())
     select = data["tool"]["ruff"]["lint"]["select"]
     assert {"ISC", "Q", "TC"} <= set(select)
+
+
+def test_ruff_selects_the_pathlib_datetimez_and_logging_families():
+    """Holiday F-215 turned ``PTH``, ``DTZ`` and ``LOG`` on, in F-188's shape:
+    an ``os`` path call beside ``pathlib``, a naive ``datetime`` with no reason
+    given or a ``log.exception`` outside an ``except`` cannot come back
+    silently."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    select = data["tool"]["ruff"]["lint"]["select"]
+    assert {"PTH", "DTZ", "LOG"} <= set(select)
