@@ -966,7 +966,7 @@ inner loop, as CI does on `replay_pair.sh` and `shots.sh` (F-175, after
 F-168 and F-173). No rule in `eslint.config.js` is set to `warn`, since
 `--max-warnings 0` fails the check on one
 (`frontend/src/eslint-config.test.ts`, holiday F-211), and the same file
-holds typescript-eslint's shipped `strict` set on (F-220). Seven strictness
+asserts typescript-eslint's shipped `strict` set is on (F-220). Seven strictness
 flags beyond `strict` stay on in `tsconfig.json`
 (`frontend/src/tsconfig.test.ts`, F-212 and F-213).
 
