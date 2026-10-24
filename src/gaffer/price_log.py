@@ -156,7 +156,8 @@ def bank_prices(players: pd.DataFrame | None,
         n = append_prices(rows)
         print(f"Banked {n} price readings for "
               f"{rows['snap_date'].iloc[0]} to {PRICE_LOG_PATH}.")
-        return n
     except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
         print(f"price log not written: {exc}")
         return None
+    else:
+        return n

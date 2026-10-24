@@ -723,10 +723,11 @@ def _notify(title: str, body: str) -> bool:
                   f"{done.returncode}"
                   + (f" — {detail}" if detail else ""))
             return False
-        return True
     except Exception as exc:  # noqa: BLE001 — any notifier failure (osascript missing, timed out, refused); never a reason to fail a job
         print(f"notification not shown: {exc}")
         return False
+    else:
+        return True
 
 
 # --- the runner -------------------------------------------------------

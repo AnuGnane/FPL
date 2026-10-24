@@ -83,7 +83,8 @@ filterwarnings = [
 # since holiday F-188, SIM since F-189, C4, PIE, RET and ERA since F-201, BLE
 # and RUF100 since F-204, PT since F-205, PERF, FURB and PYI since F-206, PLW,
 # PLC and PLE since F-207, N since F-208, ISC, Q and TC since F-209, PTH, DTZ
-# and LOG since F-215); the ignores below each carry a reason.
+# and LOG since F-215, TRY since F-216); the ignores below each carry a
+# reason.
 line-length = 100
 target-version = "py312"
 # F-167: scripts/archive/ is the retired code v18g moved out of the way; it is
@@ -93,7 +94,7 @@ extend-exclude = ["scripts/archive"]
 [tool.ruff.lint]
 select = ["E", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "ERA", "BLE", "RUF100",
           "PT", "PERF", "FURB", "PYI", "PLW", "PLC", "PLE",
-          "N", "ISC", "Q", "TC", "PTH", "DTZ", "LOG"]
+          "N", "ISC", "Q", "TC", "PTH", "DTZ", "LOG", "TRY"]
 # B905: zip(strict=) on 174 sites is noise, not safety — every zip here is
 # over parallel columns the caller built (v18g §1).
 # PT018 (holiday F-205): a composite ``assert a and b`` reads as one sentence
@@ -101,7 +102,10 @@ select = ["E", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "ERA", "BLE", "RU
 # PLC0415 (holiday F-207): an import inside a function is the repo's idiom;
 # heavy imports sit in the functions that need them so ``gaffer --help`` and
 # the web app start without the model stack (1865 sites).
-ignore = ["B905", "PT018", "PLC0415"]
+# TRY003 (holiday F-216): a message built in the ``raise`` call is the repo's
+# idiom; an exception class per message would be 276 classes that say
+# nothing new.
+ignore = ["B905", "PT018", "PLC0415", "TRY003"]
 
 [tool.ruff.lint.per-file-ignores]
 # E402: these tests import a fixture module after setting a path (v18g §1).
@@ -133,7 +137,7 @@ ignore = ["B905", "PT018", "PLC0415"]
 # (HOLIDAY.md Merging rule 2), so their sites wait for F-190's needs-mac PR.
 "src/gaffer/pipeline.py" = ["UP"]
 "src/gaffer/config.py" = ["UP"]
-"src/gaffer/artifacts.py" = ["UP", "PERF", "FURB", "PYI"]
+"src/gaffer/artifacts.py" = ["UP", "PERF", "FURB", "PYI", "TRY"]
 "src/gaffer/brief.py" = ["UP", "ISC", "Q", "TC"]
 "src/gaffer/web/job_kinds.py" = ["UP"]
 # UP (holiday F-188): orchestrator-only files (CLAUDE.md) keep their spelling
@@ -168,7 +172,7 @@ ignore = ["B905", "PT018", "PLC0415"]
 # F-202 on the Mac, and the three orchestrator-only files keep theirs for good.
 "src/gaffer/ladder.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "ISC", "Q", "TC"]
 "src/gaffer/optimize/milp.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "RUF100", "PERF",
-                                 "FURB", "PYI", "N", "ISC", "Q", "TC"]
+                                 "FURB", "PYI", "N", "ISC", "Q", "TC", "TRY"]
 "tests/test_advise.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "RUF100"]
 "tests/test_v10_degradation.py" = ["SIM", "C4", "PIE", "RET", "ERA", "ISC", "Q", "TC"]
 # SIM (holiday F-189): features/ sits on the golden path (F-18, F-81, F-92),
@@ -230,6 +234,10 @@ ignore = ["B905", "PT018", "PLC0415"]
 # these but the two below are added to their lines above.
 "src/gaffer/data/live.py" = ["ISC", "Q", "TC"]
 "src/gaffer/web/routers/advice.py" = ["ISC", "Q", "TC"]
+# TRY (holiday F-216): artifacts.py is on the Mac's golden path (HOLIDAY.md
+# Merging rule 2), so its four sites wait for F-219's needs-mac PR; milp.py is
+# orchestrator-only (CLAUDE.md) and keeps its spelling for good. Both are
+# added to their lines above.
 
 [tool.ruff.lint.flake8-bugbear]
 # B008: typer's declarative defaults are the CLI's idiom (v18g §2.1).

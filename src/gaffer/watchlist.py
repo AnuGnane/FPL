@@ -86,10 +86,11 @@ def load_watchlist() -> dict[int, dict]:
                               "set_at": set_at,
                               "starred_at": str(row.get("starred_at")
                                                 or set_at)}
-        return out
     except Exception as exc:  # noqa: BLE001 — a bad store is an empty one
         print(f"watchlist store unreadable, ignoring it: {exc}")
         return {}
+    else:
+        return out
 
 
 def save_watchlist(rows: dict[int, dict]) -> Path:

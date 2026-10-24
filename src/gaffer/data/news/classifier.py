@@ -149,7 +149,7 @@ def _extract_rows(stdout: str) -> list[dict]:
     if isinstance(payload, dict):
         payload = json.loads(payload["result"])
     if not isinstance(payload, list):
-        raise ValueError("classifier output was not a JSON array")
+        raise TypeError("classifier output was not a JSON array")
     return payload
 
 
@@ -190,14 +190,15 @@ def _run_chunk(cmd: str, chunk: list[NewsText], timeout: int) -> list[dict]:
                                   timeout=timeout, check=True)
             parsed = _extract_rows(proc.stdout)
             if not parsed:
-                raise ValueError("classifier returned no rows")
-            return parsed
+                raise ValueError("classifier returned no rows")  # noqa: TRY301 — the handler below retries once, then skips the chunk
         except Exception as exc:  # noqa: BLE001 — the classifier never blocks
             if attempt == 0:
                 time.sleep(RETRY_BACKOFF_S)
                 continue
             print("news: presser classifier unavailable — "
                   f"{len(chunk)} texts unclassified ({exc})")
+        else:
+            return parsed
     return []
 
 

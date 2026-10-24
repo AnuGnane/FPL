@@ -176,7 +176,8 @@ def run_snapshot(cfg=None) -> int | None:
         n = append_snapshot(rows)
         print(f"Snapshot: {n} availability rows for gw{gw} at {day}.")
         _bank_threshold(cfg, client, events)
-        return n
     except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
         print(f"availability snapshot not written: {exc}")
         return None
+    else:
+        return n

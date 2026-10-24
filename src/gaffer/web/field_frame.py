@@ -83,7 +83,7 @@ def _elements_by_code() -> dict[int, int]:
         try:
             players = store.load("live/players.parquet")
             if "element" not in players.columns:
-                raise KeyError("players snapshot has no element column")
+                raise KeyError("players snapshot has no element column")  # noqa: TRY301 — the handler below prints it and returns _FAILED, never memoised
             pairs = players[["code", "element"]].dropna()
             return {int(c): int(e)
                     for c, e in zip(pairs["code"], pairs["element"])}
@@ -115,7 +115,7 @@ def _players_by_element() -> dict[int, dict]:
         try:
             players = store.load("live/players.parquet")
             if "element" not in players.columns:
-                raise KeyError("players snapshot has no element column")
+                raise KeyError("players snapshot has no element column")  # noqa: TRY301 — the handler below prints it and returns _FAILED, never memoised
             named = "name" in players.columns
             cols = ["code", "element"] + (["name"] if named else [])
             pairs = players[cols].dropna(subset=["code", "element"])
@@ -126,10 +126,11 @@ def _players_by_element() -> dict[int, dict]:
                     "code": int(row.code),
                     "name": (None if name is None or name != name
                              else str(name))}
-            return out
         except Exception as exc:  # noqa: BLE001 — a decoration is never fatal
             print(f"field_frame: player snapshot unreadable ({exc})")
             return identity._FAILED
+        else:
+            return out
 
     value = identity._memo(_BY_ELEMENT_SLOT,
                            identity._file_key("live/players.parquet"), build)
@@ -317,7 +318,8 @@ def with_field_frame(payload: dict, gw: int) -> dict:
         # it is noise.
         if modal is not None:
             frame["most_captained"] = modal
-        return {**payload, "captain_field": frame}
     except Exception as exc:  # noqa: BLE001 — a decoration never 500s a page
         print(f"field_frame: framing skipped ({exc})")
         return payload
+    else:
+        return {**payload, "captain_field": frame}

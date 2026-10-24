@@ -178,7 +178,8 @@ def bank_threshold(client, events: pd.DataFrame, season: str,
         n = append_threshold(threshold_rows(reading, gw, season, day))
         print(f"Top-10k threshold: {reading['total']} points at rank "
               f"{reading['rank_sort']} for gw{gw} at {day}.")
-        return n
     except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
         print(f"top-10k threshold not banked: {exc}")
         return None
+    else:
+        return n

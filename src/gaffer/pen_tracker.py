@@ -283,9 +283,10 @@ def track_pens(season: str | None = None) -> dict:
                 "penalties counted from pens_missed only — Understat npxg is "
                 "not on disk for this season, so converted spot kicks are "
                 "invisible and every count here is a floor")
-        return report
     except Exception as exc:  # noqa: BLE001 — a standing report never blocks
         report["notes"].append(f"pen tracker degraded: {exc}")
+        return report
+    else:
         return report
 
 

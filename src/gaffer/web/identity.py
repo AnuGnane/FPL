@@ -217,7 +217,7 @@ def _player_teams() -> dict[int, int]:
         try:
             players = store.load("live/players.parquet")
             if "team_code" not in players.columns:
-                raise KeyError("players snapshot has no team_code column")
+                raise KeyError("players snapshot has no team_code column")  # noqa: TRY301 — the handler below prints it and returns _FAILED, never memoised
             pairs = players[["code", "team_code"]].dropna()
             return {int(c): int(t)
                     for c, t in zip(pairs["code"], pairs["team_code"])}
@@ -253,7 +253,7 @@ def _fixture_by_team(gw: int, code_of: dict[int, int],
         out: dict[int, dict] = {}
         try:
             if not store.exists("live/fixtures_all.parquet"):
-                raise FileNotFoundError("data/live/fixtures_all.parquet")
+                raise FileNotFoundError("data/live/fixtures_all.parquet")  # noqa: TRY301 — the handler below prints it and returns _FAILED, never memoised
             fixtures = store.load("live/fixtures_all.parquet")
             week = fixtures[(fixtures["gw"] == int(gw))
                             & (~fixtures["finished"].astype(bool))]
