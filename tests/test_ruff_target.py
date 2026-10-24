@@ -145,3 +145,16 @@ def test_ruff_selects_the_tryceratops_family_without_the_vanilla_message_rule():
     lint = data["tool"]["ruff"]["lint"]
     assert "TRY" in lint["select"]
     assert "TRY003" in lint["ignore"]
+
+
+def test_ruff_selects_the_ruff_family_without_the_unicode_prose_rules():
+    """Holiday F-217 turned ``RUF`` on, in F-205's shape: a list built by
+    ``+`` on a literal, a mutable class attribute without ``ClassVar`` or an
+    unescaped ``pytest.raises(match=)`` cannot come back silently.
+    ``RUF001`` to ``RUF003`` stay ignored: the dashes, arrows and
+    multiplication signs they flag are the house prose ``CLAUDE.md`` asks
+    for."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    lint = data["tool"]["ruff"]["lint"]
+    assert "RUF" in lint["select"]
+    assert {"RUF001", "RUF002", "RUF003"} <= set(lint["ignore"])
