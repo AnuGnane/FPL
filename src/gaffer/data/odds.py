@@ -51,7 +51,6 @@ class OddsClient:
                     self.raw_dir.mkdir(parents=True, exist_ok=True)
                     (self.raw_dir / f"{snapshot}-{ts}.json").write_text(
                         json.dumps(data))
-                return data
             except (httpx.HTTPStatusError, httpx.TransportError) as exc:
                 # Client errors (except rate limiting) will not fix themselves:
                 # fail fast rather than burning the retry budget on backoff.
@@ -62,6 +61,8 @@ class OddsClient:
                 last_exc = exc
                 if attempt < self.retries - 1:
                     time.sleep(self.backoff ** attempt if self.backoff else 0)
+            else:
+                return data
         raise last_exc
 
     def get_epl_odds(self) -> list | None:

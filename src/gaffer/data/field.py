@@ -559,7 +559,8 @@ def run_field_scrape(cfg=None, gw: int | None = None, *, force: bool = False,
         rows = append_field_eo(field_eo_rows(table, gw, season, day))
         print(f"Field scrape: {len(picks)} entries{' (re-banked)' if force else ''}"
               f", {rows} EO rows for gw{gw} at {day}.")
-        return rows
     except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
         print(f"field scrape not written: {exc}")
         return None
+    else:
+        return rows

@@ -913,9 +913,10 @@ def price_lanes(cfg, inputs, mine: dict, counterfactuals: dict,
         for lane, cf in wanted.items():
             run = simulate(_with(picks_from_squad(cf, element_of)), **kwargs)
             out[lane] = round((base.p_win - run.p_win) * 100.0, PWIN_DP)
-        return out, None
     except Exception as exc:  # noqa: BLE001 — the second currency is optional
         return {}, f"title odds not priced: {exc}"
+    else:
+        return out, None
 
 
 def price_lanes_for_gw(cfg, client, gw: int, mine: dict,
@@ -1060,7 +1061,6 @@ class _LedgerLock:
                 os.write(fd, str(os.getpid()).encode())
                 os.close(fd)
                 self.held = True
-                return self
             except FileExistsError:
                 try:
                     age = time.time() - self.path.stat().st_mtime
@@ -1074,6 +1074,8 @@ class _LedgerLock:
                 time.sleep(0.05)
             except OSError:
                 return self              # unwritable directory: not our job
+            else:
+                return self
 
     def __exit__(self, *exc):
         if self.held:
@@ -1336,7 +1338,8 @@ def run_review(cfg=None, gw: int | None = None, *, client=None) -> list[int]:
             append_ledger(row)
             print(format_review(row))
             reviewed.append(target)
-        return reviewed
     except Exception as exc:  # noqa: BLE001 — a scheduled job never blocks
         print(f"review not written: {exc}")
         return []
+    else:
+        return reviewed

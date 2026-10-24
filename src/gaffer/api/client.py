@@ -49,7 +49,6 @@ class FPLClient:
                 data = resp.json()
                 if snapshot:
                     self._dump(snapshot, data)
-                return data
             except (httpx.HTTPStatusError, httpx.TransportError) as exc:
                 # Client errors (except rate limiting) will not fix themselves:
                 # fail fast rather than burning the retry budget on backoff.
@@ -60,6 +59,8 @@ class FPLClient:
                 last_exc = exc
                 if attempt < self.retries - 1:
                     time.sleep(self.backoff ** attempt if self.backoff else 0)
+            else:
+                return data
         raise last_exc
 
     def _dumps(self, kind: str) -> list[Path]:
