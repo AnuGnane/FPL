@@ -158,11 +158,11 @@ def with_team_model(comp: pd.DataFrame, rows: pd.DataFrame,
     """
     tg = club_fixtures(rows.reset_index(drop=True))
     tp = team_model.predict(tg)
-    tp["opp_code"] = tg["opp_code"].values
+    tp["opp_code"] = tg["opp_code"].to_numpy()
     tp = tp.rename(columns={"code": "team_code"})
     cols = list(comp.columns)
     out = comp.drop(columns=["p_cs", "e_gc"])
-    out["opp_code"] = rows["opp_code"].values
+    out["opp_code"] = rows["opp_code"].to_numpy()
     out = out.merge(tp, on=["team_code", "season_idx", "gw", "opp_code"],
                     how="left")
     out["p_cs"] = out["p_cs"].fillna(DEFAULT_P_CS)

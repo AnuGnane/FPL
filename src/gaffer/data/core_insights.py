@@ -524,10 +524,11 @@ def fixture_rows(fixtures_csv: str, season: str, season_idx: int,
     for side, other, is_home in ((home, away, True), (away, home, False)):
         parts.append(pd.DataFrame({
             "season": str(season), "season_idx": int(season_idx),
-            "gw": int(gw), "tournament": tournament.values,
-            "match_id": match_id.values, "kickoff": kickoff.values,
-            "team_code": side.values, "opponent_code": other.values,
-            "is_home": bool(is_home), "finished": finished.values}))
+            "gw": int(gw), "tournament": tournament.array,
+            "match_id": match_id.array,
+            "kickoff": kickoff.dt.tz_convert(None).to_numpy(),
+            "team_code": side.to_numpy(), "opponent_code": other.to_numpy(),
+            "is_home": bool(is_home), "finished": finished.array}))
     out = pd.concat(parts, ignore_index=True)
     out = out[out["team_code"].notna() & out["kickoff"].notna()]
     if out.empty:
@@ -559,9 +560,9 @@ def elo_rows(fixtures_csv: str, season: str, season_idx: int,
                               ("away_team", "away_team_elo")):
         parts.append(pd.DataFrame({
             "season": str(season), "season_idx": int(season_idx),
-            "gw": int(gw), "kickoff": kickoff.values,
-            "team_code": pd.to_numeric(df[team_col], errors="coerce").values,
-            "elo": pd.to_numeric(df[elo_col], errors="coerce").values}))
+            "gw": int(gw), "kickoff": kickoff.dt.tz_convert(None).to_numpy(),
+            "team_code": pd.to_numeric(df[team_col], errors="coerce").to_numpy(),
+            "elo": pd.to_numeric(df[elo_col], errors="coerce").to_numpy()}))
     out = pd.concat(parts, ignore_index=True)
     out = out[out["team_code"].notna() & out["elo"].notna()
               & out["kickoff"].notna()]
