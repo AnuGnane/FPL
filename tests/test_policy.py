@@ -187,7 +187,7 @@ def test_a_gated_swap_appears_in_the_coherent_plan():
     state = _owned_state(pool)
     out_code = state.owned_codes[-1]
     in_code = next(int(c) for c in pool["code"]
-               if c not in state.owned_codes)
+                   if c not in state.owned_codes)
     d = Decision(buys=[in_code], sells=[out_code], captain=in_code)
     plan = coherent_plan(pool, state, d, **GOLDEN_KW)
     assert in_code in plan.gw_plans[0].buys
@@ -200,7 +200,7 @@ def test_a_buy_with_no_gated_sell_gets_a_sell_chosen_by_the_solver():
     pool = golden_pool()
     state = _owned_state(pool)
     in_code = next(int(c) for c in pool["code"]
-               if c not in state.owned_codes)
+                   if c not in state.owned_codes)
     d = Decision(buys=[in_code], sells=[], captain=in_code)
     plan = coherent_plan(pool, state, d, **GOLDEN_KW)
     first = plan.gw_plans[0]

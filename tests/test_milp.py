@@ -266,7 +266,7 @@ def test_fixed_moves_can_force_a_paired_swap():
     state = _owned_state(pool)
     out_code = state.owned_codes[-1]
     in_code = next(int(c) for c in pool["code"]
-               if c not in state.owned_codes)
+                   if c not in state.owned_codes)
     plan = solve_plan(pool, state, **GOLDEN_KW,
                       fixed_moves=FixedMoves(buys=[in_code],
                                              sells=[out_code]))
