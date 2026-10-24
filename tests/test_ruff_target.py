@@ -178,3 +178,14 @@ def test_ruff_selects_the_fifteen_families_that_cost_nothing_today():
     fifteen = {"YTT", "T10", "EXE", "ASYNC", "FLY", "RSE", "ICN", "NPY", "PGH",
                "SLOT", "TID", "INT", "FA", "G", "A"}
     assert fifteen <= set(select)
+
+
+def test_ruff_selects_the_pandas_family_without_the_scalar_accessor_rule():
+    """Holiday F-223 turned ``PD`` on, in F-217's shape: a ``.values`` where
+    ``.to_numpy()`` says what comes back, or a ``nunique() == 1`` with no reason
+    given, cannot come back silently. ``PD008`` stays ignored: ``.at`` is
+    pandas' own scalar accessor and the faster one."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    lint = data["tool"]["ruff"]["lint"]
+    assert "PD" in lint["select"]
+    assert "PD008" in lint["ignore"]
