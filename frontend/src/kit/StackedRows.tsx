@@ -20,7 +20,7 @@ export interface StackedPair {
   label: string
   value: ReactNode
   /** Tabular figures and the numeric voice, as a right-aligned column is. */
-  numeric?: boolean
+  numeric?: boolean | undefined
 }
 
 export interface StackedRow {

@@ -15,7 +15,7 @@ interface DigestCardProps {
   note?: string | null
   /** The panel to render. Omitted, the card fetches its own as it always has;
    *  given (even as null) it renders that and makes no request. */
-  panel?: DigestPanel | null
+  panel?: DigestPanel | null | undefined
 }
 
 /**

@@ -7,12 +7,16 @@ import { describe, expect, it } from 'vitest'
 // Holiday F-212: `tsc` is the first line of `npm run check`, and these five
 // flags were turned on when they cost four `override` keywords between them;
 // each stays on or this fails, so none is dropped silently.
+// F-213 added the last two, at 44 sites of explicit `undefined` and dotted
+// index-signature reads between them.
 const FLAGS = [
   'noUnusedLocals',
   'noUnusedParameters',
   'noFallthroughCasesInSwitch',
   'noImplicitReturns',
   'noImplicitOverride',
+  'exactOptionalPropertyTypes',
+  'noPropertyAccessFromIndexSignature',
 ] as const
 
 const tsconfig = JSON.parse(

@@ -94,7 +94,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = token
     ? { ...(init?.headers ?? {}), 'X-Gaffer-Token': token }
     : init?.headers
-  const response = await fetch(path, { ...init, headers })
+  // Holiday F-213: no `headers` key at all when there are none, since
+  // `exactOptionalPropertyTypes` refuses an explicit `undefined` there.
+  const response = await fetch(
+    path, headers === undefined ? init : { ...init, headers })
   const body = await response.json().catch(() => null)
   if (!response.ok) {
     throw new ApiError(response.status, body?.detail ?? body)

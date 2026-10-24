@@ -26,7 +26,7 @@ export default function BenchmarkSection(
   return (
     <Card title={`Benchmark — ${benchmark.test_season}`} className="mb-4">
       <StratifiedTableView
-        columns={[['Ours', benchmark.stratified.all ?? {}], ...references]}
+        columns={[['Ours', benchmark.stratified['all'] ?? {}], ...references]}
       />
       <p className="mt-3 text-text-muted">{benchmark.caveat}</p>
     </Card>

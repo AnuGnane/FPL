@@ -16,7 +16,7 @@ const FIXTURE_WEEKS = 3
  *  Penalties are a goal most times they are taken; corners are a chance of an
  *  assist. Second choice is half of first, because a deputy takes them only
  *  when the first choice is off the pitch. */
-const DUTY_WEIGHT: Record<string, number> = {
+const DUTY_WEIGHT = {
   penalties: 1.0, freeKicks: 0.6, corners: 0.4,
 }
 

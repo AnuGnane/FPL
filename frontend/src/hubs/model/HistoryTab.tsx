@@ -20,7 +20,7 @@ function priceRows(prices: HistoryData['prices']): Array<Record<string, number>>
       byGw.set(point.gw, row)
     }
   }
-  return [...byGw.values()].sort((a, b) => a.gw - b.gw)
+  return [...byGw.values()].sort((a, b) => a['gw'] - b['gw'])
 }
 
 /**

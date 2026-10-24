@@ -41,7 +41,7 @@ function open(onClose = vi.fn(), onSaved?: (panel: unknown) => void) {
   render(
     <MemoryRouter {...routerFuture}>
       <PinDialog code={100} name="Salah" onClose={onClose}
-                 onSaved={onSaved} />
+                 {...(onSaved === undefined ? {} : { onSaved })} />
     </MemoryRouter>,
   )
   return onClose

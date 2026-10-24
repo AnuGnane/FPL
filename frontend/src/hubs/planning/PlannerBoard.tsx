@@ -41,7 +41,7 @@ function moverTitle(move: PlanMove, mover: MoverRow): string {
 function MoveRow(
   { move, side, mover, differs = false }: { move: PlanMove
                                             side: 'in' | 'out'
-                                            mover?: MoverRow
+                                            mover?: MoverRow | undefined
                                             /** This plan makes this move and
                                              *  Plan A does not (v12 W3 §4.3).
                                              *  Always false on Plan A. */

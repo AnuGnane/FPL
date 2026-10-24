@@ -21,7 +21,7 @@ import type { ReactNode } from 'react'
  * class is the same either way, so the pixels do not move.
  */
 export interface CardProps {
-  title?: string
+  title?: string | undefined
   /** v19d §2.1: the anchor the context strip jumps to. On the `<section>`
    *  itself, so the heading the reader lands on is the one that names it. */
   id?: string

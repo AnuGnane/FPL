@@ -12,7 +12,7 @@ export interface BarProps {
   /** Grey unless the magnitude is a direction relative to something. */
   tone?: BarTone
   /** A mark at this fraction of the ceiling — the chip threshold. */
-  mark?: number
+  mark?: number | undefined
   /** Track width in px, or the full width of the parent. */
   width?: number | 'full'
   /** Prefix for the data-testids: `<testId>-fill`, `<testId>-mark`. */

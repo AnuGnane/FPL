@@ -9,7 +9,7 @@ export type ThSort = 'ascending' | 'descending' | 'none'
 export interface ThProps {
   children?: ReactNode
   /** Right-aligned, as `thClass` draws a numeric column. */
-  numeric?: boolean
+  numeric?: boolean | undefined
   sort?: ThSort
   /** Appended after `thClass`, exactly as the hand-written headers did. */
   className?: string

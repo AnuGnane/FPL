@@ -105,7 +105,7 @@ describe('Model hub', () => {
     render(<MemoryRouter {...routerFuture}><Model /></MemoryRouter>)
     await screen.findByText('quality panel')
     expect(asked('/api/quality')).toBe(1)
-    await act(async () => { jobs.evaluate?.() })
+    await act(async () => { jobs['evaluate']?.() })
     expect(asked('/api/quality')).toBe(2)
   })
 
@@ -153,7 +153,7 @@ describe('Model hub', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Health' }))
     await screen.findByText('health panel')
     expect(asked('/api/health')).toBe(1)
-    await act(async () => { jobs.snapshot?.() })
+    await act(async () => { jobs['snapshot']?.() })
     expect(asked('/api/health')).toBe(2)
   })
 
@@ -169,7 +169,7 @@ describe('Model hub', () => {
     render(<Probe />)
     await screen.findByText('probe panel')
     expect(asked('/api/journal')).toBe(1)
-    await act(async () => { jobs.review?.() })
+    await act(async () => { jobs['review']?.() })
     expect(asked('/api/journal')).toBe(2)
   })
 })

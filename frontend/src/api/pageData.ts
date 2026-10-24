@@ -17,7 +17,7 @@ interface Entry {
   /** Set once resolved. `undefined` means "not held"; `null` is a 204. */
   body?: unknown
   /** The request in flight, so a second caller joins rather than starts. */
-  promise?: Promise<unknown>
+  promise?: Promise<unknown> | undefined
   /** Mounted readers, told to re-request when the URL is invalidated. */
   subscribers: Set<() => void>
 }
