@@ -160,7 +160,7 @@ def head_reading(tg: pd.DataFrame | None) -> dict:
         }
         failed = [k for k, ok in rows.items() if not ok]
         verdict = "pass" if not failed else "fail: " + ", ".join(failed)
-    return {"n": int(len(frame)), "n_extreme": n_extreme,
+    return {"n": len(frame), "n_extreme": n_extreme,
             "clip_bit": int(bit.sum()),
             "folds": int(frame["_fold"].nunique()),
             "off": _rounded(off), "on": _rounded(on), "verdict": verdict,

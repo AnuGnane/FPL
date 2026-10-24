@@ -49,4 +49,4 @@ def run_data_refresh() -> dict:
     # to learn the same thing. Never raises; see the writer's docstring.
     write_chip_scenarios(fixtures,
                          dict(zip(teams["team_id"], teams["code"])))
-    return {"rows": int(len(frame))}
+    return {"rows": len(frame)}

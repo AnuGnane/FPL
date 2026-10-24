@@ -15,7 +15,7 @@ def _freq(rows) -> pd.DataFrame:
     """Rows as (kind, code, gw, label, frequency); count is derived."""
     return pd.DataFrame(
         [{"kind": k, "code": c, "gw": g, "label": lab,
-          "count": int(round(f * 100)), "frequency": f}
+          "count": round(f * 100), "frequency": f}
          for k, c, g, lab, f in rows],
         columns=["kind", "code", "gw", "label", "count", "frequency"])
 

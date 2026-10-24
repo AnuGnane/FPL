@@ -174,7 +174,7 @@ def _error(frame: pd.DataFrame) -> dict:
     """
     zeros = frame[pd.to_numeric(frame["total_points"],
                                 errors="coerce").fillna(0.0) <= 0.0]
-    n = int(len(zeros))
+    n = len(zeros)
     if n == 0:
         return {"n": 0, "rmse": 0.0, "mae": 0.0, "mean_ep": 0.0}
     err = (pd.to_numeric(zeros["ep"], errors="coerce").fillna(0.0)

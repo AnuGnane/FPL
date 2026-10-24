@@ -182,7 +182,7 @@ def density_reading(df: pd.DataFrame | None,
                    hold, mask)
     verdict, reason = _verdict(control, branch)
     return {
-        "n": int(len(hold)), "n_train": int(len(train)),
+        "n": len(hold), "n_train": len(train),
         "n_congested": int(mask.sum()),
         "holdout_slots": CALIBRATION_HOLDOUT_GWS,
         "control_cols": control_cols, "branch_cols": branch_cols,

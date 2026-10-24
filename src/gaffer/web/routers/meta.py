@@ -563,12 +563,12 @@ def team_model_health() -> TeamModelHealth | None:
             weight = pd.to_numeric(fixtures["odds_weight"], errors="coerce")
             zero = int((weight.isna() | (weight == 0)).sum())
         else:
-            zero = int(len(fixtures))
+            zero = len(fixtures)
         return TeamModelHealth(
             gw=int(fixtures["gw"].max()),
             min_e_gc_model=round(float(e_gc.min()), 3),
             max_p_cs_model=round(float(p_cs.max()), 3),
-            fixtures=int(len(fixtures)), zero_odds_fixtures=zero)
+            fixtures=len(fixtures), zero_odds_fixtures=zero)
     except Exception:  # noqa: BLE001 — a diagnostic never takes the page down
         return None
 

@@ -177,7 +177,7 @@ def pplay_reading(df: pd.DataFrame | None,
     step_ll = None if step is None else _log_loss(step, y)
     verdict, reason = _verdict(raw_ll, step_ll, bins)
     return {
-        "n": int(len(hold)), "n_train": int(len(train)),
+        "n": len(hold), "n_train": len(train),
         "holdout_slots": CALIBRATION_HOLDOUT_GWS, "oof_folds": folds,
         "bins": [{**b, "raw": _r(b["raw"]), "step": _r(b["step"]),
                   "observed": _r(b["observed"])} for b in bins],

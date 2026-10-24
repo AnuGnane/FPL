@@ -239,7 +239,7 @@ def run_reading(payload: dict, logged: dict[int, list[dict]] | None,
         reasons.append(f"no price log at {store.DATA_DIR / PRICE_LOG_PATH}")
     elif day is not None:
         that_day = frame[frame["snap_date"] == day]
-        out["rows_that_day"] = int(len(that_day))
+        out["rows_that_day"] = len(that_day)
         drops = that_day[that_day["pct"].notna() & (that_day["pct"] < 0)]
         if "calibrating" in drops.columns:
             drops = drops[~drops["calibrating"].fillna(False).astype(bool)]

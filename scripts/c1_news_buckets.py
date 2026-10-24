@@ -71,7 +71,7 @@ def _r(v: float) -> float | None:
 
 def _sides(rows: pd.DataFrame) -> dict:
     """n, both Briers and both minutes MAEs over ``rows``."""
-    n = int(len(rows))
+    n = len(rows)
     if n == 0:
         return {"n": 0, "brier_news": None, "brier_flags": None,
                 "mae_news": None, "mae_flags": None}
@@ -166,7 +166,7 @@ def buckets_reading(shadow: pd.DataFrame | None,
         for part in (block, block["disagree"]):
             part.pop("_brier_news", None)
             part.pop("_brier_flags", None)
-    return {"n": int(len(rows)), "season": season, "buckets": buckets,
+    return {"n": len(rows), "season": season, "buckets": buckets,
             "verdict": verdict, "reason": None}
 
 

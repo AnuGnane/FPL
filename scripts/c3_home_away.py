@@ -202,7 +202,7 @@ def home_away_reading(df: pd.DataFrame | None,
     main = _side(main_model.predict(hold), hold)
     branch = _side(branch_model.predict(hold), hold)
     verdict, reason = _verdict(main, branch)
-    return {"n": int(len(hold)),
+    return {"n": len(hold),
             "n_train": int((train["minutes"] > 0).sum()),
             "holdout_slots": slots,
             "cols_main": len(main_model.cols_),

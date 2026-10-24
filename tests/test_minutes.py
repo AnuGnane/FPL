@@ -176,7 +176,7 @@ def test_saved_model_round_trips_identical_predictions(tmp_path, monkeypatch):
     m = _fitted(df, _COLS)
     before = m.predict(df[df.gw > 15])
 
-    persistence.save_model(m, "minutes", meta={"rows": int(len(df))})
+    persistence.save_model(m, "minutes", meta={"rows": len(df)})
     assert persistence.model_exists("minutes")
     after = persistence.load_model("minutes").predict(df[df.gw > 15])
 

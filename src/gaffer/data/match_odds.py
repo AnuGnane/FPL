@@ -289,7 +289,7 @@ def join_to_fixtures(parsed: pd.DataFrame, fixtures: pd.DataFrame,
         on=["home_code", "away_code", "_date"], how="left",
         suffixes=("", "_fx"))
     ok = merged["gw"].notna()
-    report = {"rows": int(len(left)), "matched": int(ok.sum()),
+    report = {"rows": len(left), "matched": int(ok.sum()),
               "unmatched": int((~ok).sum())}
     out = merged[ok].copy()
     out["season_idx"] = out["season_idx"].astype(int)

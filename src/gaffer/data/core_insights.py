@@ -639,7 +639,7 @@ def season_table_stats(season: str) -> dict[str, dict]:
                     latest = str(stamps.max().date())
             elif "gw" in frame.columns:
                 latest = f"GW{int(pd.to_numeric(frame['gw']).max())}"
-        out[table] = {"rows": int(len(frame)), "latest": latest}
+        out[table] = {"rows": len(frame), "latest": latest}
     return out
 
 
@@ -719,7 +719,7 @@ def download_core_insights(seasons: list[str],
             frame = (pd.concat(kept, ignore_index=True)[cols] if kept
                      else pd.DataFrame(columns=cols))
             atomic_save(frame, ci_path(season, table))
-            written[table] = int(len(frame))
+            written[table] = len(frame)
         print(f"core-insights: {season} — "
               + ", ".join(f"{n} {t}" for t, n in written.items()))
         out[season] = written

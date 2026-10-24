@@ -96,7 +96,7 @@ def fit_curves(spells: pd.DataFrame,
         "generated_at": datetime.now(UTC).isoformat(
             timespec="seconds"),
         "horizon": int(horizon),
-        "spells": int(len(spells)),
+        "spells": len(spells),
         "curves": curves,
         "pooled": _cdf(spells["days_out"], horizon),
     }

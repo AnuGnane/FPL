@@ -73,7 +73,7 @@ def brier_reading(log: pd.DataFrame | None) -> dict:
     if "calibrating" in drops.columns:
         drops = drops[~drops["calibrating"].fillna(False).astype(bool)]
     drops = drops.copy()
-    drop_rows = int(len(drops))
+    drop_rows = len(drops)
     drops["next_day"] = drops["snap_date"].map(_next_day)
     later = frame[["snap_date", "code", "now_cost"]].rename(
         columns={"snap_date": "next_day", "now_cost": "next_cost"})
@@ -94,7 +94,7 @@ def brier_reading(log: pd.DataFrame | None) -> dict:
         verdict = "term worse than base rate: ruling to the user"
     else:
         verdict = "term no worse than base rate: default stands"
-    return {"n": int(len(rows)), "drop_rows": drop_rows,
+    return {"n": len(rows), "drop_rows": drop_rows,
             "drop_days": drop_days, "falls": int(fell.sum()),
             "brier_term": round(brier_term, 4),
             "brier_base": round(brier_base, 4),

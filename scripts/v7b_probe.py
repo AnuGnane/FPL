@@ -67,7 +67,7 @@ def xmins_summary(comp: pd.DataFrame) -> dict:
     xm = pd.Series(list(xmins_by_player_gw(comp).values()), dtype="float64")
     scale = ((NOISE_FLOOR_XMINS - xm) / NOISE_DENOM).clip(lower=0.0)
     return {
-        "n": int(len(xm)),
+        "n": len(xm),
         "mean_xmins": float(xm.mean()),
         "median_xmins": float(xm.median()),
         "p90_xmins": float(xm.quantile(0.9)),
@@ -116,8 +116,8 @@ def main(argv: list[str] | None = None) -> dict:
                           if c in v4c_frame.columns and not
                           current[c].reset_index(drop=True).equals(
                               v4c_frame[c].reset_index(drop=True))],
-        "rows_current": int(len(current)),
-        "rows_v4c": int(len(v4c_frame)),
+        "rows_current": len(current),
+        "rows_v4c": len(v4c_frame),
     }
     print("V7B_PROBE_FRAME", json.dumps(frame_result), flush=True)
 

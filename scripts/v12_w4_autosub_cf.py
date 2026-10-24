@@ -232,7 +232,7 @@ def main() -> None:
                           "test_idx": arms_mod.TEST_IDX},
                "rule": arms_mod.ARM_RULE,
                "half": "b",
-               "autosub_weeks": int(len(fired)), "all_weeks": int(len(frame))}
+               "autosub_weeks": len(fired), "all_weeks": len(frame)}
     for name in arms_mod.ARMS:
         if name == "baseline":
             continue

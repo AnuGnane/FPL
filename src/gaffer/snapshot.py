@@ -115,7 +115,7 @@ def append_snapshot(rows: pd.DataFrame) -> int:
     merged = (pd.concat(frames, ignore_index=True) if frames
               else rows[SNAPSHOT_COLS])
     atomic_save(merged, SNAPSHOT_PATH)
-    return int(len(rows))
+    return len(rows)
 
 
 def load_snapshot_log() -> pd.DataFrame:

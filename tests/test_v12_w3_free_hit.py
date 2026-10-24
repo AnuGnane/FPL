@@ -115,8 +115,8 @@ def test_the_own_week_budget_is_the_conserved_total_squad_value():
     # that stopped agreeing with conservation would show up here.
     for gw in GWS:
         week = next(g for g in base.gw_plans if g.gw == gw)
-        assert int(round(_squad_value(pool, week.squad, week.bank))) == \
-            int(round(today))
+        assert round(_squad_value(pool, week.squad, week.bank)) == \
+            round(today)
 
 
 def test_a_richer_week_prices_a_richer_free_hit():

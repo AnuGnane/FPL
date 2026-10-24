@@ -343,7 +343,7 @@ def score_gw(actuals: pd.DataFrame, xi: list[int], bench: list[int],
         total += extra * float(pts_of.get(captain, 0) or 0)
     elif played(vice):
         total += extra * float(pts_of.get(vice, 0) or 0)
-    return int(round(total - 4 * hits))
+    return round(total - 4 * hits)
 
 
 CHIP_HALVES = ("first_half", "second_half")
