@@ -99,12 +99,11 @@ export default function WhatIfSim(
   }
 
   const toggle = (code: number, event: LeagueWhatIfEvent) => {
-    setPins((prev) => {
-      const next = { ...prev }
-      if (next[code] === event) delete next[code]
-      else next[code] = event
-      return next
-    })
+    setPins((prev) =>
+      prev[code] === event
+        ? Object.fromEntries(Object.entries(prev).filter(([key]) => key !== String(code)))
+        : { ...prev, [code]: event },
+    )
   }
 
   return (

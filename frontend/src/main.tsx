@@ -5,7 +5,10 @@ import { BrowserRouter } from 'react-router-dom'
 import { routerFuture } from './kit/router'
 import App from './App'
 
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root')
+if (!root) throw new Error('index.html has no #root element')
+
+createRoot(root).render(
   <React.StrictMode>
     <BrowserRouter {...routerFuture}>
       <App />

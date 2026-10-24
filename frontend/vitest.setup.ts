@@ -47,7 +47,7 @@ if (typeof localStorage === 'undefined') {
   const storage = {
     get length() { return items.size },
     clear: () => { items.clear() },
-    getItem: (key: string) => (items.has(key) ? items.get(key)! : null),
+    getItem: (key: string) => (items.get(key) ?? null),
     key: (index: number) => [...items.keys()][index] ?? null,
     removeItem: (key: string) => { items.delete(key) },
     setItem: (key: string, value: string) => { items.set(key, String(value)) },

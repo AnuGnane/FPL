@@ -169,7 +169,9 @@ export default function CompareRadar(
       .filter((v): v is number => v !== null)
     const row: Record<string, string | number | null> = { axis: label }
     for (const player of players) {
-      const value = raw.get(player.code)![key as keyof AxisValues]
+      const values = raw.get(player.code)
+      if (!values) throw new Error(`no radar values for player ${player.code}`)
+      const value = values[key as keyof AxisValues]
       row[player.name] = value === null ? null : normalize(value, column)
     }
     return row
