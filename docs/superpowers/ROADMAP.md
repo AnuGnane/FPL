@@ -28,12 +28,12 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-213
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-220
 except F-92, which is open as `needs-mac` PR #166, and F-148, F-190, F-200,
-F-202 and F-210, the Mac's `config.py` docstring, the golden modules' `UP`
-and `SIM` sites, their function and class docstrings, their `C4`, `PIE`,
-`RET` and `ERA` sites and their sites from F-204 to F-209, which are still
-queued; F-77 and F-81 (#134,
+F-202, F-210 and F-219, the Mac's `config.py` docstring, the golden modules'
+`UP` and `SIM` sites, their function and class docstrings, their `C4`,
+`PIE`, `RET` and `ERA` sites and their sites from F-204 to F-209 and from
+F-215 to F-218, which are still queued; F-77 and F-81 (#134,
 #107 relanded linear), the other `needs-mac` packages, have merged.
 `HOLIDAY.md` is the record. Pins: routes
 52 (`tests/test_v11_degradation.py`), job kinds 12
@@ -182,6 +182,22 @@ the v18f `set-state-in-effect` override), and
 `frontend/src/tsconfig.test.ts` keeps seven strictness flags on beyond
 `strict` (F-212's five, F-213's `exactOptionalPropertyTypes` and
 `noPropertyAccessFromIndexSignature`).
+F-215 to F-218 turned five more ruff families on, asserted the same way
+and the golden modules' sites ignored until the Mac's F-219: `PTH`, `DTZ`
+and `LOG` (F-215), `TRY` (F-216) and `RUF` (F-217, with F-218 striking
+`RUF046` from `ignore`). Four more codes are ruled out with their reasons
+in `pyproject.toml`: `TRY003`, because a message built in the `raise` call
+is the repo's idiom and a class per message would be 276 classes that say
+nothing new, and `RUF001` to `RUF003`, because the dashes, arrows and
+multiplication signs they flag are the house prose `CLAUDE.md` asks for.
+`RUF046`'s ruling: `round()` on a numpy scalar returns a numpy float, so
+an `int(round(...))` whose operand can be one keeps its cast under a
+reasoned noqa; F-218 found all seven operands plain Python floats and
+needed none. F-220 turned on typescript-eslint's shipped `strict` set
+after `recommended`, asserted in `frontend/src/eslint-config.test.ts`,
+and fixed its 77 sites (the `!` assertions checked, `kit/defined.ts` for
+the tests with more than three, three `delete`s rebuilt as filtered
+copies).
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
@@ -610,7 +626,8 @@ button; text equivalents on the tone-only chips; `--color-scrim` and
 `--color-on-accent` replacing the two Tailwind palette colours; `Badge` and
 `react-tooltip` gone; two hand types replaced by the generated names; the
 non-null assertions narrowed; lazy routes so the first paint carries no
-recharts; ESLint (flat config) and `npm run check`; `useJob`'s test on fake
+recharts; ESLint (flat config, the recommended sets, typescript-eslint's
+shipped `strict` beside them since holiday F-220) and `npm run check`; `useJob`'s test on fake
 timers (13.7 s → 31 ms; suite 14.5 s → 8.4 s) with a spy that fails on an
 `act` warning. Ruling: `eslint-plugin-react-hooks` v7's compiler rule
 `set-state-in-effect` is `warn` with its reason in the config — eight
