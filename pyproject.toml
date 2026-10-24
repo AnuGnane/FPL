@@ -83,8 +83,11 @@ filterwarnings = [
 # 100 (UP since holiday F-188, SIM since F-189, C4, PIE, RET and ERA since
 # F-201, BLE and RUF100 since F-204, PT since F-205, PERF, FURB and PYI since
 # F-206, PLW, PLC and PLE since F-207, N since F-208, ISC, Q and TC since
-# F-209, PTH, DTZ and LOG since F-215, TRY since F-216, RUF since F-217); the
-# ignores below each carry a reason.
+# F-209, PTH, DTZ and LOG since F-215, TRY since F-216, RUF since F-217;
+# YTT, T10, EXE, ASYNC, FLY, RSE, ICN, NPY, PGH, SLOT, TID, INT, FA, G and A
+# since holiday F-222, each with no site on the day, so they cost nothing and
+# keep what they catch from coming back; FA is inert at py312 and rides along
+# so a lowered target would speak); the ignores below each carry a reason.
 line-length = 100
 target-version = "py312"
 # F-167: scripts/archive/ is the retired code v18g moved out of the way; it is
@@ -94,7 +97,9 @@ extend-exclude = ["scripts/archive"]
 [tool.ruff.lint]
 select = ["E", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "ERA", "BLE", "RUF100",
           "PT", "PERF", "FURB", "PYI", "PLW", "PLC", "PLE",
-          "N", "ISC", "Q", "TC", "PTH", "DTZ", "LOG", "TRY", "RUF"]
+          "N", "ISC", "Q", "TC", "PTH", "DTZ", "LOG", "TRY", "RUF",
+          "YTT", "T10", "EXE", "ASYNC", "FLY", "RSE", "ICN", "NPY", "PGH",
+          "SLOT", "TID", "INT", "FA", "G", "A"]
 # B905: zip(strict=) on 174 sites is noise, not safety — every zip here is
 # over parallel columns the caller built (v18g §1).
 # PT018 (holiday F-205): a composite ``assert a and b`` reads as one sentence
