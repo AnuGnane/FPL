@@ -153,8 +153,10 @@ def test_ruff_selects_the_ruff_family_without_the_unicode_prose_rules():
     unescaped ``pytest.raises(match=)`` cannot come back silently.
     ``RUF001`` to ``RUF003`` stay ignored: the dashes, arrows and
     multiplication signs they flag are the house prose ``CLAUDE.md`` asks
-    for."""
+    for. F-218 struck ``RUF046`` from ``ignore``: an ``int()`` around a
+    value already an ``int`` cannot come back silently."""
     data = tomllib.loads(Path("pyproject.toml").read_text())
     lint = data["tool"]["ruff"]["lint"]
     assert "RUF" in lint["select"]
     assert {"RUF001", "RUF002", "RUF003"} <= set(lint["ignore"])
+    assert "RUF046" not in lint["ignore"]
