@@ -292,8 +292,8 @@ def _holdout(holdout_slots: int = 10) -> pd.DataFrame:
     for col in ("season_start_share", "minutes_r5", "starts"):
         if col in hold.columns:
             carry[col] = pd.to_numeric(hold[col], errors="coerce")
-    carry["p_dnp"] = modes["p_dnp"].values
-    carry["p_start"] = modes["p_start"].values
+    carry["p_dnp"] = modes["p_dnp"].to_numpy()
+    carry["p_start"] = modes["p_start"].to_numpy()
     carry = carry.groupby(["code", "gw"], as_index=False).first()
     return ep.merge(truth, on=["code", "gw"], how="inner").merge(
         carry, on=["code", "gw"], how="left")

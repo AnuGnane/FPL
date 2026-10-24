@@ -108,7 +108,7 @@ def check_lever(frame: pd.DataFrame) -> None:
     series = pd.to_numeric(frame["p_play"], errors="coerce")
     if not series.notna().any():
         raise SystemExit("p_play is entirely null on the benchmark pool.")
-    if series.nunique(dropna=True) <= 1:
+    if series.nunique(dropna=True) <= 1:  # noqa: PD101 — nunique(dropna=True) skips the gaps; (s.iloc[0] == s).all() would not
         raise SystemExit(
             "p_play is constant across the pool — a POPULATION_DNP measured "
             "off it would make every frailty exactly 1.0 forever, shipping "

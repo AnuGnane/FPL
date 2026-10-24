@@ -28,7 +28,7 @@ HOLDOUT = pd.DataFrame({
 def test_baseline_keeps_one_row_per_player_gameweek_and_drops_a_missing_value():
     b = eval_milestone.baseline(HOLDOUT, "total_points_r5")
     assert list(b.columns) == ["code", "gw", "ep"]
-    assert b.values.tolist() == [[1, 30, 4.0], [1, 31, 5.0], [2, 30, 2.0], [2, 31, 3.0]]
+    assert b.to_numpy().tolist() == [[1, 30, 4.0], [1, 31, 5.0], [2, 30, 2.0], [2, 31, 3.0]]
 
 
 def test_bias_60_is_the_signed_mean_error_over_starters_only():

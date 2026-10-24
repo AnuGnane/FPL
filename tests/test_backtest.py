@@ -771,9 +771,9 @@ class _FakeTeamModel:
     def predict(self, tg):
         self.seen.append(tg.copy())
         out = tg[["code", "season_idx", "gw"]].copy().reset_index(drop=True)
-        out["p_cs"] = (0.1 + 0.01 * tg["code"].values
-                       + 0.001 * tg["opp_code"].values)
-        out["e_gc"] = 1.0 + 0.1 * tg["code"].values
+        out["p_cs"] = (0.1 + 0.01 * tg["code"].to_numpy()
+                       + 0.001 * tg["opp_code"].to_numpy())
+        out["e_gc"] = 1.0 + 0.1 * tg["code"].to_numpy()
         return out
 
 
@@ -860,7 +860,7 @@ def test_the_replay_reads_the_team_head_with_the_harness_on(
         monkeypatch, capsys):
     _, comp, model, printed = _replay_with_team_head(monkeypatch, capsys,
                                                      True)
-    assert comp["p_cs"].nunique() > 1
+    assert comp["p_cs"].nunique() > 1  # noqa: PD101 — asks for variety, not a constant
     assert bt.DEFAULT_P_CS not in set(comp["p_cs"])
     assert len(model.seen) == 3
     lever = [ln for ln in printed.splitlines()

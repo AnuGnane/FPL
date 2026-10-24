@@ -117,7 +117,7 @@ def cup_match_rows(matches_csv: str, season: str, season_idx: int,
         ids = pd.to_numeric(df[side], errors="coerce")
         part = pd.DataFrame({
             "season": season, "season_idx": int(season_idx),
-            "tournament": tournament.values, "date": date.values,
+            "tournament": tournament.array, "date": date.to_numpy(),
             "team_code": [_team_code(i, codes, known) for i in ids]})
         rows.append(part)
     if not rows:

@@ -301,7 +301,7 @@ def check_lever(df: pd.DataFrame) -> None:
             series = pd.to_numeric(df[col], errors="coerce")
             if not series.notna().any():
                 raise SystemExit(f"{col} is entirely null on this window.")
-            if series.nunique(dropna=True) <= 1:
+            if series.nunique(dropna=True) <= 1:  # noqa: PD101 — nunique(dropna=True) skips the gaps; (s.iloc[0] == s).all() would not
                 raise SystemExit(
                     f"{col} is constant on this window — LightGBM will never "
                     f"split on it and the arm is the control by another name.")
@@ -350,9 +350,9 @@ def run_arm(name: str) -> dict:
         ep_parts.append(ep.merge(truth, on=["code", "gw"], how="inner"))
         modes = models["minutes"].predict_modes(rows)
         mode_parts.append(pd.DataFrame({
-            "p_start": pd.to_numeric(modes["p_start"], errors="coerce").values,
-            "minutes": pd.to_numeric(rows["minutes"], errors="coerce").values,
-            "started": ev.start_truth(rows).values}))
+            "p_start": pd.to_numeric(modes["p_start"], errors="coerce").to_numpy(),
+            "minutes": pd.to_numeric(rows["minutes"], errors="coerce").to_numpy(),
+            "started": ev.start_truth(rows).to_numpy()}))
         print(f"{name} (train<={TRAIN_MAX_IDX} test={TEST_IDX}) gw{gw}: "
               f"{len(ep_parts[-1])} rows", flush=True)
 
