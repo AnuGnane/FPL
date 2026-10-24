@@ -8,6 +8,8 @@ outage.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 import pandas as pd
 import pytest
 
@@ -259,7 +261,7 @@ def test_build_inputs_takes_a_league_id_over_the_config(here, monkeypatch):
                         lambda gw: _comp())
 
     class Recording(FakeClient):
-        asked = []
+        asked: ClassVar[list] = []
 
         def get_league_standings(self, league_id, page=1):
             self.asked.append(league_id)

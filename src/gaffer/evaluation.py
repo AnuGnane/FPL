@@ -465,9 +465,9 @@ def score_news_shadow(shadow: pd.DataFrame,
         if not told.empty and not told["p_play_presser"].equals(
                 told["p_play_news"]):
             sides.append("presser")
-    cols = key + ["p_play_news", "p_play_flags", "e_min_news", "e_min_flags"]
+    cols = [*key, "p_play_news", "p_play_flags", "e_min_news", "e_min_flags"]
     if "presser" in sides:
-        cols = cols + ["p_play_presser"]
+        cols = [*cols, "p_play_presser"]
     truth = (actuals.groupby(["gw", "code"], as_index=False)
              .agg(minutes=("minutes", "sum")))
     joined = (shadow[cols].groupby(key, as_index=False).last()

@@ -58,7 +58,7 @@ were."""
 def test_a_player_whose_status_never_changed_is_not_a_row():
     """The report is about changes. A player who was 'a' all week told the
     manager nothing new and has no lead time to measure."""
-    log = _log(PAD + [(3, "2026-09-01", 1, "a", 100.0),
+    log = _log([*PAD, (3, "2026-09-01", 1, "a", 100.0),
                       (3, "2026-09-02", 1, "a", 100.0)])
     out = ae.score_flag_latency(log, _actuals([(3, 1, 90, 1)]), EVENTS,
                                 season="2026-27")
@@ -67,7 +67,7 @@ def test_a_player_whose_status_never_changed_is_not_a_row():
 
 def test_the_lead_time_is_measured_from_the_first_change():
     """Two changes; the first is the one a manager could have acted on."""
-    log = _log(PAD + [(3, "2026-08-30", 1, "a", 100.0),
+    log = _log([*PAD, (3, "2026-08-30", 1, "a", 100.0),
                       (3, "2026-09-01", 1, "d", 50.0),
                       (3, "2026-09-03", 1, "i", 0.0)])
     out = ae.score_flag_latency(log, _actuals([(3, 1, 0, 0)]), EVENTS,
@@ -106,7 +106,7 @@ def test_the_season_guard_drops_another_seasons_rows():
     """Element ids are re-issued every August and so is gameweek 3. The log
     outlives a rollover; the results file does not carry a season at all."""
     log = pd.concat([
-        _log(PAD + [(3, "2026-09-01", 1, "a", 100.0),
+        _log([*PAD, (3, "2026-09-01", 1, "a", 100.0),
                     (3, "2026-09-02", 1, "i", 0.0)]),
         _log([(3, "2025-09-01", 1, "a", 100.0),
               (3, "2025-09-02", 1, "i", 0.0)]).assign(season="2025-26")])
@@ -116,7 +116,7 @@ def test_the_season_guard_drops_another_seasons_rows():
 
 
 def test_the_histogram_splits_lead_days_by_outcome():
-    log = _log(PAD + [
+    log = _log([*PAD,
         (3, "2026-08-30", 1, "a", 100.0),
         (3, "2026-09-03", 1, "i", 0.0),      # 1 whole day -> "1-2d"
         (3, "2026-08-30", 2, "a", 100.0),
@@ -132,7 +132,7 @@ def test_the_histogram_splits_lead_days_by_outcome():
 def test_a_late_flag_is_a_disagreement_between_the_final_status_and_the_start():
     """Both directions. The log said 'i' and he started; the log said 'a' and
     he did not. Either way the manager was told the wrong thing."""
-    log = _log(PAD + [(3, "2026-08-30", 1, "a", 100.0),
+    log = _log([*PAD, (3, "2026-08-30", 1, "a", 100.0),
                       (3, "2026-09-03", 1, "i", 0.0),
                       (3, "2026-08-30", 2, "i", 0.0),
                       (3, "2026-09-03", 2, "a", 100.0)])
@@ -203,7 +203,7 @@ def test_a_null_status_is_a_value_and_never_a_raise():
     into ``pd.NA``, whose ``!=`` returns ``pd.NA`` rather than a bool, and
     asking that for a truth value raises. The change is real — the log went
     from saying nothing to saying 'i' — so it is scored, not skipped."""
-    log = _log(PAD + [(3, "2026-08-30", 1, None, None),
+    log = _log([*PAD, (3, "2026-08-30", 1, None, None),
                       (3, "2026-09-03", 1, "i", 0.0)])
     out = ae.score_flag_latency(log, _actuals([(3, 1, 0, 0)]), EVENTS,
                                 season="2026-27")
@@ -221,7 +221,7 @@ def test_a_doubtful_final_status_is_never_a_late_flag():
     final pre-deadline status is ``""`` said nothing, and by omission from
     :data:`UNAVAILABLE_FLAG_STATUS` it would otherwise be read as a claim of
     availability and score code 3 (silence, then missed) as a late flag."""
-    log = _log(PAD + [(3, "2026-08-30", 1, "a", 100.0),
+    log = _log([*PAD, (3, "2026-08-30", 1, "a", 100.0),
                       (3, "2026-09-03", 1, "d", 25.0),
                       (3, "2026-08-30", 2, "a", 100.0),
                       (3, "2026-09-03", 2, "d", 75.0),
@@ -242,7 +242,7 @@ def test_a_log_missing_a_structural_column_is_a_refusal_and_not_a_keyerror():
     """``status`` was the only column ever guarded; ``gw`` and ``snap_date``
     are just as structural, and a frame handed in without one of them used to
     reach ``pre_deadline`` and raise inside a page render."""
-    full = _log(PAD + [(3, "2026-09-01", 1, "i", 0.0)])
+    full = _log([*PAD, (3, "2026-09-01", 1, "i", 0.0)])
     for col in ("gw", "snap_date", "status"):
         out = ae.score_flag_latency(full.drop(columns=[col]),
                                     _actuals([(3, 1, 0, 0)]), EVENTS,

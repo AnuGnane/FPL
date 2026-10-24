@@ -287,7 +287,7 @@ def _gw_windows(events: pd.DataFrame) -> list[tuple[pd.Timestamp, pd.Timestamp, 
                                          format="mixed")
     ev = ev.sort_values("gw").reset_index(drop=True)
     starts = ev["deadline_time"].tolist()
-    ends = starts[1:] + [pd.Timestamp.max.tz_localize("UTC")]
+    ends = [*starts[1:], pd.Timestamp.max.tz_localize("UTC")]
     return list(zip(starts, ends, ev["gw"].astype(int).tolist()))
 
 

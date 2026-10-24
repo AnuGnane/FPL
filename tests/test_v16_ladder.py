@@ -168,9 +168,9 @@ def _objective():
 def _ladder(chosen="hits0"):
     rows = [_row("bank", xi=list(range(1, 12))),
             _row("hits0", transfers=1, buys=[20], sells=[16],
-                 xi=[20] + list(range(2, 12)), captain=3, vice=20),
+                 xi=[20, *range(2, 12)], captain=3, vice=20),
             _row("hits1", hits=1, transfers=2, buys=[20, 19], sells=[16, 17],
-                 xi=[20, 19] + list(range(3, 12)), captain=20, vice=19)]
+                 xi=[20, 19, *range(3, 12)], captain=20, vice=19)]
     rows[1]["plan_by_gw"].append({**rows[1]["plan_by_gw"][0], "gw": 5,
                                   "buys": [], "sells": [], "hits": 0})
     return {"gw": 4, "chosen": chosen, "bar": 0.6, "free_transfers": 1,

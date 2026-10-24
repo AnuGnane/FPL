@@ -361,7 +361,7 @@ Outside those bounds the cell stays NaN, which LightGBM reads as missing and
 indicator without dropping the start."""
 
 CI_PLAYER_COLS = ["season", "season_idx", "gw", "code", "player_id",
-                  "match_id"] + list(PMS_STAT_COLS)
+                  "match_id", *PMS_STAT_COLS]
 
 CI_FIXTURE_COLS = ["season", "season_idx", "gw", "tournament", "match_id",
                    "kickoff", "team_code", "opponent_code", "is_home",

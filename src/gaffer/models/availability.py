@@ -139,7 +139,7 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
                              "override_e_min")
                  if c in avail.columns]
     out = pred.merge(
-        avail[["code", "status", "chance_of_playing"] + news_cols],
+        avail[["code", "status", "chance_of_playing", *news_cols]],
         on="code", how="left")
     cop = out["chance_of_playing"].astype("float") / 100.0
     factor = pd.Series(1.0, index=out.index)
@@ -173,7 +173,7 @@ def apply_availability(pred: pd.DataFrame, avail: pd.DataFrame,
             out = _presser_first_gw(out)
     # Last, and after everything: the user outranks every automated source.
     out = _override_first_gw(out)
-    return out.drop(columns=["status", "chance_of_playing"] + news_cols)
+    return out.drop(columns=["status", "chance_of_playing", *news_cols])
 
 
 def _relax(factor: pd.Series, h: pd.Series, injury_type,

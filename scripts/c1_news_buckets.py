@@ -103,7 +103,7 @@ def joined_rows(shadow: pd.DataFrame | None, actuals: pd.DataFrame | None,
         return pd.DataFrame()
     key = (["season", "gw", "code"] if "season" in shadow.columns
            else ["gw", "code"])
-    cols = key + ["p_play_news", "p_play_flags", "e_min_news", "e_min_flags"]
+    cols = [*key, "p_play_news", "p_play_flags", "e_min_news", "e_min_flags"]
     # A row banked with a null prediction cannot be scored on either side,
     # and left in it would count in ``n`` while ``mean`` skipped it.
     last = (shadow[cols].groupby(key, as_index=False).last()

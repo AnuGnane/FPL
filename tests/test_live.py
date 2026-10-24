@@ -5,6 +5,8 @@ FPL has not finished checking is dropped so a provisional score never
 trains a model. Set-piece orders are snapshotted per gameweek and the ones
 already stored are kept, so the past is not rewritten by today's orders.
 """
+from typing import ClassVar
+
 import pandas as pd
 
 from gaffer.data import store
@@ -65,7 +67,7 @@ def test_history_to_rows_maps_canonical():
 class FakeClient:
     """Stands in for FPLClient: one player, two GWs, one of them provisional."""
 
-    BOOTSTRAP = {
+    BOOTSTRAP: ClassVar[dict] = {
         "events": [
             {"id": 1, "data_checked": True},
             {"id": 2, "data_checked": False},
@@ -136,9 +138,10 @@ def test_refresh_live_keeps_stored_orders_for_gws_it_already_has(
     refresh_live(Week1(), season="2026-27", season_idx=4, sleep_s=0)
 
     class Week2(FakeClient):
-        BOOTSTRAP = copy.deepcopy(FakeClient.BOOTSTRAP)
-        BOOTSTRAP["events"] = [{"id": 1, "data_checked": True},
-                               {"id": 2, "data_checked": True}]
+        BOOTSTRAP: ClassVar[dict] = {
+            **copy.deepcopy(FakeClient.BOOTSTRAP),
+            "events": [{"id": 1, "data_checked": True},
+                       {"id": 2, "data_checked": True}]}
         BOOTSTRAP["elements"][0]["penalties_order"] = 3
         BOOTSTRAP["elements"][0]["corners_and_indirect_freekicks_order"] = None
 

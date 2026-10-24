@@ -25,7 +25,7 @@ from gaffer.models.predict import news_availability
 
 SNAPSHOT_PATH = "live/availability_log.parquet"
 
-SNAPSHOT_COLS = ["season", "gw", "snap_date"] + AVAILABILITY_COLS
+SNAPSHOT_COLS = ["season", "gw", "snap_date", *AVAILABILITY_COLS]
 """The availability contract, prefixed with the three keys that date it.
 
 Reused from :mod:`gaffer.artifacts` rather than restated: the news endpoint,

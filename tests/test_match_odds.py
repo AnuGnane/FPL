@@ -273,7 +273,7 @@ def test_join_to_fixtures_uses_uk_local_dates():
         season="2024-25", season_idx=2)
     fx = _fixtures()
     fx.loc[0, "kickoff_time"] = "2024-08-16T23:30:00Z"   # 00:30 UK, 17 Aug
-    out, report = join_to_fixtures(parsed, fx, _NAME_TO_CODE)
+    _out, report = join_to_fixtures(parsed, fx, _NAME_TO_CODE)
     assert report["unmatched"] == 1
 
 

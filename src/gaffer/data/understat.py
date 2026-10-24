@@ -20,6 +20,7 @@ import html
 import json
 import time
 from pathlib import Path
+from typing import ClassVar
 
 import httpx
 import pandas as pd
@@ -184,7 +185,7 @@ class UnderstatClient:
     for one download, not two.
     """
 
-    HEADERS = {
+    HEADERS: ClassVar[dict] = {
         "User-Agent": "gaffer/1.0 (personal FPL research)",
         # The endpoints exist to serve understat's own in-page ajax; without
         # this header the site answers with HTML instead of the payload.

@@ -76,7 +76,7 @@ def test_with_an_asset_no_bar_is_ever_a_flat_value(sentinels):
 
 
 def test_a_missing_asset_is_flat_and_says_which_kind_of_flat():
-    bar, source = threshold_with_source(chip_thresholds_from_asset(None),
+    _bar, source = threshold_with_source(chip_thresholds_from_asset(None),
                                         "bboost", 7)
     assert source == "flat: no calibrated priors asset"
 

@@ -15,6 +15,8 @@ what they assert is that the overlay reaches every one of those keys.
 """
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from gaffer.config import LOCAL_OVERLAY, Config, config_in_force, invalidate, load_config
@@ -139,7 +141,7 @@ def test_the_overlay_cannot_conjure_a_config_without_a_base(tmp_path):
     from gaffer.errors import GafferError
 
     (tmp_path / LOCAL_OVERLAY).write_text("[optimizer]\nhorizon = 5\n")
-    with pytest.raises(GafferError, match="config.example.toml"):
+    with pytest.raises(GafferError, match=re.escape("config.example.toml")):
         load_config(tmp_path / "config.toml")
 
 

@@ -982,7 +982,8 @@ def grade_gw(gw: int, *, cfg, client=None) -> dict | None:
         # Either way the pricing pass never ran, and an empty Δwin% column
         # with nothing on the row to explain it is the silent zero spec G2
         # exists to forbid.
-        row["notices"] = list(row["notices"]) + [
+        row["notices"] = [
+            *row["notices"],
             "no FPL client available, so nothing was priced in title odds"
             if model is not None else
             "no advice survives, so nothing was priced in title odds"]
@@ -1004,7 +1005,7 @@ def grade_gw(gw: int, *, cfg, client=None) -> dict | None:
     row["projection_post_deadline"] = bool(
         snapshot is not None and snapshot.post_deadline)
     if notice:
-        row["notices"] = list(row["notices"]) + [notice]
+        row["notices"] = [*row["notices"], notice]
     return row
 
 

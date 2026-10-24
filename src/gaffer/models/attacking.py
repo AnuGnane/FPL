@@ -29,7 +29,7 @@ ATTACK_FEATURES = [
     "team_elo", "opp_elo", "elo_diff", "home", "days_rest",
     # Defenders take corners, so every position group gets these.
     "pen_taker", "setpiece_taker",
-] + understat_feature_columns() + SHRUNK_FEATURES + [
+    *understat_feature_columns(), *SHRUNK_FEATURES,
     # The opponent's defensive shape is the attacking signal: how leaky and
     # how passive the defence in front of the player is. FPL's own xg/xa stay
     # exactly where they are — Understat contributes the *marginal* signal

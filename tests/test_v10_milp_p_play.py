@@ -362,7 +362,7 @@ def test_bench_curve_none_still_solves_and_still_orders_and_weights(
 def test_an_infeasible_second_pass_returns_pass_ones_plan(monkeypatch,
                                                           capsys):
     pool, state = _pool(), _state()
-    base_spy, base_plan = _solve(monkeypatch, pool, state)
+    _base_spy, base_plan = _solve(monkeypatch, pool, state)
 
     def impossible(plan, pool_, pp):
         # An XI of twelve is not a legal composition under any constraint set.
@@ -485,7 +485,7 @@ def test_the_vice_scale_is_the_captains_not_the_vices(monkeypatch):
     re-elect a captain under a weight computed from a different one."""
     pool, state = _pool(), _state()
     pp = _varied(pool, xi_value=0.7, rest=0.95)
-    spy, plan = _solve(monkeypatch, pool, state, p_play=pp)
+    _spy, plan = _solve(monkeypatch, pool, state, p_play=pp)
     captain = plan.gw_plans[0].captain
     vice = plan.gw_plans[0].vice
     assert captain != vice

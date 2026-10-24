@@ -5,6 +5,8 @@ live BPS the way FPL does: per fixture, ties sharing a slot and consuming
 the next, nothing before kick-off, and standing down once the real bonus
 is in.
 """
+from typing import ClassVar
+
 import httpx
 import pytest
 
@@ -198,9 +200,9 @@ CFG = Config(entry_id=1, league_id=5)
 class _FakeClient:
     """A GW7 in play: three fixtures' worth of nothing but the bits we read."""
 
-    SETTLED = {"status": [{"bonus_added": True, "event": 7, "points": "r"}],
+    SETTLED: ClassVar[dict] = {"status": [{"bonus_added": True, "event": 7, "points": "r"}],
                "leagues": "Updated"}
-    LIVE = {"status": [{"bonus_added": False, "event": 7, "points": "l"}],
+    LIVE: ClassVar[dict] = {"status": [{"bonus_added": False, "event": 7, "points": "l"}],
             "leagues": "Updating"}
 
     def __init__(self, status=None):

@@ -175,10 +175,10 @@ def test_a_pick_the_sample_never_saw_is_still_my_player():
     the intersection-only reading scored my week without him and answered
     0.333 where the union answers 0.914.
     """
-    elements = list(range(30)) + [900]
+    elements = [*range(30), 900]
 
     def run(eo):
-        ins = _inputs(list(range(14)) + [900], elements=elements)
+        ins = _inputs([*range(14), 900], elements=elements)
         ins.ep_by_element[900] = 16.0
         return simulate_field_rank(ins, eo, n=2000, seed=4, gw=6)
 

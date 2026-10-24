@@ -41,7 +41,7 @@ def bias_60(pred, truth):
 def main() -> None:
     """Train on everything before the holdout and print the model's errors
     beside the last-5 and season baselines."""
-    df_full, tg_full, elo_final = load_training_frame()
+    df_full, tg_full, _elo_final = load_training_frame()
     train_df = df_full[(df_full.season_idx < HOLDOUT_SEASON) |
                        ((df_full.season_idx == HOLDOUT_SEASON) &
                         (df_full.gw < HOLDOUT_FROM))]
@@ -72,7 +72,7 @@ def main() -> None:
     # predict() returns one row per input row in input order, so column copies are
     # exact. The team merge is genuinely many-to-one and stays a merge.
     keys = ["code", "season_idx", "gw"]
-    comp = holdout[keys + ["position", "team_code", "opp_code"]].copy()
+    comp = holdout[[*keys, "position", "team_code", "opp_code"]].copy()
     comp["p_play"] = mp["p_play"].values
     comp["p60"] = mp["p60"].values
     comp["e_goals"] = ap["e_goals"].values

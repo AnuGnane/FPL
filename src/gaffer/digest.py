@@ -715,7 +715,7 @@ def _notify(title: str, body: str) -> bool:
     for line in NOTIFY_SCRIPT:
         argv += ["-e", line]
     try:
-        done = subprocess.run(argv + [body, title], capture_output=True,
+        done = subprocess.run([*argv, body, title], capture_output=True,
                               timeout=NOTIFY_TIMEOUT_S, check=False)
         if done.returncode != 0:
             detail = (done.stderr or b"").decode("utf-8", "replace").strip()

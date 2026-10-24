@@ -87,7 +87,7 @@ def test_every_default_toggle_patches_nothing():
     (["--priors", "off"], None, bt, "load_decision_priors"),
 ])
 def test_each_non_default_toggle_bites_and_unwinds(flag, value, module, name):
-    cfg = v7b_replay.arm_config(["--arm", "raw", "--tag", "t"] + flag)
+    cfg = v7b_replay.arm_config(["--arm", "raw", "--tag", "t", *flag])
     original = getattr(module, name)
     undo = v7b_replay.apply_patches(cfg)
     patched = getattr(module, name)
@@ -449,7 +449,7 @@ def test_the_restraint_arm_parses_with_its_bar_and_draws():
                                  "--hit-bar", "0.7", "--ladder-draws", "50"])
     assert (cfg.hit_bar, cfg.ladder_draws) == (0.7, 50)
     assert cfg.echo()["hit_bar"] == 0.7
-    configs, bases, _ = v7b_replay.arm_configs(
+    _configs, bases, _ = v7b_replay.arm_configs(
         ["--arm", "restraint", "--tag", "q", "--seed-bases", "1,2"])
     assert bases == [1, 2]
 

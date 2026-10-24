@@ -272,7 +272,7 @@ def test_a_blank_gameweek_starter_is_subbed_out_once_the_gameweek_is_over(
 # Team 2 gets a second fixture that has not kicked off, so element 13 — who
 # has played 60 minutes of the first — still owes the whole of the second.
 
-DGW = FIXTURES + [{"id": 14, "event": 3, "team_h": 2, "team_a": 24,
+DGW = [*FIXTURES, {"id": 14, "event": 3, "team_h": 2, "team_a": 24,
                    "started": False, "finished": False}]
 
 
