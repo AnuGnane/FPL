@@ -7,7 +7,9 @@ import tseslint from 'typescript-eslint'
  * v18f §2.2. The recommended sets and nothing invented on top of them: the
  * house rules that can be checked mechanically already live in
  * `kit/tokens.test.ts`, and a second opinion about style here would be a
- * second place to argue with.
+ * second place to argue with. `strict` (holiday F-220) is typescript-eslint's
+ * own shipped set, the recommended set's stricter sibling, not a rule invented
+ * here.
  *
  * `npm run check` runs this last, after `tsc`, `vitest` and the type
  * generator's own drift check.
@@ -21,6 +23,7 @@ export default tseslint.config(
   },
   js.configs.recommended,
   tseslint.configs.recommended,
+  tseslint.configs.strict,
   reactHooks.configs.flat.recommended,
   {
     languageOptions: {
