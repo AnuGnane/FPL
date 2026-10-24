@@ -189,3 +189,16 @@ def test_ruff_selects_the_pandas_family_without_the_scalar_accessor_rule():
     lint = data["tool"]["ruff"]["lint"]
     assert "PD" in lint["select"]
     assert "PD008" in lint["ignore"]
+
+
+def test_ruff_selects_the_bandit_family_without_the_assert_and_subprocess_rules():
+    """Holiday F-224 turned ``S`` on, in F-216's shape: a ``try``/``except``/
+    ``pass`` with no reason given, a ``shell=True``, a hardcoded password or a
+    ``random`` draw where a secret is meant cannot come back silently.
+    ``S101`` stays ignored, since the rails are bare asserts by design, and so
+    do ``S603`` and ``S607``, since every subprocess call passes a list and
+    none a shell."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    lint = data["tool"]["ruff"]["lint"]
+    assert "S" in lint["select"]
+    assert {"S101", "S603", "S607"} <= set(lint["ignore"])
