@@ -943,7 +943,10 @@ and v8c's `[league]` keys documented there), `tests/test_v13_degradation.py`
 (v13's ladder caps documented there and in the README),
 `tests/test_ruff_target.py` (ruff's target and `.python-version` equal
 `requires-python`, F-136; ruff selects the `UP` and `SIM` families, F-188
-and F-189, and the `C4`, `PIE`, `RET` and `ERA` families, F-201),
+and F-189, the `C4`, `PIE`, `RET` and `ERA` families, F-201, `BLE` and
+`RUF100`, F-204, `PT` with `PT018` ruled out, F-205, `PERF`, `FURB` and
+`PYI`, F-206, `PLW`, `PLC` and `PLE` with `PLC0415` ruled out, F-207, `N`,
+F-208, and `ISC`, `Q` and `TC`, F-209),
 `tests/test_pytest_markers.py` (every marker registered in
 `pyproject.toml`, F-132, and the `filterwarnings` rule that opens with
 `error` so a new warning fails its test, F-184),
@@ -958,7 +961,11 @@ pinned file, F-150). `tests/test_v7b_driver.py` holds v7b's rule that
 `CONVENTIONS.md` is committed and linked from the ROADMAP. Beside them,
 `tests/test_shell_syntax.py` runs `bash -n` on every live bash script in the
 inner loop, as CI does on `replay_pair.sh` and `shots.sh` (F-175, after
-F-168 and F-173).
+F-168 and F-173). No rule in `eslint.config.js` is set to `warn`, since
+`--max-warnings 0` fails the check on one
+(`frontend/src/eslint-config.test.ts`, holiday F-211). Seven strictness
+flags beyond `strict` stay on in `tsconfig.json`
+(`frontend/src/tsconfig.test.ts`, F-212 and F-213).
 
 **The drivers in `scripts/`.** `scripts/v7b_replay.py` and
 `scripts/replay_pair.sh` run the replays; `scripts/seed_stats.py` reads

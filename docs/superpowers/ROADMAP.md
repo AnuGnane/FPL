@@ -8,7 +8,7 @@ fills, and the index below points at them. Measurement rules every cycle
 follows: `CONVENTIONS.md`. For the same material written for a reader rather
 than an auditor, `docs/GUIDE.md` §11–12.
 
-## Where things stand (2026-10-23)
+## Where things stand (2026-10-24)
 
 **The model cycle, v20, is open.** v20a closed on 2026-10-13: `role`
 stays, because Δ = mean(off − on) = +9.2 is inside 2·SE = 41.1 at K = 5. No
@@ -28,11 +28,12 @@ Waiting on the Mac are v20b's and v20c's replays, v20c0's re-baseline and
 v20d's Thursday readings. §6.2 records them as empty: "nothing has run".
 The holiday's readings, F-79's `C1_COVER`, F-80's `B8_UNDERSTAT` and
 F-86's `TRACE_GAP` among them, are listed in `docs/GUIDE.md` §12.5
-"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-201
-except F-92, which is open as `needs-mac` PR #166, and F-148, F-190, F-200
-and F-202, the Mac's `config.py` docstring, the golden modules' `UP` and
-`SIM` sites, their function and class docstrings and their `C4`, `PIE`,
-`RET` and `ERA` sites, which are still queued; F-77 and F-81 (#134,
+"The readings" and collected by `scripts/v20_appendix.py`. The holiday queue has merged F-1 to F-213
+except F-92, which is open as `needs-mac` PR #166, and F-148, F-190, F-200,
+F-202 and F-210, the Mac's `config.py` docstring, the golden modules' `UP`
+and `SIM` sites, their function and class docstrings, their `C4`, `PIE`,
+`RET` and `ERA` sites and their sites from F-204 to F-209, which are still
+queued; F-77 and F-81 (#134,
 #107 relanded linear), the other `needs-mac` packages, have merged.
 `HOLIDAY.md` is the record. Pins: routes
 52 (`tests/test_v11_degradation.py`), job kinds 12
@@ -166,6 +167,21 @@ JSDoc; its scripts tree does the same for every public function under
 orchestrator-only `s2_replay.py`; and ruff selects the `C4`, `PIE`, `RET`
 and `ERA` families (F-201), asserted in `tests/test_ruff_target.py`, the
 golden modules' sites ignored until the Mac's F-202.
+F-204 to F-213 turned thirteen more ruff families on, each asserted in
+`tests/test_ruff_target.py` and the golden modules' sites ignored until
+the Mac's F-210: `BLE` and `RUF100` (F-204), `PT` (F-205), `PERF`, `FURB`
+and `PYI` (F-206), `PLW`, `PLC` and `PLE` (F-207), `N` (F-208) and `ISC`,
+`Q` and `TC` (F-209). Two codes are ruled out with their reasons in
+`pyproject.toml`: `PT018`, because a composite `assert a and b` reads as
+one sentence in these tests and splitting 656 of them names no new
+failure, and `PLC0415`, because a heavy import sits in the function that
+needs it so `gaffer --help` and the web app start without the model stack.
+Two frontend rails came with them: `frontend/src/eslint-config.test.ts`
+keeps every rule in `eslint.config.js` off `warn` (F-211, which retired
+the v18f `set-state-in-effect` override), and
+`frontend/src/tsconfig.test.ts` keeps seven strictness flags on beyond
+`strict` (F-212's five, F-213's `exactOptionalPropertyTypes` and
+`noPropertyAccessFromIndexSignature`).
 
 **The v19 programme is complete** (design
 `specs/2026-09-15-v19-programme-design.md`, approved with its eleven
@@ -598,7 +614,8 @@ recharts; ESLint (flat config) and `npm run check`; `useJob`'s test on fake
 timers (13.7 s → 31 ms; suite 14.5 s → 8.4 s) with a spy that fails on an
 `act` warning. Ruling: `eslint-plugin-react-hooks` v7's compiler rule
 `set-state-in-effect` is `warn` with its reason in the config — eight
-effects trip it and each fix is a behaviour change under the pixel gate.
+effects trip it and each fix is a behaviour change under the pixel gate
+(closed: v19h fixed the eight, holiday F-211 retired the override).
 Gate: twelve pairs byte-identical against a same-time control; four new
 token rules each mutation-tested live; check exit 0 with zero errors; 1058
 → 1098 frontend tests; recharts 0 in both entry chunks. Python 4496
