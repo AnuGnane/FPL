@@ -87,8 +87,8 @@ filterwarnings = [
 # YTT, T10, EXE, ASYNC, FLY, RSE, ICN, NPY, PGH, SLOT, TID, INT, FA, G and A
 # since holiday F-222, each with no site on the day, so they cost nothing and
 # keep what they catch from coming back; FA is inert at py312 and rides along
-# so a lowered target would speak; PD since holiday F-223); the ignores below
-# each carry a reason.
+# so a lowered target would speak; PD since holiday F-223, S since F-224);
+# the ignores below each carry a reason.
 line-length = 100
 target-version = "py312"
 # F-167: scripts/archive/ is the retired code v18g moved out of the way; it is
@@ -100,7 +100,7 @@ select = ["E", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "ERA", "BLE", "RU
           "PT", "PERF", "FURB", "PYI", "PLW", "PLC", "PLE",
           "N", "ISC", "Q", "TC", "PTH", "DTZ", "LOG", "TRY", "RUF",
           "YTT", "T10", "EXE", "ASYNC", "FLY", "RSE", "ICN", "NPY", "PGH",
-          "SLOT", "TID", "INT", "FA", "G", "A", "PD"]
+          "SLOT", "TID", "INT", "FA", "G", "A", "PD", "S"]
 # B905: zip(strict=) on 174 sites is noise, not safety — every zip here is
 # over parallel columns the caller built (v18g §1).
 # PT018 (holiday F-205): a composite ``assert a and b`` reads as one sentence
@@ -116,7 +116,13 @@ select = ["E", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "ERA", "BLE", "RU
 # prose CLAUDE.md's writing-style section asks for (157 sites).
 # PD008 (holiday F-223): ``.at`` is pandas' own scalar accessor and the faster
 # one; ``.loc`` for one cell says nothing new (12 sites).
-ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003", "PD008"]
+# S101 (holiday F-224): the rails are bare asserts by CLAUDE.md's design, so a
+# failure prints the numbers (9972 sites), in PT018's shape.
+# S603 and S607 (holiday F-224): every subprocess call passes a list and
+# names its tool (uvx, npm, launchctl, bash) on PATH; none passes shell=True,
+# and S602 stays on to strike the first that does (42 sites).
+ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003", "PD008",
+          "S101", "S603", "S607"]
 
 [tool.ruff.lint.per-file-ignores]
 # E402: these tests import a fixture module after setting a path (v18g §1).
@@ -137,7 +143,7 @@ ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003", "P
 # reason), so its two unused marks wait for F-210's needs-mac PR; cli.py,
 # golden too, holds none today and the waiver keeps a new one off this gate.
 "src/gaffer/models/minutes.py" = ["E402", "RUF100", "N", "PD"]
-"src/gaffer/cli.py" = ["RUF100", "ISC", "Q", "TC", "RUF005"]
+"src/gaffer/cli.py" = ["RUF100", "ISC", "Q", "TC", "RUF005", "S104"]
 # E501: prose sentences and a recorded board asserted verbatim (v18g §1).
 "tests/test_v16_brief.py" = ["E501"]
 "tests/test_golden_board.py" = ["E501", "RUF100"]
@@ -148,8 +154,8 @@ ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003", "P
 # (HOLIDAY.md Merging rule 2), so their sites wait for F-190's needs-mac PR.
 "src/gaffer/pipeline.py" = ["UP"]
 "src/gaffer/config.py" = ["UP"]
-"src/gaffer/artifacts.py" = ["UP", "PERF", "FURB", "PYI", "TRY", "PD"]
-"src/gaffer/brief.py" = ["UP", "ISC", "Q", "TC", "RUF046"]
+"src/gaffer/artifacts.py" = ["UP", "PERF", "FURB", "PYI", "TRY", "PD", "S110"]
+"src/gaffer/brief.py" = ["UP", "ISC", "Q", "TC", "RUF046", "S110"]
 "src/gaffer/web/job_kinds.py" = ["UP"]
 # UP (holiday F-188): orchestrator-only files (CLAUDE.md) keep their spelling
 # for good; the orchestrator owns their diffs.
@@ -183,9 +189,10 @@ ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003", "P
 # C4, PIE, RET and ERA (holiday F-201) likewise: ladder.py's sites wait for
 # F-202 on the Mac, and the three orchestrator-only files keep theirs for good.
 "src/gaffer/ladder.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "ISC", "Q", "TC",
-                          "RUF046"]
+                          "RUF046", "S110"]
 "src/gaffer/optimize/milp.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "RUF100", "PERF",
-                                 "FURB", "PYI", "N", "ISC", "Q", "TC", "TRY", "RUF046"]
+                                 "FURB", "PYI", "N", "ISC", "Q", "TC", "TRY", "RUF046",
+                                 "S110"]
 "tests/test_advise.py" = ["UP", "SIM", "C4", "PIE", "RET", "ERA", "RUF100"]
 "tests/test_v10_degradation.py" = ["SIM", "C4", "PIE", "RET", "ERA", "ISC", "Q", "TC"]
 # SIM (holiday F-189): features/ sits on the golden path (F-18, F-81, F-92),
@@ -273,6 +280,15 @@ ignore = ["B905", "PT018", "PLC0415", "TRY003", "RUF001", "RUF002", "RUF003", "P
 # for F-233's needs-mac PR. minutes.py, train.py and artifacts.py are added to
 # their lines above.
 "src/gaffer/models/predict.py" = ["PD"]
+# S110 and S104 (holiday F-224): brief.py, ladder.py, artifacts.py and cli.py
+# are on the Mac's golden path (HOLIDAY.md Merging rule 2), so their sites
+# wait for F-233's needs-mac PR; milp.py is orchestrator-only (CLAUDE.md) and
+# keeps its spelling for good. All five are added to their lines above.
+# S105, S106 and S108 (holiday F-224): a literal ``token=`` or ``web_token``
+# is the value under test in the LAN-token tests, and test_golden_board.py's
+# literal ``/tmp`` paths are strings a path-rewriting test rewrites, never
+# opened; a test's literal is its fixture, not a secret or a temp file.
+"tests/*" = ["S105", "S106", "S108"]
 
 [tool.ruff.lint.flake8-bugbear]
 # B008: typer's declarative defaults are the CLI's idiom (v18g §2.1).
