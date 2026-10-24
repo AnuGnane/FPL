@@ -24,6 +24,7 @@ from gaffer.features.engineer import (
     LEAGUE_CONGESTION_PREFIX,
     ROLE_FEATURES,
     ROTATION_FEATURES,
+    SPLIT_COLUMNS,
     US_STATS,
     XG_PER_SHOT_FEATURES,
     add_congestion,
@@ -39,6 +40,7 @@ from gaffer.features.engineer import (
     add_shrunken_rates,
     add_understat_rolling,
     add_understat_team_rolling,
+    add_venue_splits,
     add_xg_per_shot,
     core_insights_frames,
     merge_understat_team,
@@ -247,6 +249,14 @@ PPLAY_TOP_BIN_STEP = False
 minutes head's ``p_play`` through it. Off, nothing is fitted, saved or
 applied. Shipped off; turning it on waits on its K >= 5 replay (v20 spec §4
 puts it after v20's four arms)."""
+HOME_AWAY_SPLITS = False
+"""Holiday F-92 (ROADMAP candidate 5, GUIDE §12.5 item 5): when on, the
+training frame carries ``engineer.SPLIT_COLUMNS`` (C3's home/away rolling
+splits, ``engineer.add_venue_splits``), ``attacking_features()`` feeds them
+to the attacking head, and ``build_prediction_frame`` rebuilds them at serve
+time from the history it is handed. Off, no column is built and the frame is
+today's. Shipped off; the replay and the verdict are the Mac's (v20 spec
+§4)."""
 # The delta is a *conditional* bias, E[actual - ep | 60+ minutes], because
 # apply() scales it by p60. Same threshold the scoring uses for the 60-minute
 # appearance point, and the same one evaluate_predictions calls a starter.
@@ -438,6 +448,9 @@ def load_training_frame(max_season_idx: int | None = None,
     elo = compute_elo(fixtures)
     elo_final = elo.attrs["final"]
     df = add_player_rolling(player_gw)
+    if HOME_AWAY_SPLITS:
+        # Holiday F-92: stable on add_player_rolling's order, so no row moves.
+        df = add_venue_splits(df)
     df = add_rotation(df)
     df = add_rotation_priors(df, manager_tenures())
     df = add_setpiece(df)
@@ -613,8 +626,11 @@ def attacking_features() -> list[str]:
     so what makes the trade safe there is that a settings save calls
     ``invalidate()`` before the job that reads the flag is queued.
     """
-    return list(ATTACK_FEATURES) + (list(XG_PER_SHOT_FEATURES)
-                                    if config_in_force().xg_per_shot else [])
+    return (list(ATTACK_FEATURES)
+            + (list(XG_PER_SHOT_FEATURES)
+               if config_in_force().xg_per_shot else [])
+            # Holiday F-92: a module constant, read at call time.
+            + (list(SPLIT_COLUMNS) if HOME_AWAY_SPLITS else []))
 
 
 def oof_attack(df: pd.DataFrame, floor: int,

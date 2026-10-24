@@ -54,6 +54,13 @@ from lightgbm.basic import LightGBMError
 
 from gaffer.data import store
 from gaffer.evaluation import RETURN_CATEGORIES, categorize
+from gaffer.features.engineer import (  # noqa: F401 — re-exported, holiday F-92
+    SPLIT_COLUMNS,
+    SPLIT_STATS,
+    SPLIT_WINDOW,
+    VENUES,
+    add_venue_splits,
+)
 from gaffer.models.attacking import AttackingModel
 from gaffer.models.train import (
     CALIBRATION_HOLDOUT_GWS,
@@ -61,12 +68,6 @@ from gaffer.models.train import (
     attacking_features,
     load_training_frame,
 )
-
-SPLIT_STATS = ["xg", "xa", "goals", "assists"]
-SPLIT_WINDOW = 5
-VENUES = ("home", "away")
-SPLIT_COLUMNS = [f"{stat}_{venue}_r{SPLIT_WINDOW}"
-                 for stat in SPLIT_STATS for venue in VENUES]
 
 RMSE_GAIN = 0.002
 BUCKET_SLACK = 0.005
@@ -104,38 +105,6 @@ def split_holdout(df: pd.DataFrame
         return None
     return (train.reset_index(drop=True), hold.reset_index(drop=True),
             CALIBRATION_HOLDOUT_GWS)
-
-
-def add_venue_splits(df: pd.DataFrame) -> pd.DataFrame:
-    """``SPLIT_COLUMNS`` on every row, from the player's earlier rows only.
-
-    Built on the whole frame before the holdout split, as the engineered
-    rolling columns are, so a held-out row sees its training-period history.
-    """
-    sort_cols = ["code", "season_idx", "gw"]
-    if "kickoff_time" in df.columns:
-        sort_cols.append("kickoff_time")
-    df = df.sort_values(sort_cols).reset_index(drop=True)
-    is_home = df["home"].astype(bool).to_numpy()
-    feats: dict[str, pd.Series] = {}
-    for venue, mask in (("home", is_home), ("away", ~is_home)):
-        sub = df[mask]
-        for stat in SPLIT_STATS:
-            vals = (sub[stat] if stat in sub.columns
-                    else pd.Series(np.nan, index=sub.index))
-            # Inclusive mean of this venue's last rows, placed on those rows;
-            # shifted one row within the player so a row never reads its own
-            # match, then carried forward onto the other venue's rows.
-            inclusive = (vals.groupby(sub["code"])
-                         .rolling(SPLIT_WINDOW, min_periods=1).mean()
-                         .reset_index(level=0, drop=True))
-            placed = pd.Series(np.nan, index=df.index)
-            placed[inclusive.index] = inclusive.to_numpy()
-            feats[f"{stat}_{venue}_r{SPLIT_WINDOW}"] = (
-                placed.groupby(df["code"]).shift(1)
-                .groupby(df["code"]).ffill())
-    out = df.drop(columns=[c for c in SPLIT_COLUMNS if c in df.columns])
-    return pd.concat([out, pd.DataFrame(feats, index=df.index)], axis=1)
 
 
 def _rmse(err: np.ndarray) -> float | None:

@@ -165,6 +165,97 @@ def add_player_rolling(df: pd.DataFrame, stats: list[str] = ROLL_STATS,
     return pd.concat([df, pd.DataFrame(feats, index=df.index)], axis=1)
 
 
+SPLIT_STATS = ["xg", "xa", "goals", "assists"]
+SPLIT_WINDOW = 5
+VENUES = ("home", "away")
+SPLIT_COLUMNS = [f"{stat}_{venue}_r{SPLIT_WINDOW}"
+                 for stat in SPLIT_STATS for venue in VENUES]
+"""C3's home/away splits (holiday F-92; ROADMAP candidate 5, GUIDE §12.5
+item 5): the per-match columns behind the attacking head's ``xg_r*``,
+``xa_r*``, ``goals_r*`` and ``assists_r*`` inputs, each meaned over the
+player's last ``SPLIT_WINDOW`` home rows and, separately, away rows. Built
+only when ``models.train.HOME_AWAY_SPLITS`` is on; moved here from
+``scripts/c3_home_away.py`` so the script and the feature build share one
+definition (F-81's pattern)."""
+
+
+def _venue_is_home(df: pd.DataFrame) -> np.ndarray:
+    """``home`` where :func:`add_context` has built it, else the raw
+    ``was_home`` it is built from: the training frame meets the splits right
+    after :func:`add_player_rolling`, before ``home`` exists (holiday F-92)."""
+    col = "home" if "home" in df.columns else "was_home"
+    return df[col].astype(bool).to_numpy()
+
+
+def add_venue_splits(df: pd.DataFrame) -> pd.DataFrame:
+    """``SPLIT_COLUMNS`` on every row, from the player's earlier rows only.
+
+    Both columns of a stat sit on every row, home or away, so the head sees
+    the venue it plays at (``home``) beside both histories. Rows are ordered
+    as :func:`add_player_rolling` orders them and roll across the season
+    boundary as it does. A row's own match never enters its columns: the
+    inclusive mean of a venue's rows is shifted one row and carried forward
+    within the player. A player with no earlier row at a venue reads NaN
+    there, which LightGBM handles.
+
+    Built on the whole frame before any holdout split, as the engineered
+    rolling columns are, so a held-out row sees its training-period history.
+    """
+    sort_cols = ["code", "season_idx", "gw"]
+    if "kickoff_time" in df.columns:
+        sort_cols.append("kickoff_time")
+    # Stable, so a frame add_player_rolling already ordered keeps every row
+    # where it was: LightGBM breaks ties on row order.
+    df = df.sort_values(sort_cols, kind="stable").reset_index(drop=True)
+    is_home = _venue_is_home(df)
+    feats: dict[str, pd.Series] = {}
+    for venue, mask in (("home", is_home), ("away", ~is_home)):
+        sub = df[mask]
+        for stat in SPLIT_STATS:
+            vals = (sub[stat] if stat in sub.columns
+                    else pd.Series(np.nan, index=sub.index))
+            # Inclusive mean of this venue's last rows, placed on those rows;
+            # shifted one row within the player so a row never reads its own
+            # match, then carried forward onto the other venue's rows.
+            inclusive = (vals.groupby(sub["code"])
+                         .rolling(SPLIT_WINDOW, min_periods=1).mean()
+                         .reset_index(level=0, drop=True))
+            placed = pd.Series(np.nan, index=df.index)
+            placed[inclusive.index] = inclusive.to_numpy()
+            feats[f"{stat}_{venue}_r{SPLIT_WINDOW}"] = (
+                placed.groupby(df["code"]).shift(1)
+                .groupby(df["code"]).ffill())
+    out = df.drop(columns=[c for c in SPLIT_COLUMNS if c in df.columns])
+    return pd.concat([out, pd.DataFrame(feats, index=df.index)], axis=1)
+
+
+def latest_venue_splits(hist: pd.DataFrame) -> pd.DataFrame:
+    """``SPLIT_COLUMNS`` per ``code`` as of the end of ``hist`` (holiday F-92).
+
+    The serve-time half of :func:`add_venue_splits`, for the reason
+    :func:`latest_player_rolling` exists: every future row knows the matches
+    already played, so each venue's mean is over the player's last
+    ``SPLIT_WINDOW`` rows at that venue in ``hist``, the value the training
+    side would put on the player's next row.
+    """
+    sort_cols = ["code", "season_idx", "gw"]
+    if "kickoff_time" in hist.columns:
+        sort_cols.append("kickoff_time")
+    hist = hist.sort_values(sort_cols, kind="stable")
+    is_home = _venue_is_home(hist)
+    codes = pd.Index(hist["code"].unique(), name="code")
+    feats: dict[str, pd.Series] = {}
+    for venue, mask in (("home", is_home), ("away", ~is_home)):
+        tail = hist[mask].groupby("code", sort=False).tail(SPLIT_WINDOW)
+        for stat in SPLIT_STATS:
+            vals = (pd.to_numeric(tail[stat], errors="coerce")
+                    if stat in tail.columns
+                    else pd.Series(np.nan, index=tail.index))
+            feats[f"{stat}_{venue}_r{SPLIT_WINDOW}"] = (
+                vals.groupby(tail["code"]).mean().reindex(codes))
+    return pd.DataFrame(feats, index=codes)[SPLIT_COLUMNS]
+
+
 def _rotation_state(df: pd.DataFrame) -> dict[str, pd.Series]:
     """The raw parts of the rotation signals, *inclusive* of each row's
     own match.
@@ -853,6 +944,15 @@ def build_prediction_frame(hist: pd.DataFrame, future: pd.DataFrame,
     # caller, exactly as the manager-tenure asset above is: these rows carry
     # ``season_idx`` and no ``season`` column, so there is no season list on
     # this side to hand it.
+    # Holiday F-92: C3's splits are on the training frame only when
+    # ``models.train.HOME_AWAY_SPLITS`` is, and ``hist`` is that frame, so
+    # their presence there is the switch, read without features importing
+    # models. Off, nothing here runs and the frame is today's.
+    if any(c in hist.columns for c in SPLIT_COLUMNS):
+        frame = pd.concat(
+            [frame.drop(columns=SPLIT_COLUMNS, errors="ignore"),
+             latest_venue_splits(hist).reindex(frame["code"])
+             .reset_index(drop=True)], axis=1)
     ci_stats, ci_fixtures = core_insights_frames()
     frame = add_role_wb_share(
         frame.drop(columns=ROLE_FEATURES, errors="ignore"), ci_stats)
