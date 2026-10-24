@@ -160,3 +160,21 @@ def test_ruff_selects_the_ruff_family_without_the_unicode_prose_rules():
     assert "RUF" in lint["select"]
     assert {"RUF001", "RUF002", "RUF003"} <= set(lint["ignore"])
     assert "RUF046" not in lint["ignore"]
+
+
+def test_ruff_selects_the_fifteen_families_that_cost_nothing_today():
+    """Holiday F-222 turned on the fifteen families with no site on
+    2026-10-24 (ruff 0.17.2), in F-215's shape: a ``sys.version``
+    comparison, a ``breakpoint()``, a stray shebang, a blocking call in an
+    ``async`` route, a ``str.join`` over literal parts, a ``raise X()`` with
+    empty parens, an unconventional ``numpy`` alias, a legacy ``np.random``
+    call, a blanket ``type: ignore`` or ``noqa``, a missing ``__slots__`` on a
+    ``str`` or ``tuple`` subclass, a banned relative import, an f-string in
+    ``_()``, an f-string or ``%`` in a ``logging`` call and a shadowed builtin
+    cannot come back silently. ``FA`` is inert at ``py312`` and rides along so
+    a lowered target would speak."""
+    data = tomllib.loads(Path("pyproject.toml").read_text())
+    select = data["tool"]["ruff"]["lint"]["select"]
+    fifteen = {"YTT", "T10", "EXE", "ASYNC", "FLY", "RSE", "ICN", "NPY", "PGH",
+               "SLOT", "TID", "INT", "FA", "G", "A"}
+    assert fifteen <= set(select)
