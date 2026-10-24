@@ -110,7 +110,10 @@ function scriptBins(): string[] {
   }
   const words = Object.values(PKG.scripts).flatMap((cmd) => cmd.split(/\s*(?:&&|\|\||;)\s*/))
     .map((cmd) => cmd.trim().split(/\s+/)[0])
-  return words.flatMap((word) => (bins.has(word) ? [bins.get(word)!] : []))
+  return words.flatMap((word) => {
+    const bin = bins.get(word)
+    return bin === undefined ? [] : [bin]
+  })
 }
 
 function named(): Set<string> {

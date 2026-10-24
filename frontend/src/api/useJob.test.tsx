@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { POLL_MS, useJob } from './useJob'
+import { defined } from '../kit/defined'
 
 // v18f §2.3: the hook's clock is faked, so a wait is an advance by the hook's
 // own POLL_MS rather than a real second spent sitting there. `Date` is left
@@ -285,7 +286,7 @@ describe('useJob', () => {
       vi.stubGlobal('EventSource', FakeEventSource)
       const { result } = renderHook(() => useJob({ kind: 'advise' }))
       await act(async () => { await result.current.start() })
-      act(() => FakeEventSource.last!.fail(FakeEventSource.CLOSED))
+      act(() => defined(FakeEventSource.last, 'the event source').fail(FakeEventSource.CLOSED))
       expect(result.current.status).toBe('error')
       expect(result.current.error).toContain('stream lost')
     })
@@ -392,8 +393,8 @@ describe('useJob', () => {
     const { result } = renderHook(() => useJob({ kind: 'advise' }))
     await act(async () => { await result.current.start() })
     act(() => {
-      FakeEventSource.last!.emit('line', 'step one')
-      FakeEventSource.last!.emit('line', 'step two')
+      defined(FakeEventSource.last, 'the event source').emit('line', 'step one')
+      defined(FakeEventSource.last, 'the event source').emit('line', 'step two')
     })
     expect(result.current.lines).toEqual(['step one', 'step two'])
   })
@@ -404,11 +405,11 @@ describe('useJob', () => {
     const { result } = renderHook(() => useJob({ kind: 'advise' }))
     await act(async () => { await result.current.start() })
     act(() => {
-      FakeEventSource.last!.emit('end',
+      defined(FakeEventSource.last, 'the event source').emit('end',
         JSON.stringify({ status: 'done', error: null, summary: "{'gw': 5}" }))
     })
     expect(result.current.status).toBe('done')
-    expect(FakeEventSource.last!.closed).toBe(true)
+    expect(defined(FakeEventSource.last, 'the event source').closed).toBe(true)
   })
 
   it('ends in error and keeps the reason the stream gave', async () => {
@@ -417,7 +418,7 @@ describe('useJob', () => {
     const { result } = renderHook(() => useJob({ kind: 'evaluate' }))
     await act(async () => { await result.current.start() })
     act(() => {
-      FakeEventSource.last!.emit('end', JSON.stringify(
+      defined(FakeEventSource.last, 'the event source').emit('end', JSON.stringify(
         { status: 'failed', error: 'no models on disk', summary: null }))
     })
     expect(result.current.status).toBe('error')
@@ -452,10 +453,10 @@ describe('useJob', () => {
     vi.stubGlobal('EventSource', FakeEventSource)
     const { result } = renderHook(() => useJob({ kind: 'advise' }))
     await act(async () => { await result.current.start() })
-    act(() => { FakeEventSource.last!.fail(FakeEventSource.CLOSED) })
+    act(() => { defined(FakeEventSource.last, 'the event source').fail(FakeEventSource.CLOSED) })
     expect(result.current.status).toBe('error')
     expect(result.current.error).toMatch(/server may have restarted/i)
-    expect(FakeEventSource.last!.closed).toBe(true)
+    expect(defined(FakeEventSource.last, 'the event source').closed).toBe(true)
   })
 
   it('leaves a transient drop to the browser to retry', async () => {
@@ -463,12 +464,12 @@ describe('useJob', () => {
     vi.stubGlobal('EventSource', FakeEventSource)
     const { result } = renderHook(() => useJob({ kind: 'advise' }))
     await act(async () => { await result.current.start() })
-    act(() => { FakeEventSource.last!.fail(FakeEventSource.CONNECTING) })
+    act(() => { defined(FakeEventSource.last, 'the event source').fail(FakeEventSource.CONNECTING) })
     // Still running, still open: EventSource reconnects with Last-Event-ID and
     // the server replays out of its ring buffer.
     expect(result.current.status).toBe('running')
     expect(result.current.error).toBeNull()
-    expect(FakeEventSource.last!.closed).toBe(false)
+    expect(defined(FakeEventSource.last, 'the event source').closed).toBe(false)
   })
 
   it('keeps the lines it had when the stream is lost', async () => {
@@ -476,8 +477,8 @@ describe('useJob', () => {
     vi.stubGlobal('EventSource', FakeEventSource)
     const { result } = renderHook(() => useJob({ kind: 'advise' }))
     await act(async () => { await result.current.start() })
-    act(() => { FakeEventSource.last!.emit('line', 'step one') })
-    act(() => { FakeEventSource.last!.fail(FakeEventSource.CLOSED) })
+    act(() => { defined(FakeEventSource.last, 'the event source').emit('line', 'step one') })
+    act(() => { defined(FakeEventSource.last, 'the event source').fail(FakeEventSource.CLOSED) })
     expect(result.current.status).toBe('error')
     expect(result.current.lines).toEqual(['step one'])
   })
@@ -490,9 +491,9 @@ describe('useJob', () => {
     vi.stubGlobal('EventSource', FakeEventSource)
     const { result, unmount } = renderHook(() => useJob({ kind: 'advise' }))
     await act(async () => { await result.current.start() })
-    expect(FakeEventSource.last!.closed).toBe(false)
+    expect(defined(FakeEventSource.last, 'the event source').closed).toBe(false)
     unmount()
-    expect(FakeEventSource.last!.closed).toBe(true)
+    expect(defined(FakeEventSource.last, 'the event source').closed).toBe(true)
   })
 
   it('does not fail a run that already ended', async () => {
@@ -501,12 +502,12 @@ describe('useJob', () => {
     const { result } = renderHook(() => useJob({ kind: 'advise' }))
     await act(async () => { await result.current.start() })
     act(() => {
-      FakeEventSource.last!.emit('end',
+      defined(FakeEventSource.last, 'the event source').emit('end',
         JSON.stringify({ status: 'done', error: null, summary: null }))
     })
     expect(result.current.status).toBe('done')
     // Closing the source can itself fire an error; a finished job stays done.
-    act(() => { FakeEventSource.last!.fail(FakeEventSource.CLOSED) })
+    act(() => { defined(FakeEventSource.last, 'the event source').fail(FakeEventSource.CLOSED) })
     expect(result.current.status).toBe('done')
     expect(result.current.error).toBeNull()
   })

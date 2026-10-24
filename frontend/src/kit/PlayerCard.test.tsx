@@ -183,7 +183,8 @@ describe('PlayerCard', () => {
     const { container } = render(
       <PlayerCard size="chip" code={1} name="Raya" position="GKP"
                   teamShort={null} teamCode={null} ep={4.2} />)
-    const card = container.querySelector('[data-code="1"]')!
+    const card = container.querySelector('[data-code="1"]')
+    if (!card) throw new Error('no card')
     // A 76px vertical stack is right on grass and wrong in the first cell of
     // an eight-column table, where it triples the row height (plan A2).
     expect(card.className).toContain('inline-flex')

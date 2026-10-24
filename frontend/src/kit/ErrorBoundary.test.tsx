@@ -13,7 +13,8 @@ describe('ErrorBoundary', () => {
     const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
     render(<ErrorBoundary><Boom throws /></ErrorBoundary>)
     const box = screen.getByText(/captain is undefined/)
-      .closest('[data-tone]')!
+      .closest('[data-tone]')
+    if (!box) throw new Error('the error text has no toned box')
     expect(box).toHaveAttribute('data-tone', 'error')
     expect(screen.getByRole('button', { name: 'Reload page' }))
       .toBeInTheDocument()

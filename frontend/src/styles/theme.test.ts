@@ -55,7 +55,8 @@ function valueOf(source: string, token: string): string {
     `${token}:\\s*(#[0-9a-f]{6}(?:[0-9a-f]{2})?);`,
   ).exec(source)
   expect(found, `${token} has no hex value`).not.toBeNull()
-  return found![1]
+  if (!found) throw new Error(`${token} has no hex value`)
+  return found[1]
 }
 
 // WCAG 2.1 relative luminance and contrast, nine lines rather than a

@@ -11,6 +11,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { defined } from '../kit/defined'
 
 const ASSETS = fileURLToPath(
   new URL('../../../src/gaffer/web/static/assets', import.meta.url),
@@ -55,30 +56,33 @@ const BASE = ['#5fcf94', '#f0876a', '#e2b25a', '#4f8ff7']
 
 describe.skipIf(css === null)('the compiled stylesheet', () => {
   it('carries the light overrides at top level, after the @layer tokens', () => {
+    const sheet = defined(css, 'the compiled stylesheet')
     // Vite's minifier drops the quotes; accept the sheet either way.
-    const at = [...indexesOf(css!, '[data-theme=light]'),
-      ...indexesOf(css!, '[data-theme="light"]')]
-      .filter((i) => depthAt(css!, i) === 0)
+    const at = [...indexesOf(sheet, '[data-theme=light]'),
+      ...indexesOf(sheet, '[data-theme="light"]')]
+      .filter((i) => depthAt(sheet, i) === 0)
     expect(at.length, 'a top-level [data-theme=light] block').toBeGreaterThan(0)
     // Later than the last @layer, or the cascade would let a layered rule
     // win and the explicit light choice would not take.
-    expect(Math.max(...at)).toBeGreaterThan(css!.lastIndexOf('@layer'))
+    expect(Math.max(...at)).toBeGreaterThan(sheet.lastIndexOf('@layer'))
   })
 
   it('keeps the tint tier as variables, not as baked colours', () => {
+    const sheet = defined(css, 'the compiled stylesheet')
     for (const value of TINT) {
-      for (const at of indexesOf(css!, value)) {
-        const from = Math.max(css!.lastIndexOf(';', at),
-                              css!.lastIndexOf('{', at)) + 1
-        expect(css!.slice(from, at), `${value} outside a variable`)
+      for (const at of indexesOf(sheet, value)) {
+        const from = Math.max(sheet.lastIndexOf(';', at),
+                              sheet.lastIndexOf('{', at)) + 1
+        expect(sheet.slice(from, at), `${value} outside a variable`)
           .toMatch(/^--color-[a-z-]+-tint:\s*$/)
       }
     }
   })
 
   it('emits no border-color baked from a dark meaning colour', () => {
+    const sheet = defined(css, 'the compiled stylesheet')
     for (const hex of BASE) {
-      expect(css!, `border-color baked from ${hex}`)
+      expect(sheet, `border-color baked from ${hex}`)
         .not.toContain(`border-color:${hex}`)
     }
   })

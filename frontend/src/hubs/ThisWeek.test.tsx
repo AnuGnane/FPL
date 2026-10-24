@@ -6,6 +6,7 @@ import { routerFuture } from '../kit/router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { seedPageData } from '../api/pageData'
 import ThisWeek from './ThisWeek'
+import { defined } from '../kit/defined'
 
 const { FakeApiError, apiGet, apiPost, jobStart } = vi.hoisted(() => {
   class FakeApiError extends Error {
@@ -222,7 +223,7 @@ describe('This Week hub', () => {
     expect(screen.getByText('pts')).toBeInTheDocument()
     // The captain's name is on the pitch, in the squad table and in the
     // caption too, so this one is scoped to the stat tile.
-    const captainStat = screen.getByText('Captain').closest('div')!
+    const captainStat = defined(screen.getByText('Captain').closest('div'), 'captainStat')
     expect(within(captainStat).getByText(/Salah/)).toBeInTheDocument()
     expect(screen.getByText('Next chip')).toBeInTheDocument()
     expect(screen.getByText('League')).toBeInTheDocument()
@@ -240,7 +241,7 @@ describe('This Week hub', () => {
 
   it('states the league gap as a number with the side of it as the unit', async () => {
     render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
-    const league = (await screen.findByText('League')).closest('div')!
+    const league = defined((await screen.findByText('League')).closest('div'), 'league')
     expect(within(league).getByText('84')).toBeInTheDocument()
     expect(within(league).getByText('behind')).toBeInTheDocument()
     expect(within(league).getByText(/chase · tilt \+0\.25/)).toBeInTheDocument()
@@ -251,7 +252,7 @@ describe('This Week hub', () => {
     // decoration and every other case here renders without it.
     seedPageData({ '/api/league/leagues': OVERVIEW })
     render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
-    const league = (await screen.findByText('League')).closest('div')!
+    const league = defined((await screen.findByText('League')).closest('div'), 'league')
     expect(await within(league).findByText(/Shocky Supplies · chase · tilt \+0\.25/))
       .toBeInTheDocument()
     expect(within(league).queryByText('manual')).toBeNull()
@@ -261,13 +262,13 @@ describe('This Week hub', () => {
     seedPageData({ '/api/league/leagues': { ...OVERVIEW, stance: 'defend',
                                             focus_stance: 'defend' } })
     render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
-    const league = (await screen.findByText('League')).closest('div')!
+    const league = defined((await screen.findByText('League')).closest('div'), 'league')
     expect(await within(league).findByText('manual')).toBeInTheDocument()
   })
 
   it('states the captain with the sims share and the vice as context', async () => {
     render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
-    const captain = (await screen.findByText('Captain')).closest('div')!
+    const captain = defined((await screen.findByText('Captain')).closest('div'), 'captain')
     expect(within(captain).getByText(/of sims · vice/)).toBeInTheDocument()
   })
 
@@ -381,8 +382,7 @@ describe('an advice payload missing its armband', () => {
   // React answers by unmounting the whole tree. A hub that cannot name a
   // captain should say so, not go white.
   const withoutCaptain = (key: 'captain' | 'vice') => {
-    const advice = { ...ADVICE.advice }
-    delete (advice as Record<string, unknown>)[key]
+    const advice = Object.fromEntries(Object.entries(ADVICE.advice).filter(([k]) => k !== key))
     return { ...ADVICE, advice }
   }
 
@@ -473,11 +473,8 @@ describe('the captaincy title-odds chip', () => {
 /** The advice fixture with named identity fields stripped, for the
  *  cold-backend case. */
 function adviceWithout(fields: string[]) {
-  const strip = (p: Record<string, unknown>) => {
-    const out = { ...p }
-    for (const f of fields) delete out[f]
-    return out
-  }
+  const strip = (p: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(p).filter(([k]) => !fields.includes(k)))
   const advice = {
     ...ADVICE.advice,
     xi: ADVICE.advice.xi.map(strip),
@@ -552,7 +549,7 @@ describe('the pitch and the table', () => {
   it('keeps the captain line and the odds chip above the pitch', async () => {
     render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
     await screen.findByTestId('pitch-row-MID')
-    const header = (await squadCard()).querySelector('header')!
+    const header = defined((await squadCard()).querySelector('header'), 'header')
     expect(header.textContent).toMatch(/Captain Salah/)
   })
 })
@@ -590,7 +587,7 @@ describe('the captain against the field (v10b §F1a)', () => {
        render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        await screen.findByTestId('pitch-row-MID')
        expect(screen.queryByTestId('captain-field-note')).toBeNull()
-       const header = (await squadCard()).querySelector('header')!
+       const header = defined((await squadCard()).querySelector('header'), 'header')
        expect(header.textContent).toMatch(/Captain Salah/)
        expect(header.textContent).toMatch(/of sims/)
        expect(header.textContent).toMatch(/vice Gabriel/)
@@ -639,9 +636,9 @@ describe('the captain against the field (v10b §F1a)', () => {
        render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
        const table = within(await squadCard()).getByRole('table')
-       const salah = within(table).getByText('Salah').closest('tr')!
+       const salah = defined(within(table).getByText('Salah').closest('tr'), 'salah')
        expect(within(salah).getByText('55.2')).toBeInTheDocument()
-       const gabriel = within(table).getByText('Gabriel').closest('tr')!
+       const gabriel = defined(within(table).getByText('Gabriel').closest('tr'), 'gabriel')
        // Never a 0: field EO's own contract is "never 0 for unknown".
        expect(within(gabriel).getAllByText('—').length).toBeGreaterThan(0)
      })
@@ -720,7 +717,7 @@ describe("the captain's own note (v12 W5 §6.3)", () => {
        render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        await screen.findByTestId('pitch-row-MID')
        expect(screen.queryByTestId('captain-note')).toBeNull()
-       const header = (await squadCard()).querySelector('header')!
+       const header = defined((await squadCard()).querySelector('header'), 'header')
        expect(header.textContent).toMatch(/Captain Salah/)
      })
 
@@ -729,7 +726,7 @@ describe("the captain's own note (v12 W5 §6.3)", () => {
        render(<MemoryRouter {...routerFuture}><ThisWeek /></MemoryRouter>)
        await screen.findByTestId('pitch-row-MID')
        expect(screen.queryByTestId('captain-note')).toBeNull()
-       const header = (await squadCard()).querySelector('header')!
+       const header = defined((await squadCard()).querySelector('header'), 'header')
        expect(header.textContent).toMatch(/Captain Salah/)
      })
 

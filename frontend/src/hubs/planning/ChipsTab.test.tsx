@@ -406,7 +406,8 @@ describe('the season outlook segment (v10b §F2c)', () => {
     // Scoped to the segment strip: the chip table's own rows carry a
     // "Wildcard" button too, and always have.
     const strip = screen.getByRole('button', { name: 'Chip table' })
-      .parentElement!
+      .parentElement
+    if (!strip) throw new Error('the Chip table button has no strip')
     await userEvent.click(within(strip).getByRole('button',
                                                   { name: 'Wildcard' }))
     expect(await screen.findByText('Wirtz')).toBeInTheDocument()

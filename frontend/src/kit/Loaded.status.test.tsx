@@ -209,7 +209,8 @@ describe('a failed read is an error, and an absent one is the empty state',
         // Testing Library's waitFor, not vi.waitFor: it polls inside act, so
         // the sections' reads landing meanwhile are not act warnings (F-186).
         await waitFor(() => { expect(apiGet).toHaveBeenCalledWith(row.url) })
-        expect(screen.queryByText(row.absent!)).toBeNull()
+        if (!row.absent) throw new Error(`${row.name} has neither an empty state nor an absent pattern`)
+        expect(screen.queryByText(row.absent)).toBeNull()
       }
       // Holiday F-186: the page's other reads (QualityTab's other sections,
       // the strip's rejection itself) settle inside act before the last look.

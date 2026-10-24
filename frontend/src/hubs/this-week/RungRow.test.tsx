@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
 import type { LadderRung } from '../../types'
 import RungRow from './RungRow'
+import { defined } from '../../kit/defined'
 
 // The ladder's rows, moved beside them in v18f §2.1 out of
 // `LadderCard.test.tsx`, which keeps every case about the card around them —
@@ -93,7 +94,7 @@ function Ladder({ rungs = RUNGS }: { rungs?: LadderRung[] }) {
 describe('the rung row', () => {
   it('lists one row per rung with the moves, the cost and the odds', () => {
     render(<Ladder />)
-    const row = screen.getByText('1 hit').closest('tr')!
+    const row = defined(screen.getByText('1 hit').closest('tr'), 'row')
     expect(row).toHaveTextContent('Star, Second')
     expect(row).toHaveTextContent('−4')
     expect(row).toHaveTextContent('74%')     // P(beats bank)
@@ -103,9 +104,9 @@ describe('the rung row', () => {
 
   it('highlights the cap rung and mutes the rungs beyond it', () => {
     render(<Ladder />)
-    const cap = screen.getByText('2 hits').closest('tr')!
+    const cap = defined(screen.getByText('2 hits').closest('tr'), 'cap')
     expect(cap).toHaveAttribute('data-cap', 'true')
-    const beyond = screen.getByText('3 hits').closest('tr')!
+    const beyond = defined(screen.getByText('3 hits').closest('tr'), 'beyond')
     expect(beyond).toHaveClass('text-text-faint')
     expect(beyond).toHaveAttribute('title', 'beyond your cap')
     expect(cap).not.toHaveClass('text-text-faint')
@@ -113,9 +114,9 @@ describe('the rung row', () => {
 
   it('tints the cap rung accent and draws the odds as bars with the percent beside', () => {
     render(<Ladder />)
-    const cap = screen.getByText('2 hits').closest('tr')!
+    const cap = defined(screen.getByText('2 hits').closest('tr'), 'cap')
     expect(cap).toHaveClass('bg-accent-tint')
-    const rec = screen.getByText('1 hit').closest('tr')!
+    const rec = defined(screen.getByText('1 hit').closest('tr'), 'rec')
     expect(within(rec).getByTestId('p-beats-bank-fill')).toHaveStyle({ width: '74%' })
     expect(within(rec).getByTestId('p-best-fill')).toHaveStyle({ width: '50%' })
     expect(rec).toHaveTextContent('74%')
@@ -123,14 +124,14 @@ describe('the rung row', () => {
 
   it('prints the horizon cost in down ink beside the cost now', () => {
     render(<Ladder />)
-    const row = screen.getByText('1 hit').closest('tr')!
+    const row = defined(screen.getByText('1 hit').closest('tr'), 'row')
     const horizon = within(row).getByText(/over \d+ GWs?/)
     expect(horizon).toHaveClass('text-down')
   })
 
   it('marks the recommended rung and says when a rung repeats the one below', () => {
     render(<Ladder />)
-    const rec = screen.getByText('1 hit').closest('tr')!
+    const rec = defined(screen.getByText('1 hit').closest('tr'), 'rec')
     expect(within(rec).getByText('recommended')).toBeInTheDocument()
     expect(screen.getByText('2 hits').closest('tr'))
       .toHaveTextContent(/solver would not spend it — same as 1 hit/)
@@ -151,7 +152,7 @@ describe('the rung row', () => {
   it('prints the first week’s hit cost and the horizon cost when they differ',
      () => {
        render(<Ladder />)
-       const row = screen.getByText('1 hit').closest('tr')!
+       const row = defined(screen.getByText('1 hit').closest('tr'), 'row')
        expect(row).toHaveTextContent('−4 now · −12 over 3 GWs')
        // A rung that spends the same either way says it once.
        expect(screen.getByText('bank', { selector: 'button' }).closest('tr')).toHaveTextContent('0')
@@ -161,7 +162,7 @@ describe('the rung row', () => {
      () => {
        render(<Ladder rungs={RUNGS.map((r) => (r.key === 'hits1'
          ? { ...r, horizon_hits: 1, horizon_cost: 4 } : r))} />)
-       const row = screen.getByText('1 hit').closest('tr')!
+       const row = defined(screen.getByText('1 hit').closest('tr'), 'row')
        expect(row).toHaveTextContent('−4')
        expect(row).not.toHaveTextContent('over 3 GWs')
      })
@@ -185,7 +186,7 @@ describe('the rung row', () => {
     // The row is the toggle, so the second click is what puts the panel away
     // — and the card holds one open rung at a time.
     const { container } = render(<Ladder />)
-    const row = screen.getByText('1 hit').closest('tr')!
+    const row = defined(screen.getByText('1 hit').closest('tr'), 'row')
     fireEvent.click(row)
     expect(screen.getByText(/\+ Second for Filler/)).toBeInTheDocument()
     fireEvent.click(row)
