@@ -152,8 +152,10 @@ describe('ReviewTab', () => {
     const flagged = await screen.findByText(/Flagged and skipped/)
     // The name is a chip now, so the sentence's own text no longer carries
     // it: the miss reads as a card with the gain beside it.
-    expect(flagged.parentElement!.textContent).toContain('Guehi')
-    expect(flagged.parentElement!.textContent).toContain('+15 over Blank')
+    const card = flagged.parentElement
+    if (!card) throw new Error('the misses line has no card')
+    expect(card.textContent).toContain('Guehi')
+    expect(card.textContent).toContain('+15 over Blank')
     expect(screen.getByRole('button', { name: /Guehi/ })).toBeInTheDocument()
   })
 
@@ -274,10 +276,12 @@ describe('ReviewTab', () => {
 
   it('shows the deviation note under the lanes and the by-reason table',
      async () => {
+       const summary = DATA.summary
+       if (!summary) throw new Error('the review fixture has no summary')
        mock({ ...DATA,
          gws: [{ ...DATA.gws[0],
                  decision: { reason: 'injury', text: 'Rice was out', at: null } }],
-         summary: { ...DATA.summary!, by_reason: [
+         summary: { ...summary, by_reason: [
            { reason: 'injury', count: 1, mean_delta_pts: -7 }] } })
        render(<ReviewTab />)
        const note = await screen.findByTestId('decision-2')

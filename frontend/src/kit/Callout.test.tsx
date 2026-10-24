@@ -5,7 +5,8 @@ import Callout from './Callout'
 describe('Callout', () => {
   it('is a grey note by default', () => {
     render(<Callout>Your pins are in this plan</Callout>)
-    const box = screen.getByText('Your pins are in this plan').parentElement!
+    const box = screen.getByText('Your pins are in this plan').parentElement
+    if (!box) throw new Error('no box')
     expect(box).toHaveAttribute('data-tone', 'note')
     expect(box).toHaveClass('border-border', 'bg-raised')
     expect(box.querySelector('svg')).toBeNull()

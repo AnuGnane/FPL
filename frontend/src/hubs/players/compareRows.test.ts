@@ -67,7 +67,8 @@ describe('the grouped chart rows', () => {
 
   it('gives a player with no such term a zero rather than a hole', () => {
     const rows = compareRows([row(1, 'Salah'), row(2, 'Saka')], BODY)
-    const cards = rows.find((r) => r['label'] === 'Cards')!
+    const cards = rows.find((r) => r['label'] === 'Cards')
+    if (!cards) throw new Error('no cards')
     expect(cards['2']).toBe(0)
   })
 
@@ -82,7 +83,7 @@ describe('the grouped chart rows', () => {
 
   it('keeps a negative term negative', () => {
     const rows = compareRows([row(1, 'Salah')], BODY)
-    expect(rows.find((r) => r['label'] === 'Cards')!['1']).toBeCloseTo(-0.3)
+    expect(rows.find((r) => r['label'] === 'Cards')?.['1']).toBeCloseTo(-0.3)
   })
 
   it('has no rows at all when the breakdown has not landed', () => {

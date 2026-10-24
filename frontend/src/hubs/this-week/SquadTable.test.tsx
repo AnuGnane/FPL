@@ -65,7 +65,8 @@ describe('SquadTable', () => {
 
   it('shows an em dash for a missing sim percentage', () => {
     render(<SquadTable rows={ROWS} breakdown={{}} />)
-    const row = screen.getByText('Gabriel').closest('tr')!
+    const row = screen.getByText('Gabriel').closest('tr')
+    if (!row) throw new Error('no row')
     expect(within(row).getAllByText('—').length).toBeGreaterThan(0)
   })
 
@@ -146,7 +147,8 @@ describe('SquadTable: the field column (v10b §F1a)', () => {
   it('renders the top-10k share to one decimal', () => {
     render(<SquadTable rows={WITH_FIELD} breakdown={{}} />)
     expect(screen.getByText('Field%')).toBeInTheDocument()
-    const salah = screen.getByText('Salah').closest('tr')!
+    const salah = screen.getByText('Salah').closest('tr')
+    if (!salah) throw new Error('no salah')
     expect(within(salah).getByText('55.2')).toBeInTheDocument()
   })
 
@@ -154,7 +156,8 @@ describe('SquadTable: the field column (v10b §F1a)', () => {
     // Never a zero. `types.ts:212` — "never 0 for unknown" — because a 0 is a
     // measured differential and this is the absence of a measurement.
     render(<SquadTable rows={WITH_FIELD} breakdown={{}} />)
-    const gabriel = screen.getByText('Gabriel').closest('tr')!
+    const gabriel = screen.getByText('Gabriel').closest('tr')
+    if (!gabriel) throw new Error('no gabriel')
     expect(within(gabriel).getAllByText('—').length).toBeGreaterThan(0)
   })
 

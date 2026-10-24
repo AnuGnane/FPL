@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SeasonTab from './SeasonTab'
 import { SERIES_COLOURS } from '../../kit/series'
+import { defined } from '../../kit/defined'
 
 const { apiGet, ApiError } = vi.hoisted(() => ({
   apiGet: vi.fn(),
@@ -169,7 +170,7 @@ describe('SeasonTab, filled', () => {
     // Two real ranks either side of a null: recharts splits the path rather
     // than interpolating, which is the whole point — a straight line through
     // a missing rank is the most confident lie this view could tell.
-    const curves = chart!.querySelectorAll('.recharts-line-curve')
+    const curves = defined(chart, 'the chart').querySelectorAll('.recharts-line-curve')
     const segments = [...curves].reduce(
       (n, path) => n + (path.getAttribute('d') ?? '').split('M').length - 1, 0)
     expect(segments).toBe(2)
@@ -198,7 +199,7 @@ describe('SeasonTab, filled', () => {
       // p_play, p60 and p_haul are drawn; p_cs has no per-gameweek column, so
       // it has no line — drawing it at zero would read as perfect
       // calibration.
-      expect(chart!.querySelectorAll('.recharts-line')).toHaveLength(3)
+      expect(defined(chart, 'the chart').querySelectorAll('.recharts-line')).toHaveLength(3)
     })
 
   it('names the omitted head in the caption rather than drawing it at zero',
@@ -215,7 +216,7 @@ describe('SeasonTab, filled', () => {
     await trendDrawn()
     const chart = container.querySelector(
       '[aria-label="Calibration trend by gameweek"]')
-    const segments = [...chart!.querySelectorAll('.recharts-line-curve')]
+    const segments = [...defined(chart, 'the chart').querySelectorAll('.recharts-line-curve')]
       .map((path) => (path.getAttribute('d') ?? '').split('M').length - 1)
     // p60 is null in GW2, so exactly one of the three lines is split.
     expect(segments.filter((n) => n === 2)).toHaveLength(1)
@@ -305,7 +306,7 @@ describe('SeasonTab, filled', () => {
   it('prints the bench total with the gameweeks it covers', async () => {
     render(<SeasonTab />)
     const card = await screen.findByTestId('season-lane-transfers')
-    expect(within(card.parentElement!.parentElement!)
+    expect(within(defined(card.parentElement?.parentElement, 'the lane card'))
       .getByText(/Bench points this season: 7 over 3 GW/))
       .toBeInTheDocument()
   })
@@ -345,7 +346,7 @@ describe('SeasonTab, one gameweek old', () => {
     return CHARTS.map((label) => {
       const chart = container.querySelector(`[aria-label="${label}"]`)
       expect(chart, label).not.toBeNull()
-      return chart!
+      return defined(chart, label)
     })
   }
 

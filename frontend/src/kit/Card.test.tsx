@@ -42,8 +42,9 @@ describe('Card', () => {
       <Card title="Squad" id="squad"><p>inside</p></Card>)
     const root = container.firstChild as HTMLElement
     expect(root.id).toBe('squad')
-    expect(root.className).toBe(
-      (bare as unknown as string).match(/class="([^"]*)"/)![1])
+    const bareClass = (bare as unknown as string).match(/class="([^"]*)"/)
+    if (!bareClass) throw new Error('the bare card has no class attribute')
+    expect(root.className).toBe(bareClass[1])
   })
 
   it('renders the title at heading level 2, one step below the page h1', () => {

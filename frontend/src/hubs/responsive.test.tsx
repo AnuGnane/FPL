@@ -310,7 +310,8 @@ describe('a phone screen scrolls nothing sideways', () => {
        apiGet.mockResolvedValue(CHIPS)
        render(<MemoryRouter {...routerFuture}><ChipsTab /></MemoryRouter>)
        const strip = (await screen.findByRole('button',
-         { name: 'Chip table' })).parentElement!
+         { name: 'Chip table' })).parentElement
+       if (!strip) throw new Error('the Chip table button has no strip')
        expect(within(strip).getAllByRole('button')).toHaveLength(3)
        expect(strip.className).toMatch(/overflow-x-auto|flex-wrap/)
      })
