@@ -64,7 +64,7 @@ def test_the_total_counts_the_captain_twice():
 def test_a_player_the_actuals_frame_has_never_heard_of_scores_nothing():
     """A player who did not feature at all is worth zero, which is exactly
     what he scored — the same rule ``score_gw`` applies."""
-    xi, _, total = hindsight_xi(SQUAD + [999], frame({13: 9}))
+    xi, _, total = hindsight_xi([*SQUAD, 999], frame({13: 9}))
     assert total == 9 + 9
     assert 999 not in xi
 

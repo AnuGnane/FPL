@@ -18,6 +18,7 @@ this module, and it does no work at import time.
 
 from __future__ import annotations
 
+import itertools
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -195,7 +196,7 @@ def _check_cdf(name: str, curve) -> None:
         raise ValueError(
             f"injury curve '{name}' leaves [0, 1] — it is read as a "
             "probability and nothing downstream clamps it")
-    if any(b < a for a, b in zip(values, values[1:])):
+    if any(b < a for a, b in itertools.pairwise(values)):
         raise ValueError(
             f"injury curve '{name}' is not non-decreasing — a return "
             "probability that falls says a player un-returned")

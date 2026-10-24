@@ -5,6 +5,8 @@ fixture for your forwards and a hard one for your defenders' clean sheet, and
 a single number cannot say both (spec §6.3).
 """
 
+from typing import ClassVar
+
 import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
@@ -123,8 +125,8 @@ def _spread_fixture(monkeypatch, *, dead_code=False):
     logs = dict(zip(codes[:-1], np.linspace(-0.4, 0.4, 19)))
 
     class Model:
-        attack_ = {**{c: float(v) for c, v in logs.items()}, outlier: -3.0}
-        defence_ = {**{c: -float(v) for c, v in logs.items()}, outlier: 3.0}
+        attack_: ClassVar[dict] = {**{c: float(v) for c, v in logs.items()}, outlier: -3.0}
+        defence_: ClassVar[dict] = {**{c: -float(v) for c, v in logs.items()}, outlier: 3.0}
 
     listed = codes[:-1] if dead_code else codes
     teams = pd.DataFrame([
@@ -177,8 +179,8 @@ def test_a_team_the_table_no_longer_lists_does_not_set_the_scale(client,
 
 def test_an_all_equal_model_is_still_a_flat_half(client, monkeypatch):
     class Flat:
-        attack_ = {300: 0.1, 301: 0.1, 302: 0.1}
-        defence_ = {300: 0.2, 301: 0.2, 302: 0.2}
+        attack_: ClassVar[dict] = {300: 0.1, 301: 0.1, 302: 0.1}
+        defence_: ClassVar[dict] = {300: 0.2, 301: 0.2, 302: 0.2}
 
     monkeypatch.setattr(persistence, "load_model", lambda name: Flat())
     body = client.get("/api/fixtures/matrix?from=5&n=2").json()
@@ -201,8 +203,8 @@ def test_a_nan_team_parameter_scores_a_half_not_invalid_json(client,
     """One unfittable club used to put a bare NaN in the body, and NaN is not
     JSON: the whole matrix failed to parse, not one cell."""
     class NanModel:
-        attack_ = {300: 0.40, 301: 0.00, 302: float("nan")}
-        defence_ = {300: -0.30, 301: 0.00, 302: 0.30}
+        attack_: ClassVar[dict] = {300: 0.40, 301: 0.00, 302: float("nan")}
+        defence_: ClassVar[dict] = {300: -0.30, 301: 0.00, 302: 0.30}
 
     monkeypatch.setattr(persistence, "load_model", lambda name: NanModel())
     resp = client.get("/api/fixtures/matrix?from=5&n=2")

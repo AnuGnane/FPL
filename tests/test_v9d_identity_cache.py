@@ -87,7 +87,7 @@ def test_the_second_call_returns_the_same_answer(wired):
 def test_a_refreshed_parquet_is_re_read(wired):
     """No TTL: a new mtime is the invalidation. This is the assertion that
     fails if someone caches on the relative path alone."""
-    tmp, reads = wired
+    _tmp, reads = wired
     identity.with_identity(_payload(), 9)
     reads.clear()
     store.save(pd.DataFrame({"code": [3], "short_name": ["ARSENAL"],

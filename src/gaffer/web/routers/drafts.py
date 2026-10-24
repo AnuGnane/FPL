@@ -141,7 +141,7 @@ def compare_drafts(names: list[str], gw: int) -> dict:
     # scored over the same weeks.
     default_horizon = state.opt.get("horizon") or len(state.gws)
     horizons = [req.horizon or default_horizon for _, req in requests]
-    gws = state.gws[:max(1, min([int(default_horizon)] + horizons))]
+    gws = state.gws[:max(1, min([int(default_horizon), *horizons]))]
 
     ep_by = raw_ep_by(state)
     cover = (state.cover if state.cover is not None

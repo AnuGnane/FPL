@@ -48,6 +48,7 @@ empty series, so it prints the waiting sentence, never a traceback.
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 from statistics import median
 
@@ -68,7 +69,7 @@ MIN_BANKED = 3
 
 
 def _rises(series: dict[int, int], weeks: list[int]) -> list[float]:
-    return [(series[b] - series[a]) / (b - a) for a, b in zip(weeks, weeks[1:])]
+    return [(series[b] - series[a]) / (b - a) for a, b in itertools.pairwise(weeks)]
 
 
 def project(series: dict[int, int], gw: int) -> dict[str, float] | None:

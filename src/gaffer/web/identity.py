@@ -283,7 +283,7 @@ def _fixture_by_team(gw: int, code_of: dict[int, int],
     if key is not None:
         # The output embeds short names off teams.parquet, so that file's
         # identity belongs in the key. A renamed club is not the same map.
-        key = key + (_file_key("live/teams.parquet"),)
+        key = (*key, _file_key("live/teams.parquet"))
     # The gameweek is in the *slot*, not only the key: a map built for GW9 is
     # not GW10's, and with one shared slot two gameweeks' traffic would take
     # turns evicting each other and re-reading the parquet every request.

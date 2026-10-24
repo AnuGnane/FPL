@@ -84,7 +84,7 @@ def test_a_bare_json_array_is_accepted_too(tmp_path):
 
 
 def test_a_row_with_an_unknown_verdict_is_dropped_not_guessed(tmp_path):
-    rows = _ROWS + [{"code": 3, "verdict": "vibes", "confidence": 1.0}]
+    rows = [*_ROWS, {"code": 3, "verdict": "vibes", "confidence": 1.0}]
     cmd = _fake(tmp_path, json.dumps({"result": json.dumps(rows)}))
     out = classify_news(_texts(), cmd=cmd, cache_dir=tmp_path / "cache",
                         timeout=10)

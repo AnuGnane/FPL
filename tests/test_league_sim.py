@@ -509,7 +509,7 @@ def test_the_answer_does_not_depend_on_the_order_the_standings_arrived_in():
                                   for i in range(2, 7)]
     forward = simulate_league(_inputs(entries=entries), n=2000, seed=4)
     shuffled = simulate_league(
-        _inputs(entries=[entries[0]] + list(reversed(entries[1:]))),
+        _inputs(entries=[entries[0], *reversed(entries[1:])]),
         n=2000, seed=4)
     assert forward.p_win == shuffled.p_win
     assert forward.exp_finish == shuffled.exp_finish

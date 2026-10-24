@@ -45,6 +45,7 @@ transcribes the line whatever it says.
 
 from __future__ import annotations
 
+import itertools
 import json
 
 import pandas as pd
@@ -97,7 +98,7 @@ def in_order(per_class: list[dict]) -> bool:
     classes present."""
     by = {c["verdict"]: c["precision"] for c in per_class}
     seen = [by[v] for v in ABSENCE_ORDER if v in by]
-    return all(a >= b for a, b in zip(seen, seen[1:]))
+    return all(a >= b for a, b in itertools.pairwise(seen))
 
 
 def week_reading(log: pd.DataFrame, actuals: pd.DataFrame,

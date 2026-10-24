@@ -128,7 +128,7 @@ def test_every_alternative_is_distinct_from_the_incumbent_and_each_other():
     pool, state = _pool(), _state()
     plan = solve_plan(pool, state, **KW)
     alts = alternative_plans(pool, state, plan, max_gap=1e6, **KW)
-    sets = [tuple(move_set(p)) for p in [plan] + alts]
+    sets = [tuple(move_set(p)) for p in [plan, *alts]]
     assert len(set(sets)) == len(sets)
 
 

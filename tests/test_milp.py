@@ -265,8 +265,8 @@ def test_fixed_moves_can_force_a_paired_swap():
     pool = golden_pool()
     state = _owned_state(pool)
     out_code = state.owned_codes[-1]
-    in_code = [int(c) for c in pool["code"]
-               if c not in state.owned_codes][0]
+    in_code = next(int(c) for c in pool["code"]
+               if c not in state.owned_codes)
     plan = solve_plan(pool, state, **GOLDEN_KW,
                       fixed_moves=FixedMoves(buys=[in_code],
                                              sells=[out_code]))
@@ -298,7 +298,7 @@ def test_no_transfer_leaves_later_horizon_weeks_free():
 def test_fixed_moves_targets_the_first_horizon_week_by_default():
     pool = golden_pool()
     state = _owned_state(pool, gws=(3, 4))
-    spare = [int(c) for c in pool["code"] if c not in state.owned_codes][0]
+    spare = next(int(c) for c in pool["code"] if c not in state.owned_codes)
     plan = solve_plan(pool, state, **GOLDEN_KW,
                       fixed_moves=FixedMoves(buys=[spare]))
     assert spare in plan.gw_plans[0].buys
@@ -307,7 +307,7 @@ def test_fixed_moves_targets_the_first_horizon_week_by_default():
 def test_fixed_moves_honours_an_explicit_gameweek():
     pool = golden_pool()
     state = _owned_state(pool, gws=(3, 4))
-    spare = [int(c) for c in pool["code"] if c not in state.owned_codes][0]
+    spare = next(int(c) for c in pool["code"] if c not in state.owned_codes)
     plan = solve_plan(pool, state, **GOLDEN_KW,
                       fixed_moves=FixedMoves(buys=[spare], gw=4))
     assert spare in plan.gw_plans[1].buys

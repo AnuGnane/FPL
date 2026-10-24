@@ -71,11 +71,11 @@ def test_the_gain_credits_the_hits_the_baseline_would_have_paid():
     base = chip_baseline(pool, state, **CFG)
     week = base.gw_plans[0]
     hit_free = Plan(objective=base.objective,
-                    gw_plans=[__import__("dataclasses").replace(week, hits=0)]
-                    + list(base.gw_plans[1:]))
+                    gw_plans=[__import__("dataclasses").replace(week, hits=0),
+                              *base.gw_plans[1:]])
     with_hits = Plan(objective=base.objective,
-                     gw_plans=[__import__("dataclasses").replace(week, hits=2)]
-                     + list(base.gw_plans[1:]))
+                     gw_plans=[__import__("dataclasses").replace(week, hits=2),
+                               *base.gw_plans[1:]])
     a = free_hit_gain(pool, state, 1, base=hit_free, **CFG)
     b = free_hit_gain(pool, state, 1, base=with_hits, **CFG)
     assert b - a == pytest.approx(2 * CFG["hit_cost"], abs=1e-6)
@@ -133,11 +133,11 @@ def test_a_richer_week_prices_a_richer_free_hit():
                                squad=list(range(1, 16)), bank=500.0)
     lean = free_hit_gain(pool, state, 1,
                          base=Plan(objective=0.0,
-                                   gw_plans=[poor] + list(base.gw_plans[1:])),
+                                   gw_plans=[poor, *base.gw_plans[1:]]),
                          **CFG)
     flush = free_hit_gain(pool, state, 1,
                           base=Plan(objective=0.0,
-                                    gw_plans=[rich] + list(base.gw_plans[1:])),
+                                    gw_plans=[rich, *base.gw_plans[1:]]),
                           **CFG)
     assert flush > lean
 
@@ -151,8 +151,8 @@ def test_a_baseline_with_no_bank_falls_back_to_todays_position_and_says_so(
     pool, state = _pool(), _state()
     base = chip_baseline(pool, state, **CFG)
     stale = Plan(objective=base.objective,
-                 gw_plans=[dataclasses.replace(base.gw_plans[0], bank=None)]
-                 + list(base.gw_plans[1:]))
+                 gw_plans=[dataclasses.replace(base.gw_plans[0], bank=None),
+                           *base.gw_plans[1:]])
     free_hit_gain(pool, state, 1, base=stale, **CFG)
     assert "carries no bank for GW1" in capsys.readouterr().out
 

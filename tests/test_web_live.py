@@ -104,7 +104,7 @@ def test_live_reports_points_provisional_bonus_and_the_league_table(client):
     assert body["matches_in_play"] == 1
     salah = next(p for p in body["players"] if p["name"] == "Salah")
     assert salah["provisional_bonus"] == 3 and salah["status"] == "playing"
-    assert [r["name"] for r in body["table"]][0] in ("You FC",
+    assert next(r["name"] for r in body["table"]) in ("You FC",
                                                      "Ten Hag Hive")
 
 

@@ -39,7 +39,7 @@ def _events() -> pd.DataFrame:
 def test_the_log_columns_are_the_availability_columns_stamped():
     """The log reuses artifacts' column contract rather than restating it, so
     a column added to the availability frame lands here for free."""
-    assert SNAPSHOT_COLS == ["season", "gw", "snap_date"] + AVAILABILITY_COLS
+    assert ["season", "gw", "snap_date", *AVAILABILITY_COLS] == SNAPSHOT_COLS
 
 
 def test_the_snapshot_gameweek_is_the_first_unfinished_one():

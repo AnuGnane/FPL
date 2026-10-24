@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import ClassVar
 
 import numpy as np
 import pandas as pd
@@ -157,7 +158,7 @@ class _Recording(_Stretched):
     """``_Stretched`` that records the seasons and slots each fit saw and
     refuses to predict a season it was fitted on, outside the outer fit."""
 
-    fits: list = []
+    fits: ClassVar[list] = []
 
     def fit(self, df):
         self.seen = set(df["season_idx"].unique())

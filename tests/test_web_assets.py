@@ -85,7 +85,7 @@ def test_a_cold_shirt_is_fetched_once_and_banked(wired):
 
 
 def test_a_cold_photo_is_fetched_once_and_banked(wired):
-    tmp_path, client, calls = wired
+    tmp_path, client, _calls = wired
     response = client.get("/api/assets/photo/223094")
     assert response.status_code == 200
     assert response.content == PNG

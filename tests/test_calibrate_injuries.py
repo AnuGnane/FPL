@@ -3,6 +3,7 @@ the asset it writes is what live code reads."""
 
 from __future__ import annotations
 
+import itertools
 import json
 from pathlib import Path
 
@@ -193,7 +194,7 @@ def test_fit_curves_is_the_empirical_cdf_of_the_spell_lengths():
 def test_fit_curves_is_monotone_nondecreasing():
     spells = _many([3.0, 9.0, 30.0, 60.0] * 10, "knee")
     curve = fit_curves(spells)["curves"]["knee"]
-    assert all(b >= a for a, b in zip(curve, curve[1:]))
+    assert all(b >= a for a, b in itertools.pairwise(curve))
     assert all(0.0 <= v <= 1.0 for v in curve)
 
 
