@@ -66,7 +66,7 @@ describe('SquadTable', () => {
   it('shows an em dash for a missing sim percentage', () => {
     render(<SquadTable rows={ROWS} breakdown={{}} />)
     const row = screen.getByText('Gabriel').closest('tr')
-    if (!row) throw new Error('no row')
+    if (!row) throw new Error('Gabriel has no row')
     expect(within(row).getAllByText('—').length).toBeGreaterThan(0)
   })
 
@@ -148,7 +148,7 @@ describe('SquadTable: the field column (v10b §F1a)', () => {
     render(<SquadTable rows={WITH_FIELD} breakdown={{}} />)
     expect(screen.getByText('Field%')).toBeInTheDocument()
     const salah = screen.getByText('Salah').closest('tr')
-    if (!salah) throw new Error('no salah')
+    if (!salah) throw new Error('Salah has no row')
     expect(within(salah).getByText('55.2')).toBeInTheDocument()
   })
 
@@ -157,7 +157,7 @@ describe('SquadTable: the field column (v10b §F1a)', () => {
     // measured differential and this is the absence of a measurement.
     render(<SquadTable rows={WITH_FIELD} breakdown={{}} />)
     const gabriel = screen.getByText('Gabriel').closest('tr')
-    if (!gabriel) throw new Error('no gabriel')
+    if (!gabriel) throw new Error('Gabriel has no row')
     expect(within(gabriel).getAllByText('—').length).toBeGreaterThan(0)
   })
 

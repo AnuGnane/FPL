@@ -68,7 +68,7 @@ describe('the grouped chart rows', () => {
   it('gives a player with no such term a zero rather than a hole', () => {
     const rows = compareRows([row(1, 'Salah'), row(2, 'Saka')], BODY)
     const cards = rows.find((r) => r['label'] === 'Cards')
-    if (!cards) throw new Error('no cards')
+    if (!cards) throw new Error('no Cards row')
     expect(cards['2']).toBe(0)
   })
 

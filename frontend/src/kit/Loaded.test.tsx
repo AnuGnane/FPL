@@ -23,7 +23,7 @@ describe('Loaded', () => {
       </Loaded>,
     )
     const box = screen.getByText(/advise failed/).closest('[data-tone]')
-    if (!box) throw new Error('no box')
+    if (!box) throw new Error('the failure has no toned box')
     expect(box).toHaveAttribute('data-tone', 'error')
     expect(screen.queryByText('nothing here yet')).toBeNull()
   })
