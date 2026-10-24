@@ -79,11 +79,11 @@ filterwarnings = [
 
 [tool.ruff]
 # v18g §1: E, F, B, I, UP, SIM, C4, PIE, RET, ERA, BLE, RUF100, PT, PERF,
-# FURB, PYI, PLW, PLC, PLE, N, ISC, Q and TC at line 100 (UP since holiday
-# F-188, SIM since F-189, C4, PIE, RET and ERA since F-201, BLE and RUF100
-# since F-204, PT since F-205, PERF, FURB and PYI since F-206, PLW, PLC and
-# PLE since F-207, N since F-208, ISC, Q and TC since F-209); the ignores
-# below each carry a reason.
+# FURB, PYI, PLW, PLC, PLE, N, ISC, Q, TC, PTH, DTZ and LOG at line 100 (UP
+# since holiday F-188, SIM since F-189, C4, PIE, RET and ERA since F-201, BLE
+# and RUF100 since F-204, PT since F-205, PERF, FURB and PYI since F-206, PLW,
+# PLC and PLE since F-207, N since F-208, ISC, Q and TC since F-209, PTH, DTZ
+# and LOG since F-215); the ignores below each carry a reason.
 line-length = 100
 target-version = "py312"
 # F-167: scripts/archive/ is the retired code v18g moved out of the way; it is
@@ -93,7 +93,7 @@ extend-exclude = ["scripts/archive"]
 [tool.ruff.lint]
 select = ["E", "F", "B", "I", "UP", "SIM", "C4", "PIE", "RET", "ERA", "BLE", "RUF100",
           "PT", "PERF", "FURB", "PYI", "PLW", "PLC", "PLE",
-          "N", "ISC", "Q", "TC"]
+          "N", "ISC", "Q", "TC", "PTH", "DTZ", "LOG"]
 # B905: zip(strict=) on 174 sites is noise, not safety — every zip here is
 # over parallel columns the caller built (v18g §1).
 # PT018 (holiday F-205): a composite ``assert a and b`` reads as one sentence
@@ -145,7 +145,11 @@ ignore = ["B905", "PT018", "PLC0415"]
 # are on the Mac's golden path (HOLIDAY.md Merging rule 2; app.py through
 # tests/golden_client.py), so their sites wait for F-202's needs-mac PR.
 "src/gaffer/served.py" = ["C4", "PIE", "RET", "ERA"]
-"src/gaffer/web/app.py" = ["C4", "PIE", "RET", "ERA"]
+# LOG (holiday F-215) likewise: app.py's one site waits for F-219 on the Mac.
+"src/gaffer/web/app.py" = ["C4", "PIE", "RET", "ERA", "LOG"]
+# PTH (holiday F-215): the golden tests import tests/golden_client.py, so
+# its four sites wait for F-219's needs-mac PR with the golden modules'.
+"tests/golden_client.py" = ["PTH"]
 # C4, PIE, RET and ERA (holiday F-201): orchestrator-only files (CLAUDE.md)
 # keep their spelling for good, as F-188's advise.py line does.
 "tests/test_v4c_degradation.py" = ["C4", "PIE", "RET", "ERA", "ISC", "Q", "TC"]
